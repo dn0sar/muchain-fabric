@@ -78,12 +78,13 @@ func (x PeerEndpoint_Type) String() string {
 type Message_Type int32
 
 const (
-	Message_UNDEFINED               Message_Type = 0
-	Message_DISC_HELLO              Message_Type = 1
-	Message_DISC_DISCONNECT         Message_Type = 2
-	Message_DISC_GET_PEERS          Message_Type = 3
-	Message_DISC_PEERS              Message_Type = 4
-	Message_DISC_NEWMSG             Message_Type = 5
+	Message_UNDEFINED       Message_Type = 0
+	Message_DISC_HELLO      Message_Type = 1
+	Message_DISC_DISCONNECT Message_Type = 2
+	Message_DISC_GET_PEERS  Message_Type = 3
+	Message_DISC_PEERS      Message_Type = 4
+	Message_DISC_NEWMSG     Message_Type = 5
+	// CHAIN_TRANSACTION is now used to send an InBlockTransaction
 	Message_CHAIN_TRANSACTION       Message_Type = 6
 	Message_SYNC_GET_BLOCKS         Message_Type = 11
 	Message_SYNC_BLOCKS             Message_Type = 12
@@ -192,16 +193,162 @@ func (m *Transaction) GetTimestamp() *google_protobuf.Timestamp {
 	return nil
 }
 
+type MutantTransaction struct {
+	// blockRef: the block at which the transaction set referred by this mutant transaction resides
+	BlockRef []byte `protobuf:"bytes,1,opt,name=blockRef,proto3" json:"blockRef,omitempty"`
+	// txRef: the transaction set ID of the transaction set that this mutant transaction is modifying
+	TxRef []byte `protobuf:"bytes,2,opt,name=txRef,proto3" json:"txRef,omitempty"`
+	// index: the new index of the default transaction of the transaction set that this mutant transaction is modifying
+	Index uint32 `protobuf:"varint,3,opt,name=index" json:"index,omitempty"`
+}
+
+func (m *MutantTransaction) Reset()         { *m = MutantTransaction{} }
+func (m *MutantTransaction) String() string { return proto.CompactTextString(m) }
+func (*MutantTransaction) ProtoMessage()    {}
+
+type TransactionSet struct {
+	// transactions: the transactions in this set
+	Transactions []*Transaction `protobuf:"bytes,1,rep,name=transactions" json:"transactions,omitempty"`
+	// defaultInx: the index of the default transaction in this set
+	DefaultInx uint32 `protobuf:"varint,2,opt,name=defaultInx" json:"defaultInx,omitempty"`
+}
+
+func (m *TransactionSet) Reset()         { *m = TransactionSet{} }
+func (m *TransactionSet) String() string { return proto.CompactTextString(m) }
+func (*TransactionSet) ProtoMessage()    {}
+
+func (m *TransactionSet) GetTransactions() []*Transaction {
+	if m != nil {
+		return m.Transactions
+	}
+	return nil
+}
+
+type InBlockTransaction struct {
+	// Types that are valid to be assigned to Transaction:
+	//	*InBlockTransaction_TransactionSet
+	//	*InBlockTransaction_MutantTransaction
+	Transaction                    isInBlockTransaction_Transaction `protobuf_oneof:"transaction"`
+	Metadata                       []byte                           `protobuf:"bytes,4,opt,name=metadata,proto3" json:"metadata,omitempty"`
+	Txid                           string                           `protobuf:"bytes,5,opt,name=txid" json:"txid,omitempty"`
+	Timestamp                      *google_protobuf.Timestamp       `protobuf:"bytes,6,opt,name=timestamp" json:"timestamp,omitempty"`
+	ConfidentialityLevel           ConfidentialityLevel             `protobuf:"varint,7,opt,name=confidentialityLevel,enum=protos.ConfidentialityLevel" json:"confidentialityLevel,omitempty"`
+	ConfidentialityProtocolVersion string                           `protobuf:"bytes,8,opt,name=confidentialityProtocolVersion" json:"confidentialityProtocolVersion,omitempty"`
+	Nonce                          []byte                           `protobuf:"bytes,9,opt,name=nonce,proto3" json:"nonce,omitempty"`
+	ToValidators                   []byte                           `protobuf:"bytes,10,opt,name=toValidators,proto3" json:"toValidators,omitempty"`
+	Cert                           []byte                           `protobuf:"bytes,11,opt,name=cert,proto3" json:"cert,omitempty"`
+	Signature                      []byte                           `protobuf:"bytes,12,opt,name=signature,proto3" json:"signature,omitempty"`
+}
+
+func (m *InBlockTransaction) Reset()         { *m = InBlockTransaction{} }
+func (m *InBlockTransaction) String() string { return proto.CompactTextString(m) }
+func (*InBlockTransaction) ProtoMessage()    {}
+
+type isInBlockTransaction_Transaction interface {
+	isInBlockTransaction_Transaction()
+}
+
+type InBlockTransaction_TransactionSet struct {
+	TransactionSet *TransactionSet `protobuf:"bytes,1,opt,name=transactionSet,oneof"`
+}
+type InBlockTransaction_MutantTransaction struct {
+	MutantTransaction *MutantTransaction `protobuf:"bytes,2,opt,name=mutantTransaction,oneof"`
+}
+
+func (*InBlockTransaction_TransactionSet) isInBlockTransaction_Transaction()    {}
+func (*InBlockTransaction_MutantTransaction) isInBlockTransaction_Transaction() {}
+
+func (m *InBlockTransaction) GetTransaction() isInBlockTransaction_Transaction {
+	if m != nil {
+		return m.Transaction
+	}
+	return nil
+}
+
+func (m *InBlockTransaction) GetTransactionSet() *TransactionSet {
+	if x, ok := m.GetTransaction().(*InBlockTransaction_TransactionSet); ok {
+		return x.TransactionSet
+	}
+	return nil
+}
+
+func (m *InBlockTransaction) GetMutantTransaction() *MutantTransaction {
+	if x, ok := m.GetTransaction().(*InBlockTransaction_MutantTransaction); ok {
+		return x.MutantTransaction
+	}
+	return nil
+}
+
+func (m *InBlockTransaction) GetTimestamp() *google_protobuf.Timestamp {
+	if m != nil {
+		return m.Timestamp
+	}
+	return nil
+}
+
+// XXX_OneofFuncs is for the internal use of the proto package.
+func (*InBlockTransaction) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), []interface{}) {
+	return _InBlockTransaction_OneofMarshaler, _InBlockTransaction_OneofUnmarshaler, []interface{}{
+		(*InBlockTransaction_TransactionSet)(nil),
+		(*InBlockTransaction_MutantTransaction)(nil),
+	}
+}
+
+func _InBlockTransaction_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
+	m := msg.(*InBlockTransaction)
+	// transaction
+	switch x := m.Transaction.(type) {
+	case *InBlockTransaction_TransactionSet:
+		b.EncodeVarint(1<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.TransactionSet); err != nil {
+			return err
+		}
+	case *InBlockTransaction_MutantTransaction:
+		b.EncodeVarint(2<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.MutantTransaction); err != nil {
+			return err
+		}
+	case nil:
+	default:
+		return fmt.Errorf("InBlockTransaction.Transaction has unexpected type %T", x)
+	}
+	return nil
+}
+
+func _InBlockTransaction_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
+	m := msg.(*InBlockTransaction)
+	switch tag {
+	case 1: // transaction.transactionSet
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(TransactionSet)
+		err := b.DecodeMessage(msg)
+		m.Transaction = &InBlockTransaction_TransactionSet{msg}
+		return true, err
+	case 2: // transaction.mutantTransaction
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(MutantTransaction)
+		err := b.DecodeMessage(msg)
+		m.Transaction = &InBlockTransaction_MutantTransaction{msg}
+		return true, err
+	default:
+		return false, nil
+	}
+}
+
 // TransactionBlock carries a batch of transactions.
 type TransactionBlock struct {
-	Transactions []*Transaction `protobuf:"bytes,1,rep,name=transactions" json:"transactions,omitempty"`
+	Transactions []*InBlockTransaction `protobuf:"bytes,1,rep,name=transactions" json:"transactions,omitempty"`
 }
 
 func (m *TransactionBlock) Reset()         { *m = TransactionBlock{} }
 func (m *TransactionBlock) String() string { return proto.CompactTextString(m) }
 func (*TransactionBlock) ProtoMessage()    {}
 
-func (m *TransactionBlock) GetTransactions() []*Transaction {
+func (m *TransactionBlock) GetTransactions() []*InBlockTransaction {
 	if m != nil {
 		return m.Transactions
 	}
@@ -238,7 +385,7 @@ func (m *TransactionResult) GetChaincodeEvent() *ChaincodeEvent {
 // version - Version used to track any protocol changes.
 // timestamp - The time at which the block or transaction order
 // was proposed. This may not be used by all consensus modules.
-// transactions - The ordered list of transactions in the block.
+// transactions - The ordered list of transactions in the block. //TODO: This must somehow be converted to a merkle tree
 // stateHash - The state hash after running transactions in this block.
 // previousBlockHash - The hash of the previous block in the chain.
 // consensusMetadata - Consensus modules may optionally store any
@@ -249,7 +396,7 @@ func (m *TransactionResult) GetChaincodeEvent() *ChaincodeEvent {
 type Block struct {
 	Version           uint32                     `protobuf:"varint,1,opt,name=version" json:"version,omitempty"`
 	Timestamp         *google_protobuf.Timestamp `protobuf:"bytes,2,opt,name=timestamp" json:"timestamp,omitempty"`
-	Transactions      []*Transaction             `protobuf:"bytes,3,rep,name=transactions" json:"transactions,omitempty"`
+	Transactions      []*InBlockTransaction      `protobuf:"bytes,3,rep,name=transactions" json:"transactions,omitempty"`
 	StateHash         []byte                     `protobuf:"bytes,4,opt,name=stateHash,proto3" json:"stateHash,omitempty"`
 	PreviousBlockHash []byte                     `protobuf:"bytes,5,opt,name=previousBlockHash,proto3" json:"previousBlockHash,omitempty"`
 	ConsensusMetadata []byte                     `protobuf:"bytes,6,opt,name=consensusMetadata,proto3" json:"consensusMetadata,omitempty"`
@@ -267,7 +414,7 @@ func (m *Block) GetTimestamp() *google_protobuf.Timestamp {
 	return nil
 }
 
-func (m *Block) GetTransactions() []*Transaction {
+func (m *Block) GetTransactions() []*InBlockTransaction {
 	if m != nil {
 		return m.Transactions
 	}
@@ -576,8 +723,12 @@ type PeerClient interface {
 	// Accepts a stream of Message during chat session, while receiving
 	// other Message (e.g. from other peers).
 	Chat(ctx context.Context, opts ...grpc.CallOption) (Peer_ChatClient, error)
-	// Process a transaction from a remote source.
+	// Process a transaction from a remote source. (TODO: convert this to the creation of a transactionSet with only one transaction)
 	ProcessTransaction(ctx context.Context, in *Transaction, opts ...grpc.CallOption) (*Response, error)
+	// Process a transaction set (which may even contain only one transaction)
+	ProcessTransactionSet(ctx context.Context, in *TransactionSet, opts ...grpc.CallOption) (*Response, error)
+	// Process a mutant transaction
+	ProcessMutant(ctx context.Context, in *MutantTransaction, opts ...grpc.CallOption) (*Response, error)
 }
 
 type peerClient struct {
@@ -628,14 +779,36 @@ func (c *peerClient) ProcessTransaction(ctx context.Context, in *Transaction, op
 	return out, nil
 }
 
+func (c *peerClient) ProcessTransactionSet(ctx context.Context, in *TransactionSet, opts ...grpc.CallOption) (*Response, error) {
+	out := new(Response)
+	err := grpc.Invoke(ctx, "/protos.Peer/ProcessTransactionSet", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *peerClient) ProcessMutant(ctx context.Context, in *MutantTransaction, opts ...grpc.CallOption) (*Response, error) {
+	out := new(Response)
+	err := grpc.Invoke(ctx, "/protos.Peer/ProcessMutant", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // Server API for Peer service
 
 type PeerServer interface {
 	// Accepts a stream of Message during chat session, while receiving
 	// other Message (e.g. from other peers).
 	Chat(Peer_ChatServer) error
-	// Process a transaction from a remote source.
+	// Process a transaction from a remote source. (TODO: convert this to the creation of a transactionSet with only one transaction)
 	ProcessTransaction(context.Context, *Transaction) (*Response, error)
+	// Process a transaction set (which may even contain only one transaction)
+	ProcessTransactionSet(context.Context, *TransactionSet) (*Response, error)
+	// Process a mutant transaction
+	ProcessMutant(context.Context, *MutantTransaction) (*Response, error)
 }
 
 func RegisterPeerServer(s *grpc.Server, srv PeerServer) {
@@ -680,6 +853,30 @@ func _Peer_ProcessTransaction_Handler(srv interface{}, ctx context.Context, dec 
 	return out, nil
 }
 
+func _Peer_ProcessTransactionSet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(TransactionSet)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(PeerServer).ProcessTransactionSet(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func _Peer_ProcessMutant_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(MutantTransaction)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(PeerServer).ProcessMutant(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 var _Peer_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "protos.Peer",
 	HandlerType: (*PeerServer)(nil),
@@ -687,6 +884,14 @@ var _Peer_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ProcessTransaction",
 			Handler:    _Peer_ProcessTransaction_Handler,
+		},
+		{
+			MethodName: "ProcessTransactionSet",
+			Handler:    _Peer_ProcessTransactionSet_Handler,
+		},
+		{
+			MethodName: "ProcessMutant",
+			Handler:    _Peer_ProcessMutant_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

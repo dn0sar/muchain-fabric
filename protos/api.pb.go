@@ -44,6 +44,9 @@ It has these top-level messages:
 	Unregister
 	Event
 	Transaction
+	MutantTransaction
+	TransactionSet
+	InBlockTransaction
 	TransactionBlock
 	TransactionResult
 	Block
