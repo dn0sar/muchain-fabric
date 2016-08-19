@@ -28,7 +28,7 @@ import (
 var logger = shim.NewLogger("noop")
 
 type ledgerHandler interface {
-	GetTransactionByID(txID string) (*protos.Transaction, error)
+	GetTransactionByID(txID string) (*protos.InBlockTransaction, error)
 }
 
 // SystemChaincode is type representing the chaincode
@@ -77,20 +77,29 @@ func (t *SystemChaincode) Query(stub shim.ChaincodeStubInterface, function strin
 		logger.Infof("--> %x", args[0])
 
 		var txHashHex = args[0]
-		var tx, txerr = t.getLedger().GetTransactionByID(txHashHex)
-		if nil != txerr || nil == tx {
+		var inBlockTx, txerr = t.getLedger().GetTransactionByID(txHashHex)
+		if nil != txerr || nil == inBlockTx {
 			return nil, txerr
 		}
-		newCCIS := &protos.ChaincodeInvocationSpec{}
-		var merr = proto.Unmarshal(tx.Payload, newCCIS)
-		if nil != merr {
-			return nil, merr
+		switch tx := inBlockTx.Transaction.(type) {
+		case *protos.InBlockTransaction_TransactionSet:
+			newCCIS := &protos.ChaincodeInvocationSpec{}
+			var merr = proto.Unmarshal(tx.TransactionSet.Transactions[tx.TransactionSet.DefaultInx].Payload, newCCIS)
+			if nil != merr {
+				return nil, merr
+			}
+			if len(newCCIS.ChaincodeSpec.CtorMsg.Args) < 1 {
+				return nil, errors.New("The requested transaction is malformed.")
+			}
+			var dataInByteForm = newCCIS.ChaincodeSpec.CtorMsg.Args[0]
+			return dataInByteForm, nil
+		case *protos.InBlockTransaction_MutantTransaction:
+			//TODO: Add test case here for mutant transactions
+			return nil, errors.New("Mutant transactions are unsupported yet")
+		default:
+			 return  nil, errors.New("Unsupported operation")
 		}
-		if len(newCCIS.ChaincodeSpec.CtorMsg.Args) < 1 {
-			return nil, errors.New("The requested transaction is malformed.")
-		}
-		var dataInByteForm = newCCIS.ChaincodeSpec.CtorMsg.Args[0]
-		return dataInByteForm, nil
+
 	default:
 		return nil, errors.New("Unsupported operation")
 	}

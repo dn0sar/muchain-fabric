@@ -30,10 +30,19 @@ import (
 	obc "github.com/hyperledger/fabric/protos"
 )
 
-func (validator *validatorImpl) GetStateEncryptor(deployTx, executeTx *obc.Transaction) (StateEncryptor, error) {
+func (validator *validatorImpl) GetStateEncryptor(deployTx *obc.Transaction, executeTx *obc.InBlockTransaction) (StateEncryptor, error) {
 	switch executeTx.ConfidentialityProtocolVersion {
 	case "1.2":
-		return validator.getStateEncryptor1_2(deployTx, executeTx)
+		//REVIEW: is it the case to change stateEncryptor1_2 to work with InBlockTransactionDirectly??
+		switch tx := executeTx.Transaction.(type) {
+		case *obc.InBlockTransaction_TransactionSet:
+			//TODO: take current default transaction instead?? (is it necessary i.e. is this the first time or not??)
+			defTx := tx.TransactionSet.Transactions[tx.TransactionSet.DefaultInx]
+			return validator.getStateEncryptor1_2(deployTx, defTx)
+		case *obc.InBlockTransaction_MutantTransaction:
+			//TODO: check what would be the proper behaviour here
+			return nil, utils.ErrInvalidTransactionType
+		}
 	}
 
 	return nil, utils.ErrInvalidConfidentialityLevel

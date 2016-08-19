@@ -126,7 +126,7 @@ func (ledger *Ledger) BeginTxBatch(id interface{}) error {
 // state is modified by a transaction between these two calls, the
 // contained hash will be different.
 func (ledger *Ledger) GetTXBatchPreviewBlockInfo(id interface{},
-	transactions []*protos.Transaction, metadata []byte) (*protos.BlockchainInfo, error) {
+	transactions []*protos.InBlockTransaction, metadata []byte) (*protos.BlockchainInfo, error) {
 	err := ledger.checkValidIDCommitORRollback(id)
 	if err != nil {
 		return nil, err
@@ -143,7 +143,7 @@ func (ledger *Ledger) GetTXBatchPreviewBlockInfo(id interface{},
 // CommitTxBatch - gets invoked when the current transaction-batch needs to be committed
 // This function returns successfully iff the transactions details and state changes (that
 // may have happened during execution of this transaction-batch) have been committed to permanent storage
-func (ledger *Ledger) CommitTxBatch(id interface{}, transactions []*protos.Transaction, transactionResults []*protos.TransactionResult, metadata []byte) error {
+func (ledger *Ledger) CommitTxBatch(id interface{}, transactions []*protos.InBlockTransaction, transactionResults []*protos.TransactionResult, metadata []byte) error {
 	err := ledger.checkValidIDCommitORRollback(id)
 	if err != nil {
 		return err
@@ -407,7 +407,8 @@ func (ledger *Ledger) GetBlockchainSize() uint64 {
 }
 
 // GetTransactionByID return transaction by it's txId
-func (ledger *Ledger) GetTransactionByID(txID string) (*protos.Transaction, error) {
+//REVIEW: check whether the txId referred to here is the one of the txSet or the default transaction
+func (ledger *Ledger) GetTransactionByID(txID string) (*protos.InBlockTransaction, error) {
 	return ledger.blockchain.getTransactionByID(txID)
 }
 
@@ -499,21 +500,28 @@ func sendProducerBlockEvent(block *protos.Block) {
 	// events more lightweight as the payload for these types of transactions
 	// can be very large.
 	blockTransactions := block.GetTransactions()
-	for _, transaction := range blockTransactions {
-		if transaction.Type == protos.Transaction_CHAINCODE_DEPLOY {
-			deploymentSpec := &protos.ChaincodeDeploymentSpec{}
-			err := proto.Unmarshal(transaction.Payload, deploymentSpec)
-			if err != nil {
-				ledgerLogger.Errorf("Error unmarshalling deployment transaction for block event: %s", err)
-				continue
+	for _, InBlockTx := range blockTransactions {
+		switch tx := InBlockTx.Transaction.(type) {
+		case *protos.InBlockTransaction_TransactionSet:
+			// TODO: This should get the *current* default transaction instead of the first default
+			transaction := tx.TransactionSet.GetTransactions()[tx.TransactionSet.DefaultInx]
+			if transaction.Type == protos.Transaction_CHAINCODE_DEPLOY {
+				deploymentSpec := &protos.ChaincodeDeploymentSpec{}
+				err := proto.Unmarshal(transaction.Payload, deploymentSpec)
+				if err != nil {
+					ledgerLogger.Errorf("Error unmarshalling deployment transaction for block event: %s", err)
+					continue
+				}
+				deploymentSpec.CodePackage = nil
+				deploymentSpecBytes, err := proto.Marshal(deploymentSpec)
+				if err != nil {
+					ledgerLogger.Errorf("Error marshalling deployment transaction for block event: %s", err)
+					continue
+				}
+				transaction.Payload = deploymentSpecBytes
 			}
-			deploymentSpec.CodePackage = nil
-			deploymentSpecBytes, err := proto.Marshal(deploymentSpec)
-			if err != nil {
-				ledgerLogger.Errorf("Error marshalling deployment transaction for block event: %s", err)
-				continue
-			}
-			transaction.Payload = deploymentSpecBytes
+		case *protos.InBlockTransaction_MutantTransaction:
+			//TODO: generate events for mutable transactions here!
 		}
 	}
 

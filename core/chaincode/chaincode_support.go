@@ -484,21 +484,26 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, t *pb.
 		}
 
 		//hopefully we are restarting from existing image and the deployed transaction exists
-		depTx, ledgerErr = ledger.GetTransactionByID(chaincode)
+		transSet, ledgerErr := ledger.GetTransactionByID(chaincode)
 		if ledgerErr != nil {
 			return cID, cMsg, fmt.Errorf("Could not get deployment transaction for %s - %s", chaincode, ledgerErr)
 		}
-		if depTx == nil {
+		if transSet == nil {
+			return cID, cMsg, fmt.Errorf("deployment transaction does not exist for %s", chaincode)
+		}
+		if transSet.GetTransactionSet() == nil {
 			return cID, cMsg, fmt.Errorf("deployment transaction does not exist for %s", chaincode)
 		}
 		if nil != chaincodeSupport.secHelper {
 			var err error
-			depTx, err = chaincodeSupport.secHelper.TransactionPreExecution(depTx)
+			transSet, err = chaincodeSupport.secHelper.TransactionPreExecution(transSet)
 			// Note that t is now decrypted and is a deep clone of the original input t
 			if nil != err {
 				return cID, cMsg, fmt.Errorf("failed tx preexecution%s - %s", chaincode, err)
 			}
 		}
+		// TODO: get the current default transaction here instead and *check* if it is still a deploy transaction
+		depTx = transSet.GetTransactionSet().Transactions[transSet.GetTransactionSet().DefaultInx]
 		//Get lang from original deployment
 		err := proto.Unmarshal(depTx.Payload, cds)
 		if err != nil {

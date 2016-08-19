@@ -156,7 +156,7 @@ func (co *coordinatorImpl) Commit(tag interface{}, metadata []byte) {
 }
 
 // Execute adds additional executions to the current batch
-func (co *coordinatorImpl) Execute(tag interface{}, txs []*pb.Transaction) {
+func (co *coordinatorImpl) Execute(tag interface{}, txs []*pb.InBlockTransaction) {
 	co.manager.Queue() <- executeEvent{tag, txs}
 }
 
@@ -186,7 +186,7 @@ func (co *coordinatorImpl) Halt() {
 
 type executeEvent struct {
 	tag interface{}
-	txs []*pb.Transaction
+	txs []*pb.InBlockTransaction
 }
 
 // Note, this cannot be a simple type alias, in case tag is nil

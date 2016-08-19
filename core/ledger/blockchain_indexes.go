@@ -91,19 +91,24 @@ func addIndexDataForPersistence(block *protos.Block, blockNumber uint64, blockHa
 	addressToChaincodeIDsMap := make(map[string][]*protos.ChaincodeID)
 
 	transactions := block.GetTransactions()
-	for txIndex, tx := range transactions {
-		// add TxID -> (blockNumber,indexWithinBlock)
-		writeBatch.PutCF(cf, encodeTxIDKey(tx.Txid), encodeBlockNumTxIndex(blockNumber, uint64(txIndex)))
+	for txIndex, inBlockTx := range transactions {
+		writeBatch.PutCF(cf, encodeTxIDKey(inBlockTx.Txid), encodeBlockNumTxIndex(blockNumber, uint64(txIndex)))
 
-		txExecutingAddress := getTxExecutingAddress(tx)
+		txExecutingAddress := getTxExecutingAddress(inBlockTx)
 		addressToTxIndexesMap[txExecutingAddress] = append(addressToTxIndexesMap[txExecutingAddress], uint64(txIndex))
-
-		switch tx.Type {
-		case protos.Transaction_CHAINCODE_DEPLOY, protos.Transaction_CHAINCODE_INVOKE:
-			authroizedAddresses, chaincodeID := getAuthorisedAddresses(tx)
-			for _, authroizedAddress := range authroizedAddresses {
-				addressToChaincodeIDsMap[authroizedAddress] = append(addressToChaincodeIDsMap[authroizedAddress], chaincodeID)
+		//Note that this should be executed when I'm creating a block, hence I should take the first default transaction
+		switch tx := inBlockTx.Transaction.(type) {
+		case *protos.InBlockTransaction_TransactionSet:
+			defaultTx := tx.TransactionSet.GetTransactions()[tx.TransactionSet.DefaultInx]
+			switch defaultTx.Type {
+			case protos.Transaction_CHAINCODE_DEPLOY, protos.Transaction_CHAINCODE_INVOKE:
+				authroizedAddresses, chaincodeID := getAuthorisedAddresses(defaultTx)
+				for _, authroizedAddress := range authroizedAddresses {
+					addressToChaincodeIDsMap[authroizedAddress] = append(addressToChaincodeIDsMap[authroizedAddress], chaincodeID)
+				}
 			}
+		case *protos.InBlockTransaction_MutantTransaction:
+			//TODO: Add persistency for mutant transactions, i.e. change the default transaction of the relevant transactionSet
 		}
 	}
 	for address, txsIndexes := range addressToTxIndexesMap {
@@ -137,7 +142,7 @@ func fetchTransactionIndexByIDFromDB(txID string) (uint64, uint64, error) {
 	return decodeBlockNumTxIndex(blockNumTxIndexBytes)
 }
 
-func getTxExecutingAddress(tx *protos.Transaction) string {
+func getTxExecutingAddress(tx *protos.InBlockTransaction) string {
 	// TODO Fetch address form tx
 	return "address1"
 }

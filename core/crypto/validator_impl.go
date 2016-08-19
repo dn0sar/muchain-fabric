@@ -38,7 +38,7 @@ type validatorImpl struct {
 // TransactionPreValidation verifies that the transaction is
 // well formed with the respect to the security layer
 // prescriptions (i.e. signature verification).
-func (validator *validatorImpl) TransactionPreValidation(tx *obc.Transaction) (*obc.Transaction, error) {
+func (validator *validatorImpl) TransactionPreValidation(tx *obc.InBlockTransaction) (*obc.InBlockTransaction, error) {
 	if !validator.isInitialized {
 		return nil, utils.ErrNotInitialized
 	}
@@ -50,7 +50,7 @@ func (validator *validatorImpl) TransactionPreValidation(tx *obc.Transaction) (*
 // well formed with the respect to the security layer
 // prescriptions (i.e. signature verification). If this is the case,
 // the method prepares the transaction to be executed.
-func (validator *validatorImpl) TransactionPreExecution(tx *obc.Transaction) (*obc.Transaction, error) {
+func (validator *validatorImpl) TransactionPreExecution(tx *obc.InBlockTransaction) (*obc.InBlockTransaction, error) {
 	if !validator.isInitialized {
 		return nil, utils.ErrNotInitialized
 	}

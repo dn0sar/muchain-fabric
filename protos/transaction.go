@@ -111,3 +111,18 @@ func NewChaincodeExecute(chaincodeInvocationSpec *ChaincodeInvocationSpec, uuid 
 	transaction.Payload = data
 	return transaction, nil
 }
+
+func EncapsulateTransactionToInBlock(tx *Transaction) *InBlockTransaction {
+	return &InBlockTransaction{
+		Transaction: &InBlockTransaction_TransactionSet{&TransactionSet{Transactions: []*Transaction{tx}, DefaultInx: 0}},
+		Metadata: tx.Metadata,
+		Txid: tx.Txid,
+		Timestamp: tx.Timestamp,
+		ConfidentialityLevel: tx.ConfidentialityLevel,
+		ConfidentialityProtocolVersion: tx.ConfidentialityProtocolVersion,
+		Nonce: tx.Nonce,
+		ToValidators: tx.ToValidators,
+		Cert: tx.Cert,
+		Signature: tx.Signature,
+	}
+}

@@ -723,12 +723,8 @@ type PeerClient interface {
 	// Accepts a stream of Message during chat session, while receiving
 	// other Message (e.g. from other peers).
 	Chat(ctx context.Context, opts ...grpc.CallOption) (Peer_ChatClient, error)
-	// Process a transaction from a remote source. (TODO: convert this to the creation of a transactionSet with only one transaction)
-	ProcessTransaction(ctx context.Context, in *Transaction, opts ...grpc.CallOption) (*Response, error)
-	// Process a transaction set (which may even contain only one transaction)
-	ProcessTransactionSet(ctx context.Context, in *TransactionSet, opts ...grpc.CallOption) (*Response, error)
-	// Process a mutant transaction
-	ProcessMutant(ctx context.Context, in *MutantTransaction, opts ...grpc.CallOption) (*Response, error)
+	// Process a transaction from a remote source.
+	ProcessTransaction(ctx context.Context, in *InBlockTransaction, opts ...grpc.CallOption) (*Response, error)
 }
 
 type peerClient struct {
@@ -770,27 +766,9 @@ func (x *peerChatClient) Recv() (*Message, error) {
 	return m, nil
 }
 
-func (c *peerClient) ProcessTransaction(ctx context.Context, in *Transaction, opts ...grpc.CallOption) (*Response, error) {
+func (c *peerClient) ProcessTransaction(ctx context.Context, in *InBlockTransaction, opts ...grpc.CallOption) (*Response, error) {
 	out := new(Response)
 	err := grpc.Invoke(ctx, "/protos.Peer/ProcessTransaction", in, out, c.cc, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *peerClient) ProcessTransactionSet(ctx context.Context, in *TransactionSet, opts ...grpc.CallOption) (*Response, error) {
-	out := new(Response)
-	err := grpc.Invoke(ctx, "/protos.Peer/ProcessTransactionSet", in, out, c.cc, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *peerClient) ProcessMutant(ctx context.Context, in *MutantTransaction, opts ...grpc.CallOption) (*Response, error) {
-	out := new(Response)
-	err := grpc.Invoke(ctx, "/protos.Peer/ProcessMutant", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -803,12 +781,8 @@ type PeerServer interface {
 	// Accepts a stream of Message during chat session, while receiving
 	// other Message (e.g. from other peers).
 	Chat(Peer_ChatServer) error
-	// Process a transaction from a remote source. (TODO: convert this to the creation of a transactionSet with only one transaction)
-	ProcessTransaction(context.Context, *Transaction) (*Response, error)
-	// Process a transaction set (which may even contain only one transaction)
-	ProcessTransactionSet(context.Context, *TransactionSet) (*Response, error)
-	// Process a mutant transaction
-	ProcessMutant(context.Context, *MutantTransaction) (*Response, error)
+	// Process a transaction from a remote source.
+	ProcessTransaction(context.Context, *InBlockTransaction) (*Response, error)
 }
 
 func RegisterPeerServer(s *grpc.Server, srv PeerServer) {
@@ -842,35 +816,11 @@ func (x *peerChatServer) Recv() (*Message, error) {
 }
 
 func _Peer_ProcessTransaction_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(Transaction)
+	in := new(InBlockTransaction)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	out, err := srv.(PeerServer).ProcessTransaction(ctx, in)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func _Peer_ProcessTransactionSet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(TransactionSet)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	out, err := srv.(PeerServer).ProcessTransactionSet(ctx, in)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func _Peer_ProcessMutant_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(MutantTransaction)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	out, err := srv.(PeerServer).ProcessMutant(ctx, in)
 	if err != nil {
 		return nil, err
 	}
@@ -884,14 +834,6 @@ var _Peer_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ProcessTransaction",
 			Handler:    _Peer_ProcessTransaction_Handler,
-		},
-		{
-			MethodName: "ProcessTransactionSet",
-			Handler:    _Peer_ProcessTransactionSet_Handler,
-		},
-		{
-			MethodName: "ProcessMutant",
-			Handler:    _Peer_ProcessMutant_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

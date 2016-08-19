@@ -51,7 +51,7 @@ func (block *Block) Bytes() ([]byte, error) {
 }
 
 // NewBlock creates a new Block given the input parameters.
-func NewBlock(transactions []*Transaction, metadata []byte) *Block {
+func NewBlock(transactions []*InBlockTransaction, metadata []byte) *Block {
 	block := new(Block)
 	block.Transactions = transactions
 	block.ConsensusMetadata = metadata

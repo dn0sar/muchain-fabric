@@ -119,7 +119,7 @@ type MessageHandlerCoordinator interface {
 	GetPeers() (*pb.PeersMessage, error)
 	GetRemoteLedger(receiver *pb.PeerID) (RemoteLedger, error)
 	PeersDiscovered(*pb.PeersMessage) error
-	ExecuteTransaction(transaction *pb.Transaction) *pb.Response
+	ExecuteTransaction(transaction *pb.InBlockTransaction) *pb.Response
 	Discoverer
 }
 
@@ -197,7 +197,7 @@ type Impl struct {
 
 // TransactionProccesor responsible for processing of Transactions
 type TransactionProccesor interface {
-	ProcessTransactionMsg(*pb.Message, *pb.Transaction) *pb.Response
+	ProcessTransactionMsg(*pb.Message, *pb.InBlockTransaction) *pb.Response
 }
 
 // Engine Responsible for managing Peer network communications (Handlers) and processing of Transactions
@@ -282,7 +282,7 @@ func (p *Impl) Chat(stream pb.Peer_ChatServer) error {
 }
 
 // ProcessTransaction implementation of the ProcessTransaction RPC function
-func (p *Impl) ProcessTransaction(ctx context.Context, tx *pb.Transaction) (response *pb.Response, err error) {
+func (p *Impl) ProcessTransaction(ctx context.Context, tx *pb.InBlockTransaction) (response *pb.Response, err error) {
 	peerLogger.Debugf("ProcessTransaction processing transaction txid = %s", tx.Txid)
 	// Need to validate the Tx's signature if we are a validator.
 	if p.isValidator {
@@ -484,7 +484,7 @@ func (p *Impl) Unicast(msg *pb.Message, receiverHandle *pb.PeerID) error {
 }
 
 // SendTransactionsToPeer forwards transactions to the specified peer address.
-func (p *Impl) SendTransactionsToPeer(peerAddress string, transaction *pb.Transaction) (response *pb.Response) {
+func (p *Impl) SendTransactionsToPeer(peerAddress string, transaction *pb.InBlockTransaction) (response *pb.Response) {
 	conn, err := NewPeerClientConnectionWithAddress(peerAddress)
 	if err != nil {
 		return &pb.Response{Status: pb.Response_FAILURE, Msg: []byte(fmt.Sprintf("Error creating client to peer address=%s:  %s", peerAddress, err))}
@@ -500,9 +500,16 @@ func (p *Impl) SendTransactionsToPeer(peerAddress string, transaction *pb.Transa
 }
 
 // sendTransactionsToLocalEngine send the transaction to the local engine (This Peer is a validator)
-func (p *Impl) sendTransactionsToLocalEngine(transaction *pb.Transaction) *pb.Response {
+func (p *Impl) sendTransactionsToLocalEngine(transaction *pb.InBlockTransaction) *pb.Response {
 
-	peerLogger.Debugf("Marshalling transaction %s to send to local engine", transaction.Type)
+	if transaction.GetTransactionSet() != nil {
+		peerLogger.Debugf("Marshalling transaction set to send to local engine")
+	} else if transaction.GetMutantTransaction() != nil {
+		peerLogger.Debugf("Marshalling mutant transaction to send to local engine")
+	} else  {
+		peerLogger.Errorf("What is this transaction type?! %s", transaction.GetTransaction())
+	}
+
 	data, err := proto.Marshal(transaction)
 	if err != nil {
 		return &pb.Response{Status: pb.Response_FAILURE, Msg: []byte(fmt.Sprintf("Error sending transaction to local engine: %s", err))}
@@ -622,7 +629,7 @@ func (p *Impl) handleChat(ctx context.Context, stream ChatStream, initiatedStrea
 }
 
 //ExecuteTransaction executes transactions decides to do execute in dev or prod mode
-func (p *Impl) ExecuteTransaction(transaction *pb.Transaction) (response *pb.Response) {
+func (p *Impl) ExecuteTransaction(transaction *pb.InBlockTransaction) (response *pb.Response) {
 	if p.isValidator {
 		response = p.sendTransactionsToLocalEngine(transaction)
 	} else {

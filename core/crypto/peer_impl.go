@@ -50,7 +50,7 @@ func (peer *peerImpl) GetEnrollmentID() string {
 // TransactionPreValidation verifies that the transaction is
 // well formed with the respect to the security layer
 // prescriptions (i.e. signature verification).
-func (peer *peerImpl) TransactionPreValidation(tx *obc.Transaction) (*obc.Transaction, error) {
+func (peer *peerImpl) TransactionPreValidation(tx *obc.InBlockTransaction) (*obc.InBlockTransaction, error) {
 	if !peer.IsInitialized() {
 		return nil, utils.ErrNotInitialized
 	}
@@ -126,7 +126,7 @@ func (peer *peerImpl) TransactionPreValidation(tx *obc.Transaction) (*obc.Transa
 // well formed with the respect to the security layer
 // prescriptions (i.e. signature verification). If this is the case,
 // the method prepares the transaction to be executed.
-func (peer *peerImpl) TransactionPreExecution(tx *obc.Transaction) (*obc.Transaction, error) {
+func (peer *peerImpl) TransactionPreExecution(tx *obc.InBlockTransaction) (*obc.InBlockTransaction, error) {
 	return nil, utils.ErrNotImplemented
 }
 
@@ -175,11 +175,11 @@ func (peer *peerImpl) Verify(vkID, signature, message []byte) error {
 	return nil
 }
 
-func (peer *peerImpl) GetStateEncryptor(deployTx, invokeTx *obc.Transaction) (StateEncryptor, error) {
+func (peer *peerImpl) GetStateEncryptor(deployTx *obc.Transaction, invokeTx *obc.InBlockTransaction) (StateEncryptor, error) {
 	return nil, utils.ErrNotImplemented
 }
 
-func (peer *peerImpl) GetTransactionBinding(tx *obc.Transaction) ([]byte, error) {
+func (peer *peerImpl) GetTransactionBinding(tx *obc.InBlockTransaction) ([]byte, error) {
 	return primitives.Hash(append(tx.Cert, tx.Nonce...)), nil
 }
 

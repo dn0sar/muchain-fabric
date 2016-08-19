@@ -30,7 +30,7 @@ import (
 )
 
 //Execute - execute transaction or a query
-func Execute(ctxt context.Context, chain *ChaincodeSupport, t *pb.Transaction) ([]byte, *pb.ChaincodeEvent, error) {
+func Execute(ctxt context.Context, chain *ChaincodeSupport, inBlockTx *pb.InBlockTransaction) ([]byte, *pb.ChaincodeEvent, error) {
 	var err error
 
 	// get a handle to ledger to mark the begin/finish of a tx
@@ -41,102 +41,111 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, t *pb.Transaction) (
 
 	if secHelper := chain.getSecHelper(); nil != secHelper {
 		var err error
-		t, err = secHelper.TransactionPreExecution(t)
+		inBlockTx, err = secHelper.TransactionPreExecution(inBlockTx)
 		// Note that t is now decrypted and is a deep clone of the original input t
 		if nil != err {
 			return nil, nil, err
 		}
 	}
-
-	if t.Type == pb.Transaction_CHAINCODE_DEPLOY {
-		_, err := chain.Deploy(ctxt, t)
-		if err != nil {
-			return nil, nil, fmt.Errorf("Failed to deploy chaincode spec(%s)", err)
-		}
-
-		//launch and wait for ready
-		markTxBegin(ledger, t)
-		_, _, err = chain.Launch(ctxt, t)
-		if err != nil {
-			markTxFinish(ledger, t, false)
-			return nil, nil, fmt.Errorf("%s", err)
-		}
-		markTxFinish(ledger, t, true)
-	} else if t.Type == pb.Transaction_CHAINCODE_INVOKE || t.Type == pb.Transaction_CHAINCODE_QUERY {
-		//will launch if necessary (and wait for ready)
-		cID, cMsg, err := chain.Launch(ctxt, t)
-		if err != nil {
-			return nil, nil, fmt.Errorf("Failed to launch chaincode spec(%s)", err)
-		}
-
-		//this should work because it worked above...
-		chaincode := cID.Name
-
-		if err != nil {
-			return nil, nil, fmt.Errorf("Failed to stablish stream to container %s", chaincode)
-		}
-
-		// TODO: Need to comment next line and uncomment call to getTimeout, when transaction blocks are being created
-		timeout := time.Duration(30000) * time.Millisecond
-		//timeout, err := getTimeout(cID)
-
-		if err != nil {
-			return nil, nil, fmt.Errorf("Failed to retrieve chaincode spec(%s)", err)
-		}
-
-		var ccMsg *pb.ChaincodeMessage
-		if t.Type == pb.Transaction_CHAINCODE_INVOKE {
-			ccMsg, err = createTransactionMessage(t.Txid, cMsg)
+	switch tx := inBlockTx.Transaction.(type) {
+	case *pb.InBlockTransaction_TransactionSet:
+		// TODO: Get the current default here instead
+		t := tx.TransactionSet.Transactions[tx.TransactionSet.DefaultInx]
+		if t.Type == pb.Transaction_CHAINCODE_DEPLOY {
+			_, err := chain.Deploy(ctxt, t)
 			if err != nil {
-				return nil, nil, fmt.Errorf("Failed to transaction message(%s)", err)
+				return nil, nil, fmt.Errorf("Failed to deploy chaincode spec(%s)", err)
 			}
-		} else {
-			ccMsg, err = createQueryMessage(t.Txid, cMsg)
+
+			//launch and wait for ready
+			markTxBegin(ledger, t)
+			_, _, err = chain.Launch(ctxt, t)
 			if err != nil {
-				return nil, nil, fmt.Errorf("Failed to query message(%s)", err)
+				markTxFinish(ledger, t, false)
+				return nil, nil, fmt.Errorf("%s", err)
 			}
-		}
-
-		markTxBegin(ledger, t)
-		resp, err := chain.Execute(ctxt, chaincode, ccMsg, timeout, t)
-		if err != nil {
-			// Rollback transaction
-			markTxFinish(ledger, t, false)
-			return nil, nil, fmt.Errorf("Failed to execute transaction or query(%s)", err)
-		} else if resp == nil {
-			// Rollback transaction
-			markTxFinish(ledger, t, false)
-			return nil, nil, fmt.Errorf("Failed to receive a response for (%s)", t.Txid)
-		} else {
-			if resp.ChaincodeEvent != nil {
-				resp.ChaincodeEvent.ChaincodeID = chaincode
-				resp.ChaincodeEvent.TxID = t.Txid
+			markTxFinish(ledger, t, true)
+		} else if t.Type == pb.Transaction_CHAINCODE_INVOKE || t.Type == pb.Transaction_CHAINCODE_QUERY {
+			//will launch if necessary (and wait for ready)
+			cID, cMsg, err := chain.Launch(ctxt, t)
+			if err != nil {
+				return nil, nil, fmt.Errorf("Failed to launch chaincode spec(%s)", err)
 			}
 
-			if resp.Type == pb.ChaincodeMessage_COMPLETED || resp.Type == pb.ChaincodeMessage_QUERY_COMPLETED {
-				// Success
-				markTxFinish(ledger, t, true)
-				return resp.Payload, resp.ChaincodeEvent, nil
-			} else if resp.Type == pb.ChaincodeMessage_ERROR || resp.Type == pb.ChaincodeMessage_QUERY_ERROR {
+			//this should work because it worked above...
+			chaincode := cID.Name
+
+			if err != nil {
+				return nil, nil, fmt.Errorf("Failed to stablish stream to container %s", chaincode)
+			}
+
+			// TODO: Need to comment next line and uncomment call to getTimeout, when transaction blocks are being created
+			timeout := time.Duration(30000) * time.Millisecond
+			//timeout, err := getTimeout(cID)
+
+			if err != nil {
+				return nil, nil, fmt.Errorf("Failed to retrieve chaincode spec(%s)", err)
+			}
+
+			var ccMsg *pb.ChaincodeMessage
+			if t.Type == pb.Transaction_CHAINCODE_INVOKE {
+				ccMsg, err = createTransactionMessage(t.Txid, cMsg)
+				if err != nil {
+					return nil, nil, fmt.Errorf("Failed to transaction message(%s)", err)
+				}
+			} else {
+				ccMsg, err = createQueryMessage(t.Txid, cMsg)
+				if err != nil {
+					return nil, nil, fmt.Errorf("Failed to query message(%s)", err)
+				}
+			}
+
+			markTxBegin(ledger, t)
+			resp, err := chain.Execute(ctxt, chaincode, ccMsg, timeout, t)
+			if err != nil {
 				// Rollback transaction
 				markTxFinish(ledger, t, false)
-				return nil, resp.ChaincodeEvent, fmt.Errorf("Transaction or query returned with failure: %s", string(resp.Payload))
-			}
-			markTxFinish(ledger, t, false)
-			return resp.Payload, nil, fmt.Errorf("receive a response for (%s) but in invalid state(%d)", t.Txid, resp.Type)
-		}
+				return nil, nil, fmt.Errorf("Failed to execute transaction or query(%s)", err)
+			} else if resp == nil {
+				// Rollback transaction
+				markTxFinish(ledger, t, false)
+				return nil, nil, fmt.Errorf("Failed to receive a response for (%s)", t.Txid)
+			} else {
+				if resp.ChaincodeEvent != nil {
+					resp.ChaincodeEvent.ChaincodeID = chaincode
+					resp.ChaincodeEvent.TxID = t.Txid
+				}
 
-	} else {
-		err = fmt.Errorf("Invalid transaction type %s", t.Type.String())
+				if resp.Type == pb.ChaincodeMessage_COMPLETED || resp.Type == pb.ChaincodeMessage_QUERY_COMPLETED {
+					// Success
+					markTxFinish(ledger, t, true)
+					return resp.Payload, resp.ChaincodeEvent, nil
+				} else if resp.Type == pb.ChaincodeMessage_ERROR || resp.Type == pb.ChaincodeMessage_QUERY_ERROR {
+					// Rollback transaction
+					markTxFinish(ledger, t, false)
+					return nil, resp.ChaincodeEvent, fmt.Errorf("Transaction or query returned with failure: %s", string(resp.Payload))
+				}
+				markTxFinish(ledger, t, false)
+				return resp.Payload, nil, fmt.Errorf("receive a response for (%s) but in invalid state(%d)", t.Txid, resp.Type)
+			}
+
+		} else {
+			err = fmt.Errorf("Invalid transaction type %s", t.Type.String())
+		}
+		return nil, nil, err
+	case *pb.InBlockTransaction_MutantTransaction:
+	// TODO: Handle mutant transactions here
+		return nil,nil, err
+	default:
+		return nil,nil, err
 	}
-	return nil, nil, err
 }
 
 //ExecuteTransactions - will execute transactions on the array one by one
 //will return an array of errors one for each transaction. If the execution
 //succeeded, array element will be nil. returns []byte of state hash or
 //error
-func ExecuteTransactions(ctxt context.Context, cname ChainName, xacts []*pb.Transaction) (succeededTXs []*pb.Transaction, stateHash []byte, ccevents []*pb.ChaincodeEvent, txerrs []error, err error) {
+func ExecuteTransactions(ctxt context.Context, cname ChainName, xacts []*pb.InBlockTransaction) (succeededTXs []*pb.InBlockTransaction, stateHash []byte, ccevents []*pb.ChaincodeEvent, txerrs []error, err error) {
 	var chain = GetChain(cname)
 	if chain == nil {
 		// TODO: We should never get here, but otherwise a good reminder to better handle
@@ -145,7 +154,7 @@ func ExecuteTransactions(ctxt context.Context, cname ChainName, xacts []*pb.Tran
 
 	txerrs = make([]error, len(xacts))
 	ccevents = make([]*pb.ChaincodeEvent, len(xacts))
-	var succeededTxs = make([]*pb.Transaction, 0)
+	var succeededTxs = make([]*pb.InBlockTransaction, 0)
 	for i, t := range xacts {
 		_, ccevents[i], txerrs[i] = Execute(ctxt, chain, t)
 		if txerrs[i] == nil {
@@ -186,8 +195,10 @@ func getTimeout(cID *pb.ChaincodeID) (time.Duration, error) {
 		chaincodeID := cID.Name
 		txID, err := ledger.GetState(chaincodeID, "github.com_openblockchain_obc-peer_chaincode_id", true)
 		if err == nil {
-			tx, err := ledger.GetTransactionByID(string(txID))
-			if err == nil {
+			transSet, err := ledger.GetTransactionByID(string(txID))
+			if err == nil && transSet != nil && transSet.GetTransactionSet() != nil {
+				// TODO: get the current default transaction here instead
+				tx := transSet.GetTransactionSet().Transactions[transSet.GetTransactionSet().DefaultInx]
 				chaincodeDeploymentSpec := &pb.ChaincodeDeploymentSpec{}
 				proto.Unmarshal(tx.Payload, chaincodeDeploymentSpec)
 				chaincodeSpec := chaincodeDeploymentSpec.GetChaincodeSpec()
@@ -214,6 +225,6 @@ func markTxFinish(ledger *ledger.Ledger, t *pb.Transaction, successful bool) {
 	ledger.TxFinished(t.Txid, successful)
 }
 
-func sendTxRejectedEvent(tx *pb.Transaction, errorMsg string) {
+func sendTxRejectedEvent(tx *pb.InBlockTransaction, errorMsg string) {
 	producer.Send(producer.CreateRejectionEvent(tx, errorMsg))
 }

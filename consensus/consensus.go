@@ -71,7 +71,7 @@ type ReadOnlyLedger interface {
 // LegacyExecutor is used to invoke transactions, potentially modifying the backing ledger
 type LegacyExecutor interface {
 	BeginTxBatch(id interface{}) error
-	ExecTxs(id interface{}, txs []*pb.Transaction) ([]byte, error)
+	ExecTxs(id interface{}, txs []*pb.InBlockTransaction) ([]byte, error)
 	CommitTxBatch(id interface{}, metadata []byte) (*pb.Block, error)
 	RollbackTxBatch(id interface{}) error
 	PreviewCommitTxBatch(id interface{}, metadata []byte) ([]byte, error)
@@ -83,7 +83,7 @@ type LegacyExecutor interface {
 type Executor interface {
 	Start()                                                                     // Bring up the resources needed to use this interface
 	Halt()                                                                      // Tear down the resources needed to use this interface
-	Execute(tag interface{}, txs []*pb.Transaction)                             // Executes a set of transactions, this may be called in succession
+	Execute(tag interface{}, txs []*pb.InBlockTransaction)                             // Executes a set of transactions, this may be called in succession
 	Commit(tag interface{}, metadata []byte)                                    // Commits whatever transactions have been executed
 	Rollback(tag interface{})                                                   // Rolls back whatever transactions have been executed
 	UpdateState(tag interface{}, target *pb.BlockchainInfo, peers []*pb.PeerID) // Attempts to synchronize state to a particular target, implicitly calls rollback if needed

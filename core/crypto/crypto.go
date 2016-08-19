@@ -86,14 +86,14 @@ type Peer interface {
 	// TransactionPreValidation verifies that the transaction is
 	// well formed with the respect to the security layer
 	// prescriptions (i.e. signature verification).
-	TransactionPreValidation(tx *obc.Transaction) (*obc.Transaction, error)
+	TransactionPreValidation(tx *obc.InBlockTransaction) (*obc.InBlockTransaction, error)
 
 	// TransactionPreExecution verifies that the transaction is
 	// well formed with the respect to the security layer
 	// prescriptions (i.e. signature verification). If this is the case,
 	// the method prepares the transaction to be executed.
 	// TransactionPreExecution returns a clone of tx.
-	TransactionPreExecution(tx *obc.Transaction) (*obc.Transaction, error)
+	TransactionPreExecution(tx *obc.InBlockTransaction) (*obc.InBlockTransaction, error)
 
 	// Sign signs msg with this validator's signing key and outputs
 	// the signature if no error occurred.
@@ -107,9 +107,9 @@ type Peer interface {
 	// GetStateEncryptor returns a StateEncryptor linked to pair defined by
 	// the deploy transaction and the execute transaction. Notice that,
 	// executeTx can also correspond to a deploy transaction.
-	GetStateEncryptor(deployTx, executeTx *obc.Transaction) (StateEncryptor, error)
+	GetStateEncryptor(deployTx *obc.Transaction, executeTx *obc.InBlockTransaction) (StateEncryptor, error)
 
-	GetTransactionBinding(tx *obc.Transaction) ([]byte, error)
+	GetTransactionBinding(tx *obc.InBlockTransaction) ([]byte, error)
 }
 
 // StateEncryptor is used to encrypt chaincode's state

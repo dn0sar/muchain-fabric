@@ -101,25 +101,32 @@ func (s *ServerOpenchain) GetBlockByNumber(ctx context.Context, num *pb.BlockNum
 	// can be very large. If the payload is needed, the caller should fetch the
 	// individual transaction.
 	blockTransactions := block.GetTransactions()
-	for _, transaction := range blockTransactions {
-		if transaction.Type == pb.Transaction_CHAINCODE_DEPLOY {
-			deploymentSpec := &pb.ChaincodeDeploymentSpec{}
-			err := proto.Unmarshal(transaction.Payload, deploymentSpec)
-			if err != nil {
-				if !viper.GetBool("security.privacy") {
+	for _, inBlockTx := range blockTransactions {
+		switch tx := inBlockTx.Transaction.(type) {
+		case *pb.InBlockTransaction_TransactionSet:
+			//TODO get the current default here instead
+			//REVIEW look whether I'm really compressing data here, and if they can access the information returned
+			// i.e. can they see the correct thing, or I'm just changing local information here?
+			transaction := tx.TransactionSet.Transactions[tx.TransactionSet.DefaultInx]
+			if transaction.Type == pb.Transaction_CHAINCODE_DEPLOY {
+				deploymentSpec := &pb.ChaincodeDeploymentSpec{}
+				err := proto.Unmarshal(transaction.Payload, deploymentSpec)
+				if err != nil {
+					if !viper.GetBool("security.privacy") {
+						return nil, err
+					}
+					//if privacy is enabled, payload is encrypted and unmarshal will
+					//likely fail... given we were going to just set the CodePackage
+					//to nil anyway, just recover and continue
+					deploymentSpec = &pb.ChaincodeDeploymentSpec{}
+				}
+				deploymentSpec.CodePackage = nil
+				deploymentSpecBytes, err := proto.Marshal(deploymentSpec)
+				if err != nil {
 					return nil, err
 				}
-				//if privacy is enabled, payload is encrypted and unmarshal will
-				//likely fail... given we were going to just set the CodePackage
-				//to nil anyway, just recover and continue
-				deploymentSpec = &pb.ChaincodeDeploymentSpec{}
+				transaction.Payload = deploymentSpecBytes
 			}
-			deploymentSpec.CodePackage = nil
-			deploymentSpecBytes, err := proto.Marshal(deploymentSpec)
-			if err != nil {
-				return nil, err
-			}
-			transaction.Payload = deploymentSpecBytes
 		}
 	}
 
@@ -149,7 +156,7 @@ func (s *ServerOpenchain) GetState(ctx context.Context, chaincodeID, key string)
 }
 
 // GetTransactionByID returns a transaction matching the specified ID
-func (s *ServerOpenchain) GetTransactionByID(ctx context.Context, txID string) (*pb.Transaction, error) {
+func (s *ServerOpenchain) GetTransactionByID(ctx context.Context, txID string) (*pb.InBlockTransaction, error) {
 	transaction, err := s.ledger.GetTransactionByID(txID)
 	if err != nil {
 		switch err {

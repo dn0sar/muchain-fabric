@@ -155,15 +155,15 @@ func (m *Register) GetEvents() []*Interest {
 // Rejection is sent by consumers for erroneous transaction rejection events
 // string type - "rejection"
 type Rejection struct {
-	Tx       *Transaction `protobuf:"bytes,1,opt,name=tx" json:"tx,omitempty"`
-	ErrorMsg string       `protobuf:"bytes,2,opt,name=errorMsg" json:"errorMsg,omitempty"`
+	Tx       *InBlockTransaction `protobuf:"bytes,1,opt,name=tx" json:"tx,omitempty"`
+	ErrorMsg string              `protobuf:"bytes,2,opt,name=errorMsg" json:"errorMsg,omitempty"`
 }
 
 func (m *Rejection) Reset()         { *m = Rejection{} }
 func (m *Rejection) String() string { return proto.CompactTextString(m) }
 func (*Rejection) ProtoMessage()    {}
 
-func (m *Rejection) GetTx() *Transaction {
+func (m *Rejection) GetTx() *InBlockTransaction {
 	if m != nil {
 		return m.Tx
 	}

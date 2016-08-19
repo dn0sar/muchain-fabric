@@ -158,15 +158,8 @@ service Peer {
     // other Message (e.g. from other peers).
     rpc Chat(stream Message) returns (stream Message) {}
 
-    // Process a transaction from a remote source. (TODO: convert this to the creation of a transactionSet with only one transaction)
-    rpc ProcessTransaction(Transaction) returns (Response) {}
-
-    // Process a transaction set (which may even contain only one transaction)
-    rpc ProcessTransactionSet(TransactionSet) returns (Response) {}
-
-    // Process a mutant transaction
-    rpc ProcessMutant(MutantTransaction) returns (Response) {}
-
+    // Process a transaction from a remote source.
+    rpc ProcessTransaction(InBlockTransaction) returns (Response) {}
 }
 
 message PeerAddress {

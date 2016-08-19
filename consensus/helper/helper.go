@@ -27,7 +27,7 @@ import (
 	"github.com/hyperledger/fabric/consensus/executor"
 	"github.com/hyperledger/fabric/consensus/helper/persist"
 	"github.com/hyperledger/fabric/core/chaincode"
-	crypto "github.com/hyperledger/fabric/core/crypto"
+	"github.com/hyperledger/fabric/core/crypto"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/peer"
 	pb "github.com/hyperledger/fabric/protos"
@@ -40,7 +40,7 @@ type Helper struct {
 	secOn        bool
 	valid        bool // Whether we believe the state is up to date
 	secHelper    crypto.Peer
-	curBatch     []*pb.Transaction       // TODO, remove after issue 579
+	curBatch     []*pb.InBlockTransaction       // TODO, remove after issue 579
 	curBatchErrs []*pb.TransactionResult // TODO, remove after issue 579
 	persist.Helper
 
@@ -173,7 +173,7 @@ func (h *Helper) BeginTxBatch(id interface{}) error {
 // ExecTxs executes all the transactions listed in the txs array
 // one-by-one. If all the executions are successful, it returns
 // the candidate global state hash, and nil error array.
-func (h *Helper) ExecTxs(id interface{}, txs []*pb.Transaction) ([]byte, error) {
+func (h *Helper) ExecTxs(id interface{}, txs []*pb.InBlockTransaction) ([]byte, error) {
 	// TODO id is currently ignored, fix once the underlying implementation accepts id
 
 	// The secHelper is set during creat ChaincodeSupport, so we don't need this step
@@ -330,7 +330,7 @@ func (h *Helper) ValidateState() {
 }
 
 // Execute will execute a set of transactions, this may be called in succession
-func (h *Helper) Execute(tag interface{}, txs []*pb.Transaction) {
+func (h *Helper) Execute(tag interface{}, txs []*pb.InBlockTransaction) {
 	h.executor.Execute(tag, txs)
 }
 

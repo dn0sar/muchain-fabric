@@ -43,7 +43,7 @@ type Noops struct {
 	txQ      *txq
 	timer    *time.Timer
 	duration time.Duration
-	channel  chan *pb.Transaction
+	channel  chan *pb.InBlockTransaction
 }
 
 // Setting up a singleton NOOPS consenter
@@ -82,7 +82,7 @@ func newNoops(c consensus.Stack) consensus.Consenter {
 
 	i.txQ = newTXQ(blockSize)
 
-	i.channel = make(chan *pb.Transaction, 100)
+	i.channel = make(chan *pb.InBlockTransaction, 100)
 	i.timer = time.NewTimer(i.duration) // start timer now so we can just reset it
 	i.timer.Stop()
 	go i.handleChannels()
@@ -113,7 +113,8 @@ func (i *Noops) RecvMsg(msg *pb.Message, senderHandle *pb.PeerID) error {
 }
 
 func (i *Noops) broadcastConsensusMsg(msg *pb.Message) error {
-	t := &pb.Transaction{}
+	//TODO: Look where messages are first created and make them create an InBlock instead of a normal transaction
+	t := &pb.InBlockTransaction{}
 	if err := proto.Unmarshal(msg.Payload, t); err != nil {
 		return fmt.Errorf("Error unmarshalling payload of received Message:%s.", msg.Type)
 	}
@@ -124,7 +125,7 @@ func (i *Noops) broadcastConsensusMsg(msg *pb.Message) error {
 	if logger.IsEnabledFor(logging.DEBUG) {
 		logger.Debugf("Broadcasting %s", msg.Type)
 	}
-	txs := &pb.TransactionBlock{Transactions: []*pb.Transaction{t}}
+	txs := &pb.TransactionBlock{Transactions: []*pb.InBlockTransaction{t}}
 	payload, err := proto.Marshal(txs)
 	if err != nil {
 		return err
@@ -136,7 +137,7 @@ func (i *Noops) broadcastConsensusMsg(msg *pb.Message) error {
 	return nil
 }
 
-func (i *Noops) canProcessBlock(tx *pb.Transaction) bool {
+func (i *Noops) canProcessBlock(tx *pb.InBlockTransaction) bool {
 	// For NOOPS, if we have completed the sync since we last connected,
 	// we can assume that we are at the current state; otherwise, we need to
 	// wait for the sync process to complete before we can exec the transactions
@@ -234,7 +235,7 @@ func (i *Noops) processTransactions() error {
 	return nil
 }
 
-func (i *Noops) getTxFromMsg(msg *pb.Message) (*pb.Transaction, error) {
+func (i *Noops) getTxFromMsg(msg *pb.Message) (*pb.InBlockTransaction, error) {
 	txs := &pb.TransactionBlock{}
 	if err := proto.Unmarshal(msg.Payload, txs); err != nil {
 		return nil, err
@@ -271,9 +272,11 @@ func (i *Noops) getBlockData() (*pb.Block, *statemgmt.StateDelta, error) {
 func (i *Noops) notifyBlockAdded(block *pb.Block, delta *statemgmt.StateDelta) error {
 	//make Payload nil to reduce block size..
 	//anything else to remove .. do we need StateDelta ?
-	for _, tx := range block.Transactions {
-		tx.Payload = nil
-	}
+	// REVIEW: look for some other ways to reduce the block size.mail.
+	// (i.e. look for what this is used for and hence what is not needed)
+	//for _, tx := range block.Transactions {
+	//	tx.Payload = nil
+	//}
 	data, err := proto.Marshal(&pb.BlockState{Block: block, StateDelta: delta.Marshal()})
 	if err != nil {
 		return fmt.Errorf("Fail to marshall BlockState structure: %v", err)

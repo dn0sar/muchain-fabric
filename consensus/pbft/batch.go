@@ -185,9 +185,11 @@ func (op *obcBatch) verify(senderID uint64, signature []byte, message []byte) er
 
 // execute an opaque request which corresponds to an OBC Transaction
 func (op *obcBatch) execute(seqNo uint64, reqBatch *RequestBatch) {
-	var txs []*pb.Transaction
+	var txs []*pb.InBlockTransaction
 	for _, req := range reqBatch.GetBatch() {
-		tx := &pb.Transaction{}
+		//REVIEW put InBlockTransactions when constructing a request otherwise the unmarshal will fail
+		// Although that should be fine, just check that a message tx bytes instead are inBlockTransaction bytes
+		tx := &pb.InBlockTransaction{}
 		if err := proto.Unmarshal(req.Payload, tx); err != nil {
 			logger.Warningf("Batch replica %d could not unmarshal transaction %s", op.pbft.id, err)
 			continue
@@ -309,7 +311,7 @@ func (op *obcBatch) processMessage(ocMsg *pb.Message, senderHandle *pb.PeerID) e
 func (op *obcBatch) logAddTxFromRequest(req *Request) {
 	if logger.IsEnabledFor(logging.DEBUG) {
 		// This is potentially a very large expensive debug statement, guard
-		tx := &pb.Transaction{}
+		tx := &pb.InBlockTransaction{}
 		err := proto.Unmarshal(req.Payload, tx)
 		if err != nil {
 			logger.Errorf("Replica %d was sent a transaction which did not unmarshal: %s", op.pbft.id, err)

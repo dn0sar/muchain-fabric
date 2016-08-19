@@ -106,7 +106,7 @@ func deploySysCC(ctx context.Context, spec *protos.ChaincodeSpec) error {
 		return fmt.Errorf("Error deploying chaincode: %s ", err)
 	}
 
-	_, _, err = chaincode.Execute(ctx, chaincode.GetChain(chaincode.DefaultChain), transaction)
+	_, _, err = chaincode.Execute(ctx, chaincode.GetChain(chaincode.DefaultChain), protos.EncapsulateTransactionToInBlock(transaction))
 
 	return err
 }

@@ -24,9 +24,11 @@ import (
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/hyperledger/fabric/core/crypto/utils"
 	obc "github.com/hyperledger/fabric/protos"
+//	"encoding/binary"
+	"encoding/binary"
 )
 
-func (validator *validatorImpl) deepCloneTransaction(tx *obc.Transaction) (*obc.Transaction, error) {
+func (validator *validatorImpl) deepCloneTransaction(tx *obc.InBlockTransaction) (*obc.InBlockTransaction, error) {
 	raw, err := proto.Marshal(tx)
 	if err != nil {
 		validator.Errorf("Failed cloning transaction [%s].", err.Error())
@@ -34,7 +36,7 @@ func (validator *validatorImpl) deepCloneTransaction(tx *obc.Transaction) (*obc.
 		return nil, err
 	}
 
-	clone := &obc.Transaction{}
+	clone := &obc.InBlockTransaction{}
 	err = proto.Unmarshal(raw, clone)
 	if err != nil {
 		validator.Errorf("Failed cloning transaction [%s].", err.Error())
@@ -45,7 +47,7 @@ func (validator *validatorImpl) deepCloneTransaction(tx *obc.Transaction) (*obc.
 	return clone, nil
 }
 
-func (validator *validatorImpl) deepCloneAndDecryptTx(tx *obc.Transaction) (*obc.Transaction, error) {
+func (validator *validatorImpl) deepCloneAndDecryptTx(tx *obc.InBlockTransaction) (*obc.InBlockTransaction, error) {
 	switch tx.ConfidentialityProtocolVersion {
 	case "1.2":
 		return validator.deepCloneAndDecryptTx1_2(tx)
@@ -53,7 +55,8 @@ func (validator *validatorImpl) deepCloneAndDecryptTx(tx *obc.Transaction) (*obc
 	return nil, utils.ErrInvalidProtocolVersion
 }
 
-func (validator *validatorImpl) deepCloneAndDecryptTx1_2(tx *obc.Transaction) (*obc.Transaction, error) {
+//Returns an InBlockTransaction with the currentDefault decrypted or with the Mutable decrypted!
+func (validator *validatorImpl) deepCloneAndDecryptTx1_2(tx *obc.InBlockTransaction) (*obc.InBlockTransaction, error) {
 	if tx.Nonce == nil || len(tx.Nonce) == 0 {
 		return nil, errors.New("Failed decrypting payload. Invalid nonce.")
 	}
@@ -66,8 +69,6 @@ func (validator *validatorImpl) deepCloneAndDecryptTx1_2(tx *obc.Transaction) (*
 	}
 
 	var ccPrivateKey primitives.PrivateKey
-
-	validator.Debugf("Transaction type [%s].", tx.Type.String())
 
 	validator.Debug("Extract transaction key...")
 
@@ -105,23 +106,8 @@ func (validator *validatorImpl) deepCloneAndDecryptTx1_2(tx *obc.Transaction) (*
 		validator.Errorf("Failed init transaction decryption engine [%s].", err.Error())
 		return nil, err
 	}
-	// Decrypt Payload
-	payload, err := cipher.Process(clone.Payload)
-	if err != nil {
-		validator.Errorf("Failed decrypting payload [%s].", err.Error())
-		return nil, err
-	}
-	clone.Payload = payload
 
-	// Decrypt ChaincodeID
-	chaincodeID, err := cipher.Process(clone.ChaincodeID)
-	if err != nil {
-		validator.Errorf("Failed decrypting chaincode [%s].", err.Error())
-		return nil, err
-	}
-	clone.ChaincodeID = chaincodeID
-
-	// Decrypt metadata
+	// Decrypt metadata of the InBlockTransaction
 	if len(clone.Metadata) != 0 {
 		metadata, err := cipher.Process(clone.Metadata)
 		if err != nil {
@@ -129,6 +115,66 @@ func (validator *validatorImpl) deepCloneAndDecryptTx1_2(tx *obc.Transaction) (*
 			return nil, err
 		}
 		clone.Metadata = metadata
+	}
+
+	switch tx.Transaction.(type) {
+	case *obc.InBlockTransaction_TransactionSet:
+		//TODO take the current default instead
+		currDefault := clone.GetTransactionSet().Transactions[clone.GetTransactionSet().DefaultInx]
+		validator.Debugf("Transaction kind: [Set], current default type: [%s].", currDefault.Type)
+		// Decrypt Payload
+		payload, err := cipher.Process(currDefault.Payload)
+		if err != nil {
+			validator.Errorf("Failed decrypting payload [%s].", err.Error())
+			return nil, err
+		}
+		currDefault.Payload = payload
+
+		// Decrypt ChaincodeID
+		chaincodeID, err := cipher.Process(currDefault.ChaincodeID)
+		if err != nil {
+			validator.Errorf("Failed decrypting chaincode [%s].", err.Error())
+			return nil, err
+		}
+		currDefault.ChaincodeID = chaincodeID
+
+		// Decrypt metadata
+		if len(currDefault.Metadata) != 0 {
+			metadata, err := cipher.Process(currDefault.Metadata)
+			if err != nil {
+				validator.Errorf("Failed decrypting metadata [%s].", err.Error())
+				return nil, err
+			}
+			currDefault.Metadata = metadata
+		}
+	case *obc.InBlockTransaction_MutantTransaction:
+		validator.Debug("Transaction kind: [Mutant]")
+		mutant := clone.GetMutantTransaction()
+		// Decrypt block ref
+		blockRef, err := cipher.Process(mutant.BlockRef)
+		if err != nil {
+			validator.Errorf("Failed decrypting block number for mutant transaction [%s].", err.Error())
+			return nil, err
+		}
+		mutant.BlockRef = blockRef
+
+		// Decrypt txID
+		txRef, err := cipher.Process(mutant.TxRef)
+		if err != nil {
+			validator.Errorf("Failed decrypting transaction reference ID for mutant transaction [%s].", err.Error())
+			return nil, err
+		}
+		mutant.TxRef = txRef
+
+		// Decrypt index
+		inxInBytes := make([]byte, 4)
+		binary.LittleEndian.PutUint32(inxInBytes, mutant.Index)
+		inx, err := cipher.Process(inxInBytes)
+		if err != nil {
+			validator.Errorf("Failed decrypting new transaction index for mutant transaction [%s].", err.Error())
+			return nil, err
+		}
+		mutant.Index = binary.LittleEndian.Uint32(inx)
 	}
 
 	return clone, nil

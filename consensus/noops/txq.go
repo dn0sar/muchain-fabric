@@ -22,7 +22,7 @@ import (
 
 type txq struct {
 	i int
-	q []*pb.Transaction
+	q []*pb.InBlockTransaction
 }
 
 func newTXQ(size int) *txq {
@@ -31,18 +31,18 @@ func newTXQ(size int) *txq {
 	if size < 1 {
 		size = 1
 	}
-	o.q = make([]*pb.Transaction, size)
+	o.q = make([]*pb.InBlockTransaction, size)
 	return o
 }
 
-func (o *txq) append(tx *pb.Transaction) {
+func (o *txq) append(tx *pb.InBlockTransaction) {
 	if cap(o.q) > o.i {
 		o.q[o.i] = tx
 		o.i++
 	}
 }
 
-func (o *txq) getTXs() []*pb.Transaction {
+func (o *txq) getTXs() []*pb.InBlockTransaction {
 	length := o.i
 	o.i = 0
 	return o.q[:length]

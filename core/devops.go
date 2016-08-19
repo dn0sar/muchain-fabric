@@ -33,7 +33,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/core/container"
-	crypto "github.com/hyperledger/fabric/core/crypto"
+	"github.com/hyperledger/fabric/core/crypto"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/util"
 	pb "github.com/hyperledger/fabric/protos"
@@ -195,7 +195,8 @@ func (d *Devops) Deploy(ctx context.Context, spec *pb.ChaincodeSpec) (*pb.Chainc
 	if devopsLogger.IsEnabledFor(logging.DEBUG) {
 		devopsLogger.Debugf("Sending deploy transaction (%s) to validator", tx.Txid)
 	}
-	resp := d.coord.ExecuteTransaction(tx)
+
+	resp := d.coord.ExecuteTransaction(pb.EncapsulateTransactionToInBlock(tx))
 	if resp.Status == pb.Response_FAILURE {
 		err = fmt.Errorf(string(resp.Msg))
 	}
@@ -253,7 +254,7 @@ func (d *Devops) invokeOrQuery(ctx context.Context, chaincodeInvocationSpec *pb.
 	if devopsLogger.IsEnabledFor(logging.DEBUG) {
 		devopsLogger.Debugf("Sending invocation transaction (%s) to validator", transaction.Txid)
 	}
-	resp := d.coord.ExecuteTransaction(transaction)
+	resp := d.coord.ExecuteTransaction(pb.EncapsulateTransactionToInBlock(transaction))
 	if resp.Status == pb.Response_FAILURE {
 		err = fmt.Errorf(string(resp.Msg))
 	} else {
@@ -470,7 +471,7 @@ func (d *Devops) EXP_ExecuteWithBinding(ctx context.Context, executeWithBinding 
 			return nil, fmt.Errorf("Error creating executing with binding:  %s", err)
 		}
 
-		return d.coord.ExecuteTransaction(tx), nil
+		return d.coord.ExecuteTransaction(pb.EncapsulateTransactionToInBlock(tx)), nil
 		//return &pb.Response{Status: pb.Response_FAILURE, Msg: []byte("NOT IMPLEMENTED")}, nil
 
 		//return &pb.Response{Status: pb.Response_SUCCESS, Msg: sigmaOutputBytes}, nil

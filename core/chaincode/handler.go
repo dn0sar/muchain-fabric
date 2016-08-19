@@ -23,7 +23,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	ccintf "github.com/hyperledger/fabric/core/container/ccintf"
+	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/crypto"
 	"github.com/hyperledger/fabric/core/ledger/statemgmt"
 	"github.com/hyperledger/fabric/core/util"
@@ -208,11 +208,11 @@ func (handler *Handler) encryptOrDecrypt(encrypt bool, txid string, payload []by
 	var enc crypto.StateEncryptor
 	var err error
 	if txctx.transactionSecContext.Type == pb.Transaction_CHAINCODE_DEPLOY {
-		if enc, err = secHelper.GetStateEncryptor(handler.deployTXSecContext, handler.deployTXSecContext); err != nil {
+		if enc, err = secHelper.GetStateEncryptor(handler.deployTXSecContext, pb.EncapsulateTransactionToInBlock(handler.deployTXSecContext)); err != nil {
 			return nil, fmt.Errorf("error getting crypto encryptor for deploy tx :%s", err)
 		}
 	} else if txctx.transactionSecContext.Type == pb.Transaction_CHAINCODE_INVOKE || txctx.transactionSecContext.Type == pb.Transaction_CHAINCODE_QUERY {
-		if enc, err = secHelper.GetStateEncryptor(handler.deployTXSecContext, txctx.transactionSecContext); err != nil {
+		if enc, err = secHelper.GetStateEncryptor(handler.deployTXSecContext, pb.EncapsulateTransactionToInBlock(txctx.transactionSecContext)); err != nil {
 			return nil, fmt.Errorf("error getting crypto encryptor %s", err)
 		}
 	} else {
@@ -244,7 +244,7 @@ func (handler *Handler) encrypt(txid string, payload []byte) ([]byte, error) {
 	return handler.encryptOrDecrypt(true, txid, payload)
 }
 
-func (handler *Handler) getSecurityBinding(tx *pb.Transaction) ([]byte, error) {
+func (handler *Handler) getSecurityBinding(tx *pb.InBlockTransaction) ([]byte, error) {
 	secHelper := handler.chaincodeSupport.getSecHelper()
 	if secHelper == nil {
 		return nil, nil
@@ -1228,7 +1228,7 @@ func (handler *Handler) setChaincodeSecurityContext(tx *pb.Transaction, msg *pb.
 
 		msg.SecurityContext.CallerCert = tx.Cert
 		msg.SecurityContext.CallerSign = tx.Signature
-		binding, err := handler.getSecurityBinding(tx)
+		binding, err := handler.getSecurityBinding(pb.EncapsulateTransactionToInBlock(tx))
 		if err != nil {
 			chaincodeLogger.Errorf("Failed getting binding [%s]", err)
 			return err
