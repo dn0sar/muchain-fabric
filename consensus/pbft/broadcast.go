@@ -33,10 +33,11 @@ type communicator interface {
 type broadcaster struct {
 	comm communicator
 
-	f        int
-	msgChans map[uint64]chan *sendRequest
-	closed   sync.WaitGroup
-	closedCh chan struct{}
+	f                int
+	broadcastTimeout time.Duration
+	msgChans         map[uint64]chan *sendRequest
+	closed           sync.WaitGroup
+	closedCh         chan struct{}
 }
 
 type sendRequest struct {
@@ -44,15 +45,16 @@ type sendRequest struct {
 	done chan bool
 }
 
-func newBroadcaster(self uint64, N int, f int, c communicator) *broadcaster {
+func newBroadcaster(self uint64, N int, f int, broadcastTimeout time.Duration, c communicator) *broadcaster {
 	queueSize := 10 // XXX increase after testing
 
 	chans := make(map[uint64]chan *sendRequest)
 	b := &broadcaster{
-		comm:     c,
-		f:        f,
-		msgChans: chans,
-		closedCh: make(chan struct{}),
+		comm:             c,
+		f:                f,
+		broadcastTimeout: broadcastTimeout,
+		msgChans:         chans,
+		closedCh:         make(chan struct{}),
 	}
 	for i := 0; i < N; i++ {
 		if uint64(i) == self {
@@ -63,6 +65,9 @@ func newBroadcaster(self uint64, N int, f int, c communicator) *broadcaster {
 
 	// We do not start the go routines in the above loop to avoid concurrent map read/writes
 	for i := 0; i < N; i++ {
+		if uint64(i) == self {
+			continue
+		}
 		go b.drainer(uint64(i))
 	}
 
@@ -108,7 +113,11 @@ func (b *broadcaster) drainerSend(dest uint64, send *sendRequest, successLastTim
 
 func (b *broadcaster) drainer(dest uint64) {
 	successLastTime := false
-	destChan := b.msgChans[dest] // Avoid doing the map lookup every send
+	destChan, exsit := b.msgChans[dest] // Avoid doing the map lookup every send
+	if !exsit {
+		logger.Warningf("could not get message channel for replica %d", dest)
+		return
+	}
 
 	for {
 		select {
@@ -172,7 +181,7 @@ func (b *broadcaster) send(msg *pb.Message, dest *uint64) error {
 	}
 
 	succeeded := 0
-	timer := time.NewTimer(time.Second) // TODO, make this configurable
+	timer := time.NewTimer(b.broadcastTimeout)
 
 	// This loop will try to send, until one of:
 	// a) the required number of sends succeed

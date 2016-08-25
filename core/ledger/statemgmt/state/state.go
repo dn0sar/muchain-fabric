@@ -31,9 +31,17 @@ import (
 
 var logger = logging.MustGetLogger("state")
 
-const detaultStateImpl = "buckettree"
+const defaultStateImpl = "buckettree"
 
 var stateImpl statemgmt.HashableState
+
+type stateImplType string
+
+const (
+	buckettreeType stateImplType = "buckettree"
+	trieType       stateImplType = "trie"
+	rawType        stateImplType = "raw"
+)
 
 // State structure for maintaining world state.
 // This encapsulates a particular implementation for managing the state persistence
@@ -53,12 +61,12 @@ func NewState() *State {
 	initConfig()
 	logger.Infof("Initializing state implementation [%s]", stateImplName)
 	switch stateImplName {
-	case "buckettree":
+	case buckettreeType:
 		stateImpl = buckettree.NewStateImpl()
-	case "trie":
-		stateImpl = trie.NewStateTrie()
-	case "raw":
-		stateImpl = raw.NewRawState()
+	case trieType:
+		stateImpl = trie.NewStateImpl()
+	case rawType:
+		stateImpl = raw.NewStateImpl()
 	default:
 		panic("Should not reach here. Configs should have checked for the stateImplName being a valid names ")
 	}

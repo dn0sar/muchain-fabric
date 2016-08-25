@@ -208,7 +208,7 @@ func (blockchain *blockchain) addPersistenceChangesForNewBlock(ctx context.Conte
 	writeBatch.PutCF(db.GetDBHandle().BlockchainCF, encodeBlockNumberDBKey(blockNumber), blockBytes)
 	writeBatch.PutCF(db.GetDBHandle().BlockchainCF, blockCountKey, encodeUint64(blockNumber+1))
 	if blockchain.indexer.isSynchronous() {
-		blockchain.indexer.createIndexesSync(block, blockNumber, blockHash, writeBatch)
+		blockchain.indexer.createIndexes(block, blockNumber, blockHash, writeBatch)
 	}
 	blockchain.lastProcessedBlock = &lastProcessedBlock{block, blockNumber, blockHash}
 	return blockNumber, nil
@@ -219,8 +219,10 @@ func (blockchain *blockchain) blockPersistenceStatus(success bool) {
 		blockchain.size++
 		blockchain.previousBlockHash = blockchain.lastProcessedBlock.blockHash
 		if !blockchain.indexer.isSynchronous() {
-			blockchain.indexer.createIndexesAsync(blockchain.lastProcessedBlock.block,
-				blockchain.lastProcessedBlock.blockNumber, blockchain.lastProcessedBlock.blockHash)
+			writeBatch := gorocksdb.NewWriteBatch()
+			defer writeBatch.Destroy()
+			blockchain.indexer.createIndexes(blockchain.lastProcessedBlock.block,
+				blockchain.lastProcessedBlock.blockNumber, blockchain.lastProcessedBlock.blockHash, writeBatch)
 		}
 	}
 	blockchain.lastProcessedBlock = nil
@@ -250,7 +252,7 @@ func (blockchain *blockchain) persistRawBlock(block *protos.Block, blockNumber u
 	}
 
 	if blockchain.indexer.isSynchronous() {
-		blockchain.indexer.createIndexesSync(block, blockNumber, blockHash, writeBatch)
+		blockchain.indexer.createIndexes(block, blockNumber, blockHash, writeBatch)
 	}
 
 	opt := gorocksdb.NewDefaultWriteOptions()

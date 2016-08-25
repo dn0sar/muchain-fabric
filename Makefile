@@ -54,8 +54,10 @@ SUBDIRS:=$(strip $(SUBDIRS))
 BASEIMAGE_RELEASE = $(shell cat ./images/base/release)
 BASEIMAGE_DEPS    = $(shell git ls-files images/base scripts/provision)
 
+JAVASHIM_DEPS =  $(shell git ls-files core/chaincode/shim/java)
 PROJECT_FILES = $(shell git ls-files)
-IMAGES = base src ccenv peer membersrvc
+IMAGES = base src ccenv peer membersrvc javaenv
+
 
 all: peer membersrvc checks
 
@@ -79,7 +81,7 @@ unit-test: peer-image gotools
 .PHONY: images
 images: $(patsubst %,build/image/%/.dummy, $(IMAGES))
 
-behave-deps: images peer
+behave-deps: images peer build/bin/block-listener
 behave: behave-deps
 	@echo "Running behave tests"
 	@cd bddtests; behave $(BEHAVE_OPTS)
@@ -120,6 +122,11 @@ build/bin/chaintool: Makefile
 	@mkdir -p $(@D)
 	@cp $^ $@
 
+# JIRA FAB-243 - Mark build/docker/bin artifacts explicitly as secondary
+#                since they are never referred to directly. This prevents
+#                the makefile from deleting them inadvertently.
+.SECONDARY: build/docker/bin/peer build/docker/bin/membersrvc
+
 # We (re)build a package within a docker context but persist the $GOPATH/pkg
 # directory so that subsequent builds are faster
 build/docker/bin/%: build/image/src/.dummy $(PROJECT_FILES)
@@ -131,14 +138,20 @@ build/docker/bin/%: build/image/src/.dummy $(PROJECT_FILES)
 		-v $(abspath build/docker/bin):/opt/gopath/bin \
 		-v $(abspath build/docker/pkg):/opt/gopath/pkg \
 		hyperledger/fabric-src go install github.com/hyperledger/fabric/$(TARGET)
+	@touch $@
 
 build/bin:
 	mkdir -p $@
 
-# Both peer and peer-image depend on ccenv-image
-build/bin/peer: build/image/ccenv/.dummy
-build/image/peer/.dummy: build/image/ccenv/.dummy
-build/image/peer/.dummy: build/docker/bin/examples/events/block-listener/
+# Both peer and peer-image depend on ccenv-image and javaenv-image (all docker env images it supports)
+build/bin/peer: build/image/ccenv/.dummy build/image/javaenv/.dummy
+build/image/peer/.dummy: build/image/ccenv/.dummy build/image/javaenv/.dummy
+
+build/bin/block-listener:
+	@mkdir -p $(@D)
+	$(CGO_FLAGS) GOBIN=$(abspath $(@D)) go install $(PKGNAME)/examples/events/block-listener
+	@echo "Binary available as $@"
+	@touch $@
 
 build/bin/%: build/image/base/.dummy $(PROJECT_FILES)
 	@mkdir -p $(@D)
@@ -168,6 +181,20 @@ build/image/ccenv/.dummy: build/image/src/.dummy build/image/ccenv/bin/protoc-ge
 	@echo "Building docker ccenv-image"
 	@cat images/ccenv/Dockerfile.in > $(@D)/Dockerfile
 	docker build -t $(PROJECT_NAME)-ccenv:latest $(@D)
+	@touch $@
+
+# Special override for java-image
+build/image/javaenv/.dummy: Makefile $(JAVASHIM_DEPS)
+	@echo "Building docker javaenv-image"
+	@mkdir -p $(@D)
+	@cat images/javaenv/Dockerfile.in > $(@D)/Dockerfile
+	# Following items are packed and sent to docker context while building image
+	# 1. Java shim layer source code
+	# 2. Proto files used to generate java classes
+	# 3. Gradle settings file
+	@git ls-files core/chaincode/shim/java | tar -jcT - > $(@D)/javashimsrc.tar.bz2
+	@git ls-files protos settings.gradle  | tar -jcT - > $(@D)/protos.tar.bz2
+	docker build -t $(PROJECT_NAME)-javaenv:latest $(@D)
 	@touch $@
 
 # Default rule for image creation

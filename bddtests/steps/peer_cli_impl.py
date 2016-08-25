@@ -21,7 +21,11 @@ from peer_basic_impl import getAttributeFromJSON
 
 @when(u'I execute "{command}" in container {containerName}')
 def step_impl(context, command, containerName):
+    print("Run command: \"{0}\" in container {1}".format(command, containerName))
     executeCommandInContainer(context, command, containerName)
+    print("stdout: {0}".format(context.command["stdout"]))
+    print("stderr: {0}".format(context.command["stderr"]))
+    print("returnCode: {0}".format(context.command["returnCode"]))
 
 def executeCommandInContainer(context, command, container):
     fullContainerName = fullNameFromContainerNamePart(container, context.compose_containers)
@@ -65,6 +69,10 @@ def step_impl(context, stream, attribute, length):
     json = decodeJson(data)
     array = getAttribute(attribute, json)
     assertLength(array, int(length))
+
+@then(u'I should get result with "{expectResult}"')
+def step_impl(context, expectResult):
+    assert context.command["stdout"].strip('\n') == expectResult
 
 def assertIsJson(data):
     assert isJson(data), "Data is not in JSON format"

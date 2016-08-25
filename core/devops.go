@@ -216,7 +216,7 @@ func (d *Devops) invokeOrQuery(ctx context.Context, chaincodeInvocationSpec *pb.
 	var generr error
 	if invoke {
 		if customIDgenAlg != "" {
-			ctorbytes, merr := proto.Marshal(chaincodeInvocationSpec.ChaincodeSpec.CtorMsg)
+			ctorbytes, merr := asn1.Marshal(*chaincodeInvocationSpec.ChaincodeSpec.CtorMsg)
 			if merr != nil {
 				return nil, fmt.Errorf("Error marshalling constructor: %s", merr)
 			}
@@ -457,7 +457,7 @@ func (d *Devops) EXP_ExecuteWithBinding(ctx context.Context, executeWithBinding 
 			return &pb.Response{Status: pb.Response_FAILURE, Msg: []byte(err.Error())}, nil
 		}
 
-		ctorbytes, merr := proto.Marshal(executeWithBinding.ChaincodeInvocationSpec.ChaincodeSpec.CtorMsg)
+		ctorbytes, merr := asn1.Marshal(*executeWithBinding.ChaincodeInvocationSpec.ChaincodeSpec.CtorMsg)
 		if merr != nil {
 			return nil, fmt.Errorf("Error marshalling constructor: %s", err)
 		}

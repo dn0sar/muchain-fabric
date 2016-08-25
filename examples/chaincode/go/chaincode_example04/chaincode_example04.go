@@ -22,6 +22,7 @@ import (
 	"strconv"
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
+	"github.com/hyperledger/fabric/core/util"
 )
 
 // This chaincode is a test for chaincode invoking another chaincode - invokes chaincode_example02
@@ -33,7 +34,7 @@ type SimpleChaincode struct {
 func (t *SimpleChaincode) GetChaincodeToCall() string {
 	//This is the hashcode for github.com/hyperledger/fabric/core/example/chaincode/chaincode_example02
 	//if the example is modifed this hashcode will change!!
-	chainCodeToCall := "0588c9b192603a2d39f2223ec524e30119698a36e77369c9d6df2ca16b85043406c67502787362e99f46d68b81b3f59000a149041ddba90047cf72e56fdfce96"
+	chainCodeToCall := "980d4bb7f69578592e5775a6da86d81a221887817d7164d3e9d4d4df1c981440abf9a61417eaf8ad6f7fc79893da36de2cf4709131e9af39bca6ebc2e5a1cd9d"
 	return chainCodeToCall
 }
 
@@ -88,7 +89,7 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 	chainCodeToCall := t.GetChaincodeToCall()
 
 	f := "invoke"
-	invokeArgs := shim.ToChaincodeArgs(f, "a", "b", "10")
+	invokeArgs := util.ToChaincodeArgs(f, "a", "b", "10")
 	response, err := stub.InvokeChaincode(chainCodeToCall, invokeArgs)
 	if err != nil {
 		errStr := fmt.Sprintf("Failed to invoke chaincode. Got error: %s", err.Error())
