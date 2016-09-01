@@ -32,6 +32,7 @@ var dbLogger = logging.MustGetLogger("db")
 
 const blockchainCF = "blockchainCF"
 const stateCF = "stateCF"
+const txSetState = "txSetStateCF"
 const stateDeltaCF = "stateDeltaCF"
 const indexesCF = "indexesCF"
 const persistCF = "persistCF"
@@ -39,6 +40,7 @@ const persistCF = "persistCF"
 var columnfamilies = []string{
 	blockchainCF, // blocks of the block chain
 	stateCF,      // world state
+	txSetState,   // transactions sets state
 	stateDeltaCF, // open transaction state
 	indexesCF,    // tx uuid -> blockno
 	persistCF,    // persistent per-peer state (consensus)
@@ -49,6 +51,7 @@ type OpenchainDB struct {
 	DB           *gorocksdb.DB
 	BlockchainCF *gorocksdb.ColumnFamilyHandle
 	StateCF      *gorocksdb.ColumnFamilyHandle
+	TxSetState   *gorocksdb.ColumnFamilyHandle
 	StateDeltaCF *gorocksdb.ColumnFamilyHandle
 	IndexesCF    *gorocksdb.ColumnFamilyHandle
 	PersistCF    *gorocksdb.ColumnFamilyHandle
@@ -178,15 +181,17 @@ func (openchainDB *OpenchainDB) open() {
 	openchainDB.DB = db
 	openchainDB.BlockchainCF = cfHandlers[1]
 	openchainDB.StateCF = cfHandlers[2]
-	openchainDB.StateDeltaCF = cfHandlers[3]
-	openchainDB.IndexesCF = cfHandlers[4]
-	openchainDB.PersistCF = cfHandlers[5]
+	openchainDB.TxSetState = cfHandlers[3]
+	openchainDB.StateDeltaCF = cfHandlers[4]
+	openchainDB.IndexesCF = cfHandlers[5]
+	openchainDB.PersistCF = cfHandlers[6]
 }
 
 // Close releases all column family handles and closes rocksdb
 func (openchainDB *OpenchainDB) close() {
 	openchainDB.BlockchainCF.Destroy()
 	openchainDB.StateCF.Destroy()
+	openchainDB.TxSetState.Destroy()
 	openchainDB.StateDeltaCF.Destroy()
 	openchainDB.IndexesCF.Destroy()
 	openchainDB.PersistCF.Destroy()
@@ -207,6 +212,11 @@ func (openchainDB *OpenchainDB) DeleteState() error {
 		dbLogger.Errorf("Error dropping state delta CF: %s", err)
 		return err
 	}
+	err = openchainDB.DB.DropColumnFamily(openchainDB.TxSetState)
+	if err != nil {
+		dbLogger.Errorf("Error dropping transactions set state CF: %s", err)
+		return err
+	}
 	opts := gorocksdb.NewDefaultOptions()
 	defer opts.Destroy()
 	openchainDB.StateCF, err = openchainDB.DB.CreateColumnFamily(opts, stateCF)
@@ -217,6 +227,11 @@ func (openchainDB *OpenchainDB) DeleteState() error {
 	openchainDB.StateDeltaCF, err = openchainDB.DB.CreateColumnFamily(opts, stateDeltaCF)
 	if err != nil {
 		dbLogger.Errorf("Error creating state delta CF: %s", err)
+		return err
+	}
+	openchainDB.TxSetState, err = openchainDB.DB.CreateColumnFamily(opts, txSetState)
+	if err != nil {
+		dbLogger.Errorf("Error creating transactions set state CF: %s", err)
 		return err
 	}
 	return nil
