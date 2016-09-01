@@ -29,7 +29,7 @@ import (
 	pb "github.com/hyperledger/fabric/protos"
 )
 
-//Execute - execute transaction or a query
+//Execute - execute the default transaction of a transaction set (which might also be a query transaction) or a mutable transaction
 func Execute(ctxt context.Context, chain *ChaincodeSupport, inBlockTx *pb.InBlockTransaction) ([]byte, *pb.ChaincodeEvent, error) {
 	var err error
 
@@ -42,7 +42,7 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, inBlockTx *pb.InBloc
 	if secHelper := chain.getSecHelper(); nil != secHelper {
 		var err error
 		inBlockTx, err = secHelper.TransactionPreExecution(inBlockTx)
-		// Note that t is now decrypted and is a deep clone of the original input t
+		// Note that inBlockTx is now decrypted and is a deep clone of the original input inBlockTx
 		if nil != err {
 			return nil, nil, err
 		}

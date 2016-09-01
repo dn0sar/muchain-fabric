@@ -114,6 +114,7 @@ func (i *Noops) RecvMsg(msg *pb.Message, senderHandle *pb.PeerID) error {
 
 func (i *Noops) broadcastConsensusMsg(msg *pb.Message) error {
 	//TODO: Look where messages are first created and make them create an InBlock instead of a normal transaction
+	// probably in peer.go SendtransactionToLocalEngine function
 	t := &pb.InBlockTransaction{}
 	if err := proto.Unmarshal(msg.Payload, t); err != nil {
 		return fmt.Errorf("Error unmarshalling payload of received Message:%s.", msg.Type)

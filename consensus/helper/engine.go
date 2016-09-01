@@ -47,6 +47,7 @@ func (eng *EngineImpl) GetHandlerFactory() peer.HandlerFactory {
 func (eng *EngineImpl) ProcessTransactionMsg(msg *pb.Message,inBlockTx *pb.InBlockTransaction) (response *pb.Response) {
 	switch tx := inBlockTx.Transaction.(type) {
 	case *pb.InBlockTransaction_TransactionSet:
+		//TODO: Store here the state of this transaction set. Also check if the same transaction set was already stored.
 		//TODO: Get the current default transaction instead
 		defaultTx := tx.TransactionSet.Transactions[tx.TransactionSet.DefaultInx]
 		//TODO: Do we always verify security, or can we supply a flag on the invoke ot this functions so to bypass check for locally generated transactions?

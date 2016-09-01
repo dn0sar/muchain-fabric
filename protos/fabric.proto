@@ -126,6 +126,7 @@ message Block {
     google.protobuf.Timestamp timestamp = 2;
     repeated InBlockTransaction transactions = 3;
     bytes stateHash = 4;
+    bytes txSetStateHash = 8;
     bytes previousBlockHash = 5;
     bytes consensusMetadata = 6;
     NonHashData nonHashData = 7;
