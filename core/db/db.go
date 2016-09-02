@@ -32,29 +32,32 @@ var dbLogger = logging.MustGetLogger("db")
 
 const blockchainCF = "blockchainCF"
 const stateCF = "stateCF"
-const txSetState = "txSetStateCF"
 const stateDeltaCF = "stateDeltaCF"
+const txSetStateCF = "txSetStateCF"
+const txSetStateDeltaCF = "txSetStateDeltaCF"
 const indexesCF = "indexesCF"
 const persistCF = "persistCF"
 
 var columnfamilies = []string{
-	blockchainCF, // blocks of the block chain
-	stateCF,      // world state
-	txSetState,   // transactions sets state
-	stateDeltaCF, // open transaction state
-	indexesCF,    // tx uuid -> blockno
-	persistCF,    // persistent per-peer state (consensus)
+	blockchainCF, 		// blocks of the block chain
+	stateCF,      		// world state
+	stateDeltaCF, 		// open transaction state
+	txSetStateCF,   	// transactions sets state
+	txSetStateDeltaCF,	// open transactions set state
+	indexesCF,    		// tx uuid -> blockno
+	persistCF,    		// persistent per-peer state (consensus)
 }
 
 // OpenchainDB encapsulates rocksdb's structures
 type OpenchainDB struct {
-	DB           *gorocksdb.DB
-	BlockchainCF *gorocksdb.ColumnFamilyHandle
-	StateCF      *gorocksdb.ColumnFamilyHandle
-	TxSetState   *gorocksdb.ColumnFamilyHandle
-	StateDeltaCF *gorocksdb.ColumnFamilyHandle
-	IndexesCF    *gorocksdb.ColumnFamilyHandle
-	PersistCF    *gorocksdb.ColumnFamilyHandle
+	DB           	*gorocksdb.DB
+	BlockchainCF 	*gorocksdb.ColumnFamilyHandle
+	StateCF      	*gorocksdb.ColumnFamilyHandle
+	StateDeltaCF 	*gorocksdb.ColumnFamilyHandle
+	TxSetState   	*gorocksdb.ColumnFamilyHandle
+	TxSetStateDelta *gorocksdb.ColumnFamilyHandle
+	IndexesCF    	*gorocksdb.ColumnFamilyHandle
+	PersistCF    	*gorocksdb.ColumnFamilyHandle
 }
 
 var openchainDB = create()
@@ -99,6 +102,17 @@ func (openchainDB *OpenchainDB) GetFromStateDeltaCF(key []byte) ([]byte, error) 
 	return openchainDB.Get(openchainDB.StateDeltaCF, key)
 }
 
+// GetFromTxSetStateCF get value for given key from column family - txSetState
+func (openchainDB *OpenchainDB) GetFromTxSetStateCF(key []byte) ([]byte, error) {
+	return openchainDB.Get(openchainDB.TxSetState, key)
+}
+
+// GetFromTxSetStateDeltaCF get value for given key from column family - txSetStateDelta
+func (openchainDB *OpenchainDB) GetFromTxSetStateDeltaCF(key []byte) ([]byte, error) {
+	return openchainDB.Get(openchainDB.TxSetStateDelta, key)
+}
+
+
 // GetFromIndexesCF get value for given key from column family - indexCF
 func (openchainDB *OpenchainDB) GetFromIndexesCF(key []byte) ([]byte, error) {
 	return openchainDB.Get(openchainDB.IndexesCF, key)
@@ -114,6 +128,11 @@ func (openchainDB *OpenchainDB) GetStateCFIterator() *gorocksdb.Iterator {
 	return openchainDB.GetIterator(openchainDB.StateCF)
 }
 
+// GetTxSetStateCFIterator get iterator for column family - stateCF
+func (openchainDB *OpenchainDB) GetTxSetStateCFIterator() *gorocksdb.Iterator {
+	return openchainDB.GetIterator(openchainDB.TxSetState)
+}
+
 // GetStateCFSnapshotIterator get iterator for column family - stateCF. This iterator
 // is based on a snapshot and should be used for long running scans, such as
 // reading the entire state. Remember to call iterator.Close() when you are done.
@@ -124,6 +143,16 @@ func (openchainDB *OpenchainDB) GetStateCFSnapshotIterator(snapshot *gorocksdb.S
 // GetStateDeltaCFIterator get iterator for column family - stateDeltaCF
 func (openchainDB *OpenchainDB) GetStateDeltaCFIterator() *gorocksdb.Iterator {
 	return openchainDB.GetIterator(openchainDB.StateDeltaCF)
+}
+
+// GetTxSetStateCFIterator get iterator for column family - txSetStateCF
+func (OpenchainDB *OpenchainDB) GetTxSetStateCFSnapshotIterator(snapshot *gorocksdb.Snapshot) *gorocksdb.Iterator {
+	return openchainDB.getSnapshotIterator(snapshot, openchainDB.TxSetState)
+}
+
+// GetTxSetStateDeltaCFIterator get iterator for column family - txSetStateCF
+func (OpenchainDB *OpenchainDB) GetTxSetStateDeltaCFSnapshotIterator(snapshot *gorocksdb.Snapshot) *gorocksdb.Iterator {
+	return openchainDB.getSnapshotIterator(snapshot, openchainDB.TxSetStateDelta)
 }
 
 // GetSnapshot returns a point-in-time view of the DB. You MUST call snapshot.Release()
@@ -181,18 +210,20 @@ func (openchainDB *OpenchainDB) open() {
 	openchainDB.DB = db
 	openchainDB.BlockchainCF = cfHandlers[1]
 	openchainDB.StateCF = cfHandlers[2]
-	openchainDB.TxSetState = cfHandlers[3]
-	openchainDB.StateDeltaCF = cfHandlers[4]
-	openchainDB.IndexesCF = cfHandlers[5]
-	openchainDB.PersistCF = cfHandlers[6]
+	openchainDB.StateDeltaCF = cfHandlers[3]
+	openchainDB.TxSetState = cfHandlers[4]
+	openchainDB.TxSetStateDelta = cfHandlers[5]
+	openchainDB.IndexesCF = cfHandlers[6]
+	openchainDB.PersistCF = cfHandlers[7]
 }
 
 // Close releases all column family handles and closes rocksdb
 func (openchainDB *OpenchainDB) close() {
 	openchainDB.BlockchainCF.Destroy()
 	openchainDB.StateCF.Destroy()
-	openchainDB.TxSetState.Destroy()
 	openchainDB.StateDeltaCF.Destroy()
+	openchainDB.TxSetState.Destroy()
+	openchainDB.TxSetStateDelta.Destroy()
 	openchainDB.IndexesCF.Destroy()
 	openchainDB.PersistCF.Destroy()
 	openchainDB.DB.Close()
@@ -217,6 +248,11 @@ func (openchainDB *OpenchainDB) DeleteState() error {
 		dbLogger.Errorf("Error dropping transactions set state CF: %s", err)
 		return err
 	}
+	err = openchainDB.DB.DropColumnFamily(openchainDB.TxSetStateDelta)
+	if err != nil {
+		dbLogger.Errorf("Error dropping transactions set state delta CF: %s", err)
+		return err
+	}
 	opts := gorocksdb.NewDefaultOptions()
 	defer opts.Destroy()
 	openchainDB.StateCF, err = openchainDB.DB.CreateColumnFamily(opts, stateCF)
@@ -229,9 +265,14 @@ func (openchainDB *OpenchainDB) DeleteState() error {
 		dbLogger.Errorf("Error creating state delta CF: %s", err)
 		return err
 	}
-	openchainDB.TxSetState, err = openchainDB.DB.CreateColumnFamily(opts, txSetState)
+	openchainDB.TxSetState, err = openchainDB.DB.CreateColumnFamily(opts, txSetStateCF)
 	if err != nil {
 		dbLogger.Errorf("Error creating transactions set state CF: %s", err)
+		return err
+	}
+	openchainDB.TxSetStateDelta, err = openchainDB.DB.CreateColumnFamily(opts, txSetStateDeltaCF)
+	if err != nil {
+		dbLogger.Errorf("Error creating transactions set state delta CF: %s", err)
 		return err
 	}
 	return nil
