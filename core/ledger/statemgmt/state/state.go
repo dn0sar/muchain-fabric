@@ -22,7 +22,7 @@ import (
 
 	"github.com/hyperledger/fabric/core/db"
 	"github.com/hyperledger/fabric/core/ledger/statemgmt"
-	"github.com/hyperledger/fabric/core/ledger/statemgmt/buckettree"
+	"github.com/hyperledger/fabric/core/ledger/statemgmt/buckettree/stateimpl"
 	"github.com/hyperledger/fabric/core/ledger/statemgmt/raw"
 	"github.com/hyperledger/fabric/core/ledger/statemgmt/trie"
 	"github.com/op/go-logging"
