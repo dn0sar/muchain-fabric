@@ -33,6 +33,14 @@ func ConstructCompositeKey(chaincodeID string, key string) []byte {
 	return bytes.Join([][]byte{[]byte(chaincodeID), []byte(key)}, stateKeyDelimiter)
 }
 
+func ConstructTxSetKey(txSetID string) []byte {
+	return []byte(txSetID)
+}
+
+func GetTxSetIDfromKey(txSetKey []byte) string {
+	return  string(txSetKey)
+}
+
 // DecodeCompositeKey decodes the compositeKey constructed by ConstructCompositeKey method
 // back to the original chaincodeID and key form
 func DecodeCompositeKey(compositeKey []byte) (string, string) {

@@ -1,0 +1,75 @@
+package raw
+
+import (
+	"github.com/hyperledger/fabric/core/ledger/statemgmt"
+	"github.com/hyperledger/fabric/core/db"
+	"github.com/tecbot/gorocksdb"
+)
+
+// StateImpl implements raw state management. This implementation does not support computation of crypto-hash of the state.
+// It simply stores the compositeKey and value in the db
+type TxSetStateImpl struct {
+	txSetStateDelta *statemgmt.TxStateDelta
+}
+
+// NewStateImpl constructs new instance of raw state
+func NewTxSetStateImpl() *TxSetStateImpl {
+	return &TxSetStateImpl{}
+}
+
+// Initialize - method implementation for interface 'statemgmt.HashableTxSetState'
+func (impl *TxSetStateImpl) Initialize(configs map[string]interface{}) error {
+	return nil
+}
+
+// Get - method implementation for interface 'statemgmt.HashableTxSetState'
+func (impl *TxSetStateImpl) Get(txSetID string) ([]byte, error) {
+	txSetKey := statemgmt.ConstructTxSetKey(txSetID)
+	openchainDB := db.GetDBHandle()
+	return openchainDB.GetFromTxSetStateCF(txSetKey)
+}
+
+// PrepareWorkingSet - method implementation for interface 'statemgmt.HashableTxSetState'
+func (impl *TxSetStateImpl) PrepareWorkingSet(stateDelta *statemgmt.TxStateDelta) error {
+	impl.txSetStateDelta = stateDelta
+	return nil
+}
+
+// ClearWorkingSet - method implementation for interface 'statemgmt.HashableTxSetState'
+func (impl *TxSetStateImpl) ClearWorkingSet(changesPersisted bool) {
+	impl.txSetStateDelta = nil
+}
+
+// ComputeCryptoHash - method implementation for interface 'statemgmt.HashableTxSetState'
+func (impl *TxSetStateImpl) ComputeCryptoHash() ([]byte, error) {
+	return nil, nil
+}
+
+// AddChangesForPersistence - method implementation for interface 'statemgmt.HashableTxSetState'
+func (impl *TxSetStateImpl) AddChangesForPersistence(writeBatch *gorocksdb.WriteBatch) error {
+	delta := impl.txSetStateDelta
+	if delta == nil {
+		return nil
+	}
+	openchainDB := db.GetDBHandle()
+	updatedTxSetIds := delta.GetUpdatedTxSetIDs(false)
+	for _, updatedTxSetID := range updatedTxSetIds {
+		updatedKV := delta.GetUpdates(updatedTxSetID)
+		key := statemgmt.ConstructTxSetKey(updatedTxSetID)
+		if updatedKV.IsDeleted() {
+			writeBatch.DeleteCF(openchainDB.TxSetStateCF, key)
+		} else {
+			writeBatch.PutCF(openchainDB.TxSetStateCF, key, updatedKV.GetValue())
+		}
+	}
+	return nil
+}
+
+// PerfHintKeyChanged - method implementation for interface 'statemgmt.HashableTxSetState'
+func (impl *TxSetStateImpl) PerfHintKeyChanged(txSetID string) {
+}
+
+// GetStateSnapshotIterator - method implementation for interface 'statemgmt.HashableTxSetState'
+func (impl *TxSetStateImpl) GetStateSnapshotIterator(snapshot *gorocksdb.Snapshot) (statemgmt.StateSnapshotIterator, error) {
+	panic("Not a full-fledged state implementation. Implemented only for measuring best-case performance benchmark")
+}
