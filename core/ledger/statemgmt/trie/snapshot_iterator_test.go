@@ -22,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric/core/db"
 	"github.com/hyperledger/fabric/core/ledger/statemgmt"
 	"github.com/hyperledger/fabric/core/ledger/testutil"
+	"github.com/hyperledger/fabric/core/ledger/statemgmt/state_comm"
 )
 
 func TestStateSnapshotIterator(t *testing.T) {
@@ -78,7 +79,7 @@ func TestStateSnapshotIterator(t *testing.T) {
 	for itr.Next() {
 		keyBytes, valueBytes := itr.GetRawKeyValue()
 		t.Logf("key=[%s], value=[%s]", string(keyBytes), string(valueBytes))
-		chaincodeID, key := statemgmt.DecodeCompositeKey(keyBytes)
+		chaincodeID, key := state_comm.DecodeCompositeKey(keyBytes)
 		stateDeltaFromSnapshot.Set(chaincodeID, key, valueBytes, nil)
 	}
 	testutil.AssertEquals(t, stateDelta, stateDeltaFromSnapshot)

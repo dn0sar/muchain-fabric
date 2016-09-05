@@ -4,6 +4,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/statemgmt"
 	"github.com/hyperledger/fabric/core/db"
 	"github.com/tecbot/gorocksdb"
+	"github.com/hyperledger/fabric/core/ledger/statemgmt/state_comm"
 )
 
 // StateImpl implements raw state management. This implementation does not support computation of crypto-hash of the state.
@@ -24,7 +25,7 @@ func (impl *TxSetStateImpl) Initialize(configs map[string]interface{}) error {
 
 // Get - method implementation for interface 'statemgmt.HashableTxSetState'
 func (impl *TxSetStateImpl) Get(txSetID string) ([]byte, error) {
-	txSetKey := statemgmt.ConstructTxSetKey(txSetID)
+	txSetKey := state_comm.ConstructTxSetKey(txSetID)
 	openchainDB := db.GetDBHandle()
 	return openchainDB.GetFromTxSetStateCF(txSetKey)
 }
@@ -55,7 +56,7 @@ func (impl *TxSetStateImpl) AddChangesForPersistence(writeBatch *gorocksdb.Write
 	updatedTxSetIds := delta.GetUpdatedTxSetIDs(false)
 	for _, updatedTxSetID := range updatedTxSetIds {
 		updatedKV := delta.GetUpdates(updatedTxSetID)
-		key := statemgmt.ConstructTxSetKey(updatedTxSetID)
+		key := state_comm.ConstructTxSetKey(updatedTxSetID)
 		if updatedKV.IsDeleted() {
 			writeBatch.DeleteCF(openchainDB.TxSetStateCF, key)
 		} else {
@@ -70,6 +71,6 @@ func (impl *TxSetStateImpl) PerfHintKeyChanged(txSetID string) {
 }
 
 // GetStateSnapshotIterator - method implementation for interface 'statemgmt.HashableTxSetState'
-func (impl *TxSetStateImpl) GetStateSnapshotIterator(snapshot *gorocksdb.Snapshot) (statemgmt.StateSnapshotIterator, error) {
+func (impl *TxSetStateImpl) GetStateSnapshotIterator(snapshot *gorocksdb.Snapshot) (state_comm.StateSnapshotIterator, error) {
 	panic("Not a full-fledged state implementation. Implemented only for measuring best-case performance benchmark")
 }

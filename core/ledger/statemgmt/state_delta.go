@@ -22,8 +22,11 @@ import (
 	"sort"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/op/go-logging"
 	"github.com/hyperledger/fabric/core/util"
 )
+
+var logger = logging.MustGetLogger("statemgmt")
 
 // StateDelta holds the changes to existing state. This struct is used for holding the uncommitted changes during execution of a tx-batch
 // Also, to be used for transferring the state to another peer in chunks

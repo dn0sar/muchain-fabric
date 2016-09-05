@@ -18,8 +18,8 @@ package trie
 
 import (
 	"github.com/hyperledger/fabric/core/db"
-	"github.com/hyperledger/fabric/core/ledger/statemgmt"
 	"github.com/tecbot/gorocksdb"
+	"github.com/hyperledger/fabric/core/ledger/statemgmt/state_comm"
 )
 
 // RangeScanIterator implements the interface 'statemgmt.RangeScanIterator'
@@ -48,16 +48,16 @@ func (itr *RangeScanIterator) Next() bool {
 
 		// making a copy of key-value bytes because, underlying key bytes are reused by itr.
 		// no need to free slices as iterator frees memory when closed.
-		trieKeyBytes := statemgmt.Copy(itr.dbItr.Key().Data())
-		trieNodeBytes := statemgmt.Copy(itr.dbItr.Value().Data())
+		trieKeyBytes := state_comm.Copy(itr.dbItr.Key().Data())
+		trieNodeBytes := state_comm.Copy(itr.dbItr.Value().Data())
 		value := unmarshalTrieNodeValue(trieNodeBytes)
 		if value == nil {
 			continue
 		}
 
 		// found an actual key
-		currentCompositeKey := trieKeyEncoderImpl.decodeTrieKeyBytes(statemgmt.Copy(trieKeyBytes))
-		currentChaincodeID, currentKey := statemgmt.DecodeCompositeKey(currentCompositeKey)
+		currentCompositeKey := trieKeyEncoderImpl.decodeTrieKeyBytes(state_comm.Copy(trieKeyBytes))
+		currentChaincodeID, currentKey := state_comm.DecodeCompositeKey(currentCompositeKey)
 		if currentChaincodeID == itr.chaincodeID && (itr.endKey == "" || currentKey <= itr.endKey) {
 			itr.currentKey = currentKey
 			itr.currentValue = value

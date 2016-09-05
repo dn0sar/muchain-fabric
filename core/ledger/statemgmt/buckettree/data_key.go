@@ -19,8 +19,8 @@ package buckettree
 import (
 	"fmt"
 
-	"github.com/hyperledger/fabric/core/ledger/statemgmt"
 	"github.com/hyperledger/fabric/core/ledger/util"
+	"github.com/hyperledger/fabric/core/ledger/statemgmt/state_comm"
 )
 
 type dataKey struct {
@@ -30,7 +30,7 @@ type dataKey struct {
 
 func newDataKey(chaincodeID string, key string) *dataKey {
 	logger.Debugf("Enter - newDataKey. chaincodeID=[%s], key=[%s]", chaincodeID, key)
-	compositeKey := statemgmt.ConstructCompositeKey(chaincodeID, key)
+	compositeKey := state_comm.ConstructCompositeKey(chaincodeID, key)
 	bucketHash := conf.computeBucketHash(compositeKey)
 	// Adding one because - we start bucket-numbers 1 onwards
 	bucketNumber := int(bucketHash)%conf.getNumBucketsAtLowestLevel() + 1
@@ -47,7 +47,7 @@ func minimumPossibleDataKeyBytesFor(bucketKey *bucketKey) []byte {
 
 func minimumPossibleDataKeyBytes(bucketNumber int, chaincodeID string, key string) []byte {
 	b := encodeBucketNumber(bucketNumber)
-	b = append(b, statemgmt.ConstructCompositeKey(chaincodeID, key)...)
+	b = append(b, state_comm.ConstructCompositeKey(chaincodeID, key)...)
 	return b
 }
 

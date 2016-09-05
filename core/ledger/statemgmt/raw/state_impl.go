@@ -20,6 +20,7 @@ import (
 	"github.com/hyperledger/fabric/core/db"
 	"github.com/hyperledger/fabric/core/ledger/statemgmt"
 	"github.com/tecbot/gorocksdb"
+	"github.com/hyperledger/fabric/core/ledger/statemgmt/state_comm"
 )
 
 // StateImpl implements raw state management. This implementation does not support computation of crypto-hash of the state.
@@ -40,7 +41,7 @@ func (impl *StateImpl) Initialize(configs map[string]interface{}) error {
 
 // Get - method implementation for interface 'statemgmt.HashableState'
 func (impl *StateImpl) Get(chaincodeID string, key string) ([]byte, error) {
-	compositeKey := statemgmt.ConstructCompositeKey(chaincodeID, key)
+	compositeKey := state_comm.ConstructCompositeKey(chaincodeID, key)
 	openchainDB := db.GetDBHandle()
 	return openchainDB.GetFromStateCF(compositeKey)
 }
@@ -72,7 +73,7 @@ func (impl *StateImpl) AddChangesForPersistence(writeBatch *gorocksdb.WriteBatch
 	for _, updatedChaincodeID := range updatedChaincodeIds {
 		updates := delta.GetUpdates(updatedChaincodeID)
 		for updatedKey, value := range updates {
-			compositeKey := statemgmt.ConstructCompositeKey(updatedChaincodeID, updatedKey)
+			compositeKey := state_comm.ConstructCompositeKey(updatedChaincodeID, updatedKey)
 			if value.IsDeleted() {
 				writeBatch.DeleteCF(openchainDB.StateCF, compositeKey)
 			} else {
@@ -88,11 +89,11 @@ func (impl *StateImpl) PerfHintKeyChanged(chaincodeID string, key string) {
 }
 
 // GetStateSnapshotIterator - method implementation for interface 'statemgmt.HashableState'
-func (impl *StateImpl) GetStateSnapshotIterator(snapshot *gorocksdb.Snapshot) (statemgmt.StateSnapshotIterator, error) {
+func (impl *StateImpl) GetStateSnapshotIterator(snapshot *gorocksdb.Snapshot) (state_comm.StateSnapshotIterator, error) {
 	panic("Not a full-fledged state implementation. Implemented only for measuring best-case performance benchmark")
 }
 
 // GetRangeScanIterator - method implementation for interface 'statemgmt.HashableState'
-func (impl *StateImpl) GetRangeScanIterator(chaincodeID string, startKey string, endKey string) (statemgmt.RangeScanIterator, error) {
+func (impl *StateImpl) GetRangeScanIterator(chaincodeID string, startKey string, endKey string) (state_comm.RangeScanIterator, error) {
 	panic("Not a full-fledged state implementation. Implemented only for measuring best-case performance benchmark")
 }

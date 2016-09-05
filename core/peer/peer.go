@@ -39,7 +39,7 @@ import (
 	"github.com/hyperledger/fabric/core/discovery"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/statemgmt"
-	"github.com/hyperledger/fabric/core/ledger/statemgmt/state"
+	"github.com/hyperledger/fabric/core/ledger/statemgmt/state_comm"
 	"github.com/hyperledger/fabric/core/util"
 	pb "github.com/hyperledger/fabric/protos"
 )
@@ -91,7 +91,7 @@ type BlockChainUtil interface {
 
 // StateAccessor interface for retreiving blocks by block number
 type StateAccessor interface {
-	GetStateSnapshot() (*state.StateSnapshot, error)
+	GetStateSnapshot() (*state_comm.StateSnapshot, error)
 	GetStateDelta(blockNumber uint64) (*statemgmt.StateDelta, error)
 }
 
@@ -732,7 +732,7 @@ func (p *Impl) EmptyState() error {
 }
 
 // GetStateSnapshot return the state snapshot
-func (p *Impl) GetStateSnapshot() (*state.StateSnapshot, error) {
+func (p *Impl) GetStateSnapshot() (*state_comm.StateSnapshot, error) {
 	p.ledgerWrapper.RLock()
 	defer p.ledgerWrapper.RUnlock()
 	return p.ledgerWrapper.ledger.GetStateSnapshot()

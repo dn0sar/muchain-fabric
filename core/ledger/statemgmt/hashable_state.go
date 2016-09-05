@@ -18,6 +18,7 @@ package statemgmt
 
 import (
 	"github.com/tecbot/gorocksdb"
+	"github.com/hyperledger/fabric/core/ledger/statemgmt/state_comm"
 )
 
 // HashableState - Interface that is be implemented by state management
@@ -52,14 +53,14 @@ type HashableState interface {
 	// All the key-value of global state. A particular implementation may need to remove additional information
 	// that the implementation keeps for faster crypto-hash computation. For instance, filter a few of the
 	// key-values or remove some data from particular key-values.
-	GetStateSnapshotIterator(snapshot *gorocksdb.Snapshot) (StateSnapshotIterator, error)
+	GetStateSnapshotIterator(snapshot *gorocksdb.Snapshot) (state_comm.StateSnapshotIterator, error)
 
 	// GetRangeScanIterator - state implementation to provide an iterator that is supposed to give
 	// All the key-values for a given chaincodeID such that a return key should be lexically greater than or
 	// equal to startKey and less than or equal to endKey. If the value for startKey parameter is an empty string
 	// startKey is assumed to be the smallest key available in the db for the chaincodeID. Similarly, an empty string
 	// for endKey parameter assumes the endKey to be the greatest key available in the db for the chaincodeID
-	GetRangeScanIterator(chaincodeID string, startKey string, endKey string) (RangeScanIterator, error)
+	GetRangeScanIterator(chaincodeID string, startKey string, endKey string) (state_comm.RangeScanIterator, error)
 
 	// PerfHintKeyChanged state implementation may be provided with some hints before (e.g., during tx execution)
 	// the StateDelta is prepared and passed in PrepareWorkingSet method.
@@ -68,30 +69,3 @@ type HashableState interface {
 	PerfHintKeyChanged(chaincodeID string, key string)
 }
 
-// StateSnapshotIterator An interface that is to be implemented by the return value of
-// GetStateSnapshotIterator method in the implementation of HashableState interface
-type StateSnapshotIterator interface {
-
-	// Next moves to next key-value. Returns true if next key-value exists
-	Next() bool
-
-	// GetRawKeyValue returns next key-value
-	GetRawKeyValue() ([]byte, []byte)
-
-	// Close releases resources occupied by the iterator
-	Close()
-}
-
-// RangeScanIterator - is to be implemented by the return value of
-// GetRangeScanIterator method in the implementation of HashableState interface
-type RangeScanIterator interface {
-
-	// Next moves to next key-value. Returns true if next key-value exists
-	Next() bool
-
-	// GetKeyValue returns next key-value
-	GetKeyValue() (string, []byte)
-
-	// Close releases resources occupied by the iterator
-	Close()
-}

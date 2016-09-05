@@ -23,6 +23,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/statemgmt"
 	"github.com/op/go-logging"
 	"github.com/tecbot/gorocksdb"
+	"github.com/hyperledger/fabric/core/ledger/statemgmt/state_comm"
 )
 
 var stateTrieLogger = logging.MustGetLogger("stateTrie")
@@ -180,11 +181,11 @@ func (stateTrie *StateTrie) PerfHintKeyChanged(chaincodeID string, key string) {
 }
 
 // GetStateSnapshotIterator - method implementation for interface 'statemgmt.HashableState'
-func (stateTrie *StateTrie) GetStateSnapshotIterator(snapshot *gorocksdb.Snapshot) (statemgmt.StateSnapshotIterator, error) {
+func (stateTrie *StateTrie) GetStateSnapshotIterator(snapshot *gorocksdb.Snapshot) (state_comm.StateSnapshotIterator, error) {
 	return newStateSnapshotIterator(snapshot)
 }
 
 // GetRangeScanIterator returns an iterator for performing a range scan between the start and end keys
-func (stateTrie *StateTrie) GetRangeScanIterator(chaincodeID string, startKey string, endKey string) (statemgmt.RangeScanIterator, error) {
+func (stateTrie *StateTrie) GetRangeScanIterator(chaincodeID string, startKey string, endKey string) (state_comm.RangeScanIterator, error) {
 	return newRangeScanIterator(chaincodeID, startKey, endKey)
 }

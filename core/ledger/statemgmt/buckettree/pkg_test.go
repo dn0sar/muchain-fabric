@@ -26,6 +26,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/statemgmt"
 	"github.com/hyperledger/fabric/core/ledger/testutil"
 	"github.com/tecbot/gorocksdb"
+	"github.com/hyperledger/fabric/core/ledger/statemgmt/state_comm"
 )
 
 var testDBWrapper = db.NewTestDBWrapper()
@@ -48,7 +49,7 @@ func newTestHasher() *testHasher {
 }
 
 func (testHasher *testHasher) populate(chaincodeID string, key string, hash uint32) {
-	testHasher.testHashFunctionInput[string(statemgmt.ConstructCompositeKey(chaincodeID, key))] = hash
+	testHasher.testHashFunctionInput[string(state_comm.ConstructCompositeKey(chaincodeID, key))] = hash
 }
 
 func (testHasher *testHasher) getHashFunction() hashFunc {
@@ -143,7 +144,7 @@ func (testWrapper *stateImplTestWrapper) persistChangesAndResetInMemoryChanges()
 	testWrapper.stateImpl.ClearWorkingSet(true)
 }
 
-func (testWrapper *stateImplTestWrapper) getRangeScanIterator(chaincodeID string, startKey string, endKey string) statemgmt.RangeScanIterator {
+func (testWrapper *stateImplTestWrapper) getRangeScanIterator(chaincodeID string, startKey string, endKey string) state_comm.RangeScanIterator {
 	itr, err := testWrapper.stateImpl.GetRangeScanIterator(chaincodeID, startKey, endKey)
 	testutil.AssertNoError(testWrapper.t, err, "Error while getting iterator")
 	return itr

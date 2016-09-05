@@ -20,7 +20,7 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/hyperledger/fabric/core/ledger/statemgmt"
+	"github.com/hyperledger/fabric/core/ledger/statemgmt/state_comm"
 )
 
 type trieKeyEncoder interface {
@@ -46,7 +46,7 @@ type trieKey struct {
 }
 
 func newTrieKey(chaincodeID string, key string) *trieKey {
-	compositeKey := statemgmt.ConstructCompositeKey(chaincodeID, key)
+	compositeKey := state_comm.ConstructCompositeKey(chaincodeID, key)
 	return newTrieKeyFromCompositeKey(compositeKey)
 }
 

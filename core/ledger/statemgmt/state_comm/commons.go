@@ -14,15 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package statemgmt
+package state_comm
 
 import (
 	"bytes"
-
-	"github.com/op/go-logging"
+	"encoding/binary"
 )
-
-var logger = logging.MustGetLogger("statemgmt")
 
 var stateKeyDelimiter = []byte{0x00}
 
@@ -54,3 +51,22 @@ func Copy(src []byte) []byte {
 	copy(dest, src)
 	return dest
 }
+
+func EncodeStateDeltaKey(blockNumber uint64) []byte {
+	return encodeUint64(blockNumber)
+}
+
+func DecodeStateDeltaKey(dbkey []byte) uint64 {
+	return decodeToUint64(dbkey)
+}
+
+func encodeUint64(number uint64) []byte {
+	bytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(bytes, number)
+	return bytes
+}
+
+func decodeToUint64(bytes []byte) uint64 {
+	return binary.BigEndian.Uint64(bytes)
+}
+

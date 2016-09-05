@@ -18,7 +18,7 @@ package buckettree
 
 import (
 	"github.com/hyperledger/fabric/core/db"
-	"github.com/hyperledger/fabric/core/ledger/statemgmt"
+	"github.com/hyperledger/fabric/core/ledger/statemgmt/state_comm"
 )
 
 func fetchDataNodeFromDB(dataKey *dataKey) (*dataNode, error) {
@@ -68,8 +68,8 @@ func fetchDataNodesFromDBFor(bucketKey *bucketKey) (dataNodes, error) {
 
 		// making a copy of key-value bytes because, underlying key bytes are reused by itr.
 		// no need to free slices as iterator frees memory when closed.
-		keyBytes := statemgmt.Copy(itr.Key().Data())
-		valueBytes := statemgmt.Copy(itr.Value().Data())
+		keyBytes := state_comm.Copy(itr.Key().Data())
+		valueBytes := state_comm.Copy(itr.Value().Data())
 
 		dataKey := newDataKeyFromEncodedBytes(keyBytes)
 		logger.Debugf("Retrieved data key [%s] from DB for bucket [%s]", dataKey, bucketKey)

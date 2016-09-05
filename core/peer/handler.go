@@ -26,6 +26,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/hyperledger/fabric/core/ledger/statemgmt"
+	"github.com/hyperledger/fabric/core/ledger/statemgmt/state_comm"
 	pb "github.com/hyperledger/fabric/protos"
 )
 
@@ -531,7 +532,7 @@ func (d *Handler) sendStateSnapshot(syncStateSnapshotRequest *pb.SyncStateSnapsh
 	for i := 0; snapshot.Next(); i++ {
 		delta := statemgmt.NewStateDelta()
 		k, v := snapshot.GetRawKeyValue()
-		cID, keyID := statemgmt.DecodeCompositeKey(k)
+		cID, keyID := state_comm.DecodeCompositeKey(k)
 		delta.Set(cID, keyID, v, nil)
 
 		deltaAsBytes := delta.Marshal()

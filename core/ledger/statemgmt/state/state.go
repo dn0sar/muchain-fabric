@@ -17,12 +17,12 @@ limitations under the License.
 package state
 
 import (
-	"encoding/binary"
 	"fmt"
 
 	"github.com/hyperledger/fabric/core/db"
 	"github.com/hyperledger/fabric/core/ledger/statemgmt"
-	"github.com/hyperledger/fabric/core/ledger/statemgmt/buckettree/stateimpl"
+	"github.com/hyperledger/fabric/core/ledger/statemgmt/buckettree"
+	"github.com/hyperledger/fabric/core/ledger/statemgmt/state_comm"
 	"github.com/hyperledger/fabric/core/ledger/statemgmt/raw"
 	"github.com/hyperledger/fabric/core/ledger/statemgmt/trie"
 	"github.com/op/go-logging"
@@ -30,8 +30,6 @@ import (
 )
 
 var logger = logging.MustGetLogger("state")
-
-const defaultStateImpl = "buckettree"
 
 var stateImpl statemgmt.HashableState
 
@@ -42,6 +40,8 @@ const (
 	trieType       stateImplType = "trie"
 	rawType        stateImplType = "raw"
 )
+
+const defaultStateImpl = buckettreeType
 
 // State structure for maintaining world state.
 // This encapsulates a particular implementation for managing the state persistence
@@ -58,9 +58,9 @@ type State struct {
 
 // NewState constructs a new State. This Initializes encapsulated state implementation
 func NewState() *State {
-	initConfig()
-	logger.Infof("Initializing state implementation [%s]", stateImplName)
-	switch stateImplName {
+	confData := state_comm.GetConfig("state", defaultStateImpl, buckettreeType, trieType, rawType)
+	logger.Infof("Initializing state implementation [%s]", confData.StateImplName)
+	switch stateImplType(confData.StateImplName) {
 	case buckettreeType:
 		stateImpl = buckettree.NewStateImpl()
 	case trieType:
@@ -70,12 +70,12 @@ func NewState() *State {
 	default:
 		panic("Should not reach here. Configs should have checked for the stateImplName being a valid names ")
 	}
-	err := stateImpl.Initialize(stateImplConfigs)
+	err := stateImpl.Initialize(confData.StateImplConfigs)
 	if err != nil {
 		panic(fmt.Errorf("Error during initialization of state implementation: %s", err))
 	}
 	return &State{stateImpl, statemgmt.NewStateDelta(), statemgmt.NewStateDelta(), "", make(map[string][]byte),
-		false, uint64(deltaHistorySize)}
+		false, uint64(confData.DeltaHistorySize)}
 }
 
 // TxBegin marks begin of a new tx. If a tx is already in progress, this call panics
@@ -129,7 +129,7 @@ func (state *State) Get(chaincodeID string, key string, committed bool) ([]byte,
 
 // GetRangeScanIterator returns an iterator to get all the keys (and values) between startKey and endKey
 // (assuming lexical order of the keys) for a chaincodeID.
-func (state *State) GetRangeScanIterator(chaincodeID string, startKey string, endKey string, committed bool) (statemgmt.RangeScanIterator, error) {
+func (state *State) GetRangeScanIterator(chaincodeID string, startKey string, endKey string, committed bool) (state_comm.RangeScanIterator, error) {
 	stateImplItr, err := state.stateImpl.GetRangeScanIterator(chaincodeID, startKey, endKey)
 	if err != nil {
 		return nil, err
@@ -269,13 +269,17 @@ func (state *State) getStateDelta() *statemgmt.StateDelta {
 
 // GetSnapshot returns a snapshot of the global state for the current block. stateSnapshot.Release()
 // must be called once you are done.
-func (state *State) GetSnapshot(blockNumber uint64, dbSnapshot *gorocksdb.Snapshot) (*StateSnapshot, error) {
-	return newStateSnapshot(blockNumber, dbSnapshot)
+func (state *State) GetSnapshot(blockNumber uint64, dbSnapshot *gorocksdb.Snapshot) (*state_comm.StateSnapshot, error) {
+	itr, err := stateImpl.GetStateSnapshotIterator(dbSnapshot)
+	if err != nil {
+		return nil, err
+	}
+	return state_comm.NewStateSnapshot(blockNumber, itr, dbSnapshot)
 }
 
 // FetchStateDeltaFromDB fetches the StateDelta corrsponding to given blockNumber
 func (state *State) FetchStateDeltaFromDB(blockNumber uint64) (*statemgmt.StateDelta, error) {
-	stateDeltaBytes, err := db.GetDBHandle().GetFromStateDeltaCF(encodeStateDeltaKey(blockNumber))
+	stateDeltaBytes, err := db.GetDBHandle().GetFromStateDeltaCF(state_comm.EncodeStateDeltaKey(blockNumber))
 	if err != nil {
 		return nil, err
 	}
@@ -299,11 +303,11 @@ func (state *State) AddChangesForPersistence(blockNumber uint64, writeBatch *gor
 	serializedStateDelta := state.stateDelta.Marshal()
 	cf := db.GetDBHandle().StateDeltaCF
 	logger.Debugf("Adding state-delta corresponding to block number[%d]", blockNumber)
-	writeBatch.PutCF(cf, encodeStateDeltaKey(blockNumber), serializedStateDelta)
+	writeBatch.PutCF(cf, state_comm.EncodeStateDeltaKey(blockNumber), serializedStateDelta)
 	if blockNumber >= state.historyStateDeltaSize {
 		blockNumberToDelete := blockNumber - state.historyStateDeltaSize
 		logger.Debugf("Deleting state-delta corresponding to block number[%d]", blockNumberToDelete)
-		writeBatch.DeleteCF(cf, encodeStateDeltaKey(blockNumberToDelete))
+		writeBatch.DeleteCF(cf, state_comm.EncodeStateDeltaKey(blockNumberToDelete))
 	} else {
 		logger.Debugf("Not deleting previous state-delta. Block number [%d] is smaller than historyStateDeltaSize [%d]",
 			blockNumber, state.historyStateDeltaSize)
@@ -345,22 +349,4 @@ func (state *State) DeleteState() error {
 		logger.Errorf("Error deleting state: %s", err)
 	}
 	return err
-}
-
-func encodeStateDeltaKey(blockNumber uint64) []byte {
-	return encodeUint64(blockNumber)
-}
-
-func decodeStateDeltaKey(dbkey []byte) uint64 {
-	return decodeToUint64(dbkey)
-}
-
-func encodeUint64(number uint64) []byte {
-	bytes := make([]byte, 8)
-	binary.BigEndian.PutUint64(bytes, number)
-	return bytes
-}
-
-func decodeToUint64(bytes []byte) uint64 {
-	return binary.BigEndian.Uint64(bytes)
 }

@@ -24,10 +24,11 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/core/ledger/testutil"
+	"github.com/hyperledger/fabric/core/ledger/statemgmt/state_comm"
 )
 
 // AssertIteratorContains - tests wether the iterator (itr) contains expected results (provided in map)
-func AssertIteratorContains(t *testing.T, itr RangeScanIterator, expected map[string][]byte) {
+func AssertIteratorContains(t *testing.T, itr state_comm.RangeScanIterator, expected map[string][]byte) {
 	count := 0
 	actual := make(map[string][]byte)
 	for itr.Next() {

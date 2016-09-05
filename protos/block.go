@@ -88,6 +88,12 @@ func (block *Block) GetStateHash() []byte {
 	return block.StateHash
 }
 
+// GetTxSetStateHash returns the txSetStateHash stored in this block. The txSetStateHash
+// is the value returned by txSetState.GetHash() after running all transactions in the block.
+func (block *Block) GetTxSetStateHash() []byte {
+	return block.TxSetStateHash
+}
+
 // SetPreviousBlockHash sets the hash of the previous block. This will be
 // called by blockchain.AddBlock when then the block is added.
 func (block *Block) SetPreviousBlockHash(previousBlockHash []byte) {

@@ -18,8 +18,8 @@ package trie
 
 import (
 	"github.com/hyperledger/fabric/core/db"
-	"github.com/hyperledger/fabric/core/ledger/statemgmt"
 	"github.com/tecbot/gorocksdb"
+	"github.com/hyperledger/fabric/core/ledger/statemgmt/state_comm"
 )
 
 // StateSnapshotIterator implements the interface 'statemgmt.StateSnapshotIterator'
@@ -44,11 +44,11 @@ func (snapshotItr *StateSnapshotIterator) Next() bool {
 
 		// making a copy of key-value bytes because, underlying key bytes are reused by itr.
 		// no need to free slices as iterator frees memory when closed.
-		trieKeyBytes := statemgmt.Copy(snapshotItr.dbItr.Key().Data())
-		trieNodeBytes := statemgmt.Copy(snapshotItr.dbItr.Value().Data())
+		trieKeyBytes := state_comm.Copy(snapshotItr.dbItr.Key().Data())
+		trieNodeBytes := state_comm.Copy(snapshotItr.dbItr.Value().Data())
 		value := unmarshalTrieNodeValue(trieNodeBytes)
 		if value != nil {
-			snapshotItr.currentKey = trieKeyEncoderImpl.decodeTrieKeyBytes(statemgmt.Copy(trieKeyBytes))
+			snapshotItr.currentKey = trieKeyEncoderImpl.decodeTrieKeyBytes(state_comm.Copy(trieKeyBytes))
 			snapshotItr.currentValue = value
 			available = true
 			snapshotItr.dbItr.Next()

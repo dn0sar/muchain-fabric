@@ -18,8 +18,8 @@ package buckettree
 
 import (
 	"github.com/hyperledger/fabric/core/db"
-	"github.com/hyperledger/fabric/core/ledger/statemgmt"
 	"github.com/tecbot/gorocksdb"
+	"github.com/hyperledger/fabric/core/ledger/statemgmt/state_comm"
 )
 
 // RangeScanIterator implements the interface 'statemgmt.RangeScanIterator'
@@ -56,12 +56,12 @@ func (itr *RangeScanIterator) Next() bool {
 
 		// making a copy of key-value bytes because, underlying key bytes are reused by itr.
 		// no need to free slices as iterator frees memory when closed.
-		keyBytes := statemgmt.Copy(itr.dbItr.Key().Data())
-		valueBytes := statemgmt.Copy(itr.dbItr.Value().Data())
+		keyBytes := state_comm.Copy(itr.dbItr.Key().Data())
+		valueBytes := state_comm.Copy(itr.dbItr.Value().Data())
 
 		dataNode := unmarshalDataNodeFromBytes(keyBytes, valueBytes)
 		dataKey := dataNode.dataKey
-		chaincodeID, key := statemgmt.DecodeCompositeKey(dataNode.getCompositeKey())
+		chaincodeID, key := state_comm.DecodeCompositeKey(dataNode.getCompositeKey())
 		value := dataNode.value
 		logger.Debugf("Evaluating data-key = %s", dataKey)
 

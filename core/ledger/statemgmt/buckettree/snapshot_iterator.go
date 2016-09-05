@@ -18,8 +18,8 @@ package buckettree
 
 import (
 	"github.com/hyperledger/fabric/core/db"
-	"github.com/hyperledger/fabric/core/ledger/statemgmt"
 	"github.com/tecbot/gorocksdb"
+	"github.com/hyperledger/fabric/core/ledger/statemgmt/state_comm"
 )
 
 // StateSnapshotIterator implements the interface 'statemgmt.StateSnapshotIterator'
@@ -45,8 +45,8 @@ func (snapshotItr *StateSnapshotIterator) GetRawKeyValue() ([]byte, []byte) {
 
 	// making a copy of key-value bytes because, underlying key bytes are reused by itr.
 	// no need to free slices as iterator frees memory when closed.
-	keyBytes := statemgmt.Copy(snapshotItr.dbItr.Key().Data())
-	valueBytes := statemgmt.Copy(snapshotItr.dbItr.Value().Data())
+	keyBytes := state_comm.Copy(snapshotItr.dbItr.Key().Data())
+	valueBytes := state_comm.Copy(snapshotItr.dbItr.Value().Data())
 	dataNode := unmarshalDataNodeFromBytes(keyBytes, valueBytes)
 	return dataNode.getCompositeKey(), dataNode.getValue()
 }

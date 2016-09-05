@@ -25,7 +25,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/crypto"
-	"github.com/hyperledger/fabric/core/ledger/statemgmt"
+	"github.com/hyperledger/fabric/core/ledger/statemgmt/state_comm"
 	"github.com/hyperledger/fabric/core/util"
 	pb "github.com/hyperledger/fabric/protos"
 	"github.com/looplab/fsm"
@@ -60,7 +60,7 @@ type transactionContext struct {
 	responseNotifier      chan *pb.ChaincodeMessage
 
 	// tracks open iterators used for range queries
-	rangeQueryIteratorMap map[string]statemgmt.RangeScanIterator
+	rangeQueryIteratorMap map[string]state_comm.RangeScanIterator
 }
 
 type nextStateInfo struct {
@@ -123,7 +123,7 @@ func (handler *Handler) createTxContext(txid string, tx *pb.Transaction) (*trans
 		return nil, fmt.Errorf("txid:%s exists", txid)
 	}
 	txctx := &transactionContext{transactionSecContext: tx, responseNotifier: make(chan *pb.ChaincodeMessage, 1),
-		rangeQueryIteratorMap: make(map[string]statemgmt.RangeScanIterator)}
+		rangeQueryIteratorMap: make(map[string]state_comm.RangeScanIterator)}
 	handler.txCtxs[txid] = txctx
 	return txctx, nil
 }
@@ -143,13 +143,13 @@ func (handler *Handler) deleteTxContext(txid string) {
 }
 
 func (handler *Handler) putRangeQueryIterator(txContext *transactionContext, txid string,
-	rangeScanIterator statemgmt.RangeScanIterator) {
+	rangeScanIterator state_comm.RangeScanIterator) {
 	handler.Lock()
 	defer handler.Unlock()
 	txContext.rangeQueryIteratorMap[txid] = rangeScanIterator
 }
 
-func (handler *Handler) getRangeQueryIterator(txContext *transactionContext, txid string) statemgmt.RangeScanIterator {
+func (handler *Handler) getRangeQueryIterator(txContext *transactionContext, txid string) state_comm.RangeScanIterator {
 	handler.Lock()
 	defer handler.Unlock()
 	return txContext.rangeQueryIteratorMap[txid]

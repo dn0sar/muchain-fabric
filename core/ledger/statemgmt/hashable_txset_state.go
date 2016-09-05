@@ -2,6 +2,7 @@ package statemgmt
 
 import (
 	"github.com/tecbot/gorocksdb"
+	"github.com/hyperledger/fabric/core/ledger/statemgmt/state_comm"
 )
 
 // HashableTxSetState - Interface that is be implemented by state management
@@ -36,7 +37,7 @@ type HashableTxSetState interface {
 	// All the key-value of global state. A particular implementation may need to remove additional information
 	// that the implementation keeps for faster crypto-hash computation. For instance, filter a few of the
 	// key-values or remove some data from particular key-values.
-	GetStateSnapshotIterator(snapshot *gorocksdb.Snapshot) (StateSnapshotIterator, error)
+	GetStateSnapshotIterator(snapshot *gorocksdb.Snapshot) (state_comm.StateSnapshotIterator, error)
 
 	// PerfHintKeyChanged state implementation may be provided with some hints before (e.g., during tx execution)
 	// the StateDelta is prepared and passed in PrepareWorkingSet method.

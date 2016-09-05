@@ -14,27 +14,22 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package state
+package state_comm
 
 import (
-	"github.com/hyperledger/fabric/core/ledger/statemgmt"
 	"github.com/tecbot/gorocksdb"
 )
 
 // StateSnapshot encapsulates StateSnapshotIterator given by actual state implementation and the db snapshot
 type StateSnapshot struct {
 	blockNumber  uint64
-	stateImplItr statemgmt.StateSnapshotIterator
+	stateImplItr StateSnapshotIterator
 	dbSnapshot   *gorocksdb.Snapshot
 }
 
 // newStateSnapshot creates a new snapshot of the global state for the current block.
-func newStateSnapshot(blockNumber uint64, dbSnapshot *gorocksdb.Snapshot) (*StateSnapshot, error) {
-	itr, err := stateImpl.GetStateSnapshotIterator(dbSnapshot)
-	if err != nil {
-		return nil, err
-	}
-	snapshot := &StateSnapshot{blockNumber, itr, dbSnapshot}
+func NewStateSnapshot(blockNumber uint64, stateItr StateSnapshotIterator, dbSnapshot *gorocksdb.Snapshot) (*StateSnapshot, error) {
+	snapshot := &StateSnapshot{blockNumber, stateItr, dbSnapshot}
 	return snapshot, nil
 }
 

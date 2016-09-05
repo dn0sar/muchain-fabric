@@ -18,20 +18,21 @@ package state
 
 import (
 	"github.com/hyperledger/fabric/core/ledger/statemgmt"
+	"github.com/hyperledger/fabric/core/ledger/statemgmt/state_comm"
 )
 
 // CompositeRangeScanIterator - an implementation of interface 'statemgmt.RangeScanIterator'
 // This provides a wrapper on top of more than one underlying iterators
 type CompositeRangeScanIterator struct {
-	itrs             []statemgmt.RangeScanIterator
+	itrs             []state_comm.RangeScanIterator
 	currentItrNumber int
 }
 
 func newCompositeRangeScanIterator(
 	txDeltaItr *statemgmt.StateDeltaIterator,
 	batchDeltaItr *statemgmt.StateDeltaIterator,
-	implItr statemgmt.RangeScanIterator) statemgmt.RangeScanIterator {
-	itrs := make([]statemgmt.RangeScanIterator, 3)
+	implItr state_comm.RangeScanIterator) state_comm.RangeScanIterator {
+	itrs := make([]state_comm.RangeScanIterator, 3)
 	itrs[0] = txDeltaItr
 	itrs[1] = batchDeltaItr
 	itrs[2] = implItr
