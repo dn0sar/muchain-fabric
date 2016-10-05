@@ -32,8 +32,8 @@ const defaultTxSetStateImpl = rawType
 // This is not thread safe
 type TxSetState struct {
 	txSetStateImpl        statemgmt.HashableTxSetState
-	txSetStateDelta       *statemgmt.TxStateDelta
-	currentTxStateDelta   *statemgmt.TxStateDelta
+	txSetStateDelta       *statemgmt.TxSetStateDelta
+	currentTxStateDelta   *statemgmt.TxSetStateDelta
 	currentTxID           string
 	txStateDeltaHash      map[string][]byte
 	updateStateImpl       bool
@@ -99,15 +99,15 @@ func (state *TxSetState) txInProgress() bool {
 
 // Get returns state for txID. If committed is false, this first looks in memory and if missing,
 // pulls from db. If committed is true, this pulls from the db only.
-func (state *TxSetState) Get(txID string, committed bool) ([]byte, error) {
+func (state *TxSetState) Get(txID string, committed bool) (*TxSetStateValue, error) {
 	if !committed {
 		valueHolder := state.currentTxStateDelta.Get(txID)
 		if valueHolder != nil {
-			return valueHolder.GetValue(), nil
+			return UnmarshallTxSetStateValue(valueHolder.GetValue())
 		}
 		valueHolder = state.txSetStateDelta.Get(txID)
 		if valueHolder != nil {
-			return valueHolder.GetValue(), nil
+			return UnmarshallTxSetStateValue(valueHolder.GetValue())
 		}
 	}
 	return state.txSetStateImpl.Get(txID)
@@ -208,7 +208,7 @@ func (state *TxSetState) ClearInMemoryChanges(changesPersisted bool) {
 }
 
 // getStateDelta get changes in state after most recent call to method clearInMemoryChanges
-func (state *TxSetState) getStateDelta() *statemgmt.TxStateDelta {
+func (state *TxSetState) getStateDelta() *statemgmt.TxSetStateDelta {
 	return state.txSetStateDelta
 }
 
@@ -223,7 +223,7 @@ func (state *TxSetState) GetSnapshot(blockNumber uint64, dbSnapshot *gorocksdb.S
 }
 
 // FetchStateDeltaFromDB fetches the StateDelta corresponding to given blockNumber
-func (state *TxSetState) FetchStateDeltaFromDB(blockNumber uint64) (*statemgmt.TxStateDelta, error) {
+func (state *TxSetState) FetchStateDeltaFromDB(blockNumber uint64) (*statemgmt.TxSetStateDelta, error) {
 	stateDeltaBytes, err := db.GetDBHandle().GetFromTxSetStateDeltaCF(state_comm.EncodeStateDeltaKey(blockNumber))
 	if err != nil {
 		return nil, err

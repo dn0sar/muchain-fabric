@@ -7,84 +7,85 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/util"
+	"github.com/hyperledger/fabric/core/ledger/statemgmt/txset_state"
 )
 
 // StateDelta holds the changes to existing state. This struct is used for holding the uncommitted changes during execution of a tx-batch
 // Also, to be used for transferring the state to another peer in chunks
-type TxStateDelta struct {
-	TxSetDeltas map[string]*TxSetDelta
+type TxSetStateDelta struct {
+	Deltas        map[string]*TxSetUpdatedValue
 	// RollBackwards allows one to contol whether this delta will roll the state
 	// forwards or backwards.
 	RollBackwards bool
 }
 
 // NewStateDelta constructs an empty StateDelta struct
-func NewTxSetStateDelta() *TxStateDelta {
-	return &TxStateDelta{make(map[string]*TxSetDelta), false}
+func NewTxSetStateDelta() *TxSetStateDelta {
+	return &TxSetStateDelta{make(map[string]*TxSetUpdatedValue), false}
 }
 
 // Get get the state from delta if exists
-func (txStateDelta *TxStateDelta) Get(txSetID string) *UpdatedValue {
+func (txStateDelta *TxSetStateDelta) Get(txSetID string) *TxSetUpdatedValue {
 	// TODO Cache?
-	txSetDeltas, ok := txStateDelta.TxSetDeltas[txSetID]
+	txSetUPValue, ok := txStateDelta.Deltas[txSetID]
 	if ok {
-		return txSetDeltas.get()
+		return txSetUPValue
 	}
 	return nil
 }
 
-// Set sets state value for a key
-func (txStateDelta *TxStateDelta) Set(txSetID string, value []byte) {
-	txSetDelta := txStateDelta.getOrCreateTxSetDelta(txSetID)
-	txSetDelta.set(value)
+// Set sets state value for a txSet
+func (txStateDelta *TxSetStateDelta) Set(txSetID string, value *txset_state.TxSetStateValue) {
+	prev := txStateDelta.getOrCreateTxSetUpValue(txSetID).GetPreviousValue()
+	txStateDelta.Deltas[txSetID] = &TxSetUpdatedValue{value, prev}
 	return
 }
 
-// Delete deletes a key from the state
-func (txStateDelta *TxStateDelta) Delete(txSetID string, previousValue []byte) {
-	txSetDelta := txStateDelta.getOrCreateTxSetDelta(txSetID)
-	txSetDelta.remove(previousValue)
+// Delete deletes a txSet from the state
+func (txStateDelta *TxSetStateDelta) Delete(txSetID string, previousValue *txset_state.TxSetStateValue) {
+	prev := txStateDelta.getOrCreateTxSetUpValue(txSetID).GetPreviousValue()
+	txStateDelta.Deltas[txSetID] = &TxSetUpdatedValue{nil, prev}
 	return
 }
 
 // IsUpdatedValueSet returns true if a update value is already set for
-// the given chaincode ID and key.
-func (txStateDelta *TxStateDelta) IsUpdatedValueSet(txSetID string) bool {
-	_, ok := txStateDelta.TxSetDeltas[txSetID]
+// the given txSetID.
+func (txStateDelta *TxSetStateDelta) IsUpdatedValueSet(txSetID string) bool {
+	_, ok := txStateDelta.Deltas[txSetID]
 	return ok
 }
 
 // ApplyChanges merges another delta - if a key is present in both, the value of the existing key is overwritten
-func (txStateDelta *TxStateDelta) ApplyChanges(anotherTxStateDelta *TxStateDelta) {
-	for txSetID, txSetDelta := range anotherTxStateDelta.TxSetDeltas {
-		existingTxStateDelta, existingTxSetState := txStateDelta.TxSetDeltas[txSetID]
-		var previousValue []byte
-		if existingTxSetState {
-			// The existing state delta already has an updated value for this txSetID.
-			previousValue = existingTxStateDelta.UpdatedKV.PreviousValue
+func (txStateDelta *TxSetStateDelta) ApplyChanges(anotherTxStateDelta *TxSetStateDelta) {
+	for txSetID, txSetUPValue := range anotherTxStateDelta.Deltas {
+		existingTxStateDelta, exists := txStateDelta.Deltas[txSetID]
+		var previousValue *TxSetUpdatedValue
+		if exists {
+			// The current state delta already has an updated value for this txSetID.
+			previousValue = existingTxStateDelta.GetPreviousValue()
 		} else {
-			// Use the previous value set in the new state delta
-			previousValue = txSetDelta.UpdatedKV.PreviousValue
+			// Use the previous value set in the other state delta
+			previousValue = txSetUPValue.GetPreviousValue()
 		}
-		if txSetDelta.UpdatedKV.IsDeleted() {
+		if txSetUPValue.IsDeleted() {
 			txStateDelta.Delete(txSetID, previousValue)
 		} else {
-			txStateDelta.Set(txSetID, txSetDelta.UpdatedKV.Value)
+			txStateDelta.Set(txSetID, txSetUPValue.GetValue())
 		}
 	}
 }
 
 // IsEmpty checks whether StateDelta contains any data
-func (txSetStateDelta *TxStateDelta) IsEmpty() bool {
-	return len(txSetStateDelta.TxSetDeltas) == 0
+func (txSetStateDelta *TxSetStateDelta) IsEmpty() bool {
+	return len(txSetStateDelta.Deltas) == 0
 }
 
 // GetUpdatedTxSetIDs return the txSetIDs that are present in the delta
 // If sorted is true, the method return tx Set IDs in lexicographical sorted order
-func (txStateDelta *TxStateDelta) GetUpdatedTxSetIDs(sorted bool) []string {
-	updatedTxSetIds := make([]string, len(txStateDelta.TxSetDeltas))
+func (txStateDelta *TxSetStateDelta) GetUpdatedTxSetIDs(sorted bool) []string {
+	updatedTxSetIds := make([]string, len(txStateDelta.Deltas))
 	i := 0
-	for k := range txStateDelta.TxSetDeltas {
+	for k := range txStateDelta.Deltas {
 		updatedTxSetIds[i] = k
 		i++
 	}
@@ -95,26 +96,26 @@ func (txStateDelta *TxStateDelta) GetUpdatedTxSetIDs(sorted bool) []string {
 }
 
 // GetUpdates returns changes associated with given txSetID
-func (txStateDelta *TxStateDelta) GetUpdates(txSetID string) *UpdatedValue {
-	txSetDelta := txStateDelta.TxSetDeltas[txSetID]
-	if txSetDelta == nil {
+func (txStateDelta *TxSetStateDelta) GetUpdates(txSetID string) *TxSetUpdatedValue {
+	txSetDelta, exists := txStateDelta.Deltas[txSetID]
+	if !exists {
 		return nil
-	}
-	return txSetDelta.UpdatedKV
-}
-
-func (txStateDelta *TxStateDelta) getOrCreateTxSetDelta(txSetID string) *TxSetDelta {
-	txSetDelta, ok := txStateDelta.TxSetDeltas[txSetID]
-	if !ok {
-		txSetDelta = newTxSetDelta(txSetID)
-		txStateDelta.TxSetDeltas[txSetID] = txSetDelta
 	}
 	return txSetDelta
 }
 
+func (txStateDelta *TxSetStateDelta) getOrCreateTxSetUpValue(txSetID string) *TxSetUpdatedValue {
+	txSetValue, ok := txStateDelta.Deltas[txSetID]
+	if !ok {
+		txSetValue = &TxSetUpdatedValue{nil, nil}
+		txStateDelta.Deltas[txSetID] = txSetValue
+	}
+	return txSetValue
+}
+
 // ComputeCryptoHash computes crypto-hash for the data held
 // returns nil if no data is present
-func (txStateDelta *TxStateDelta) ComputeCryptoHash() []byte {
+func (txStateDelta *TxSetStateDelta) ComputeCryptoHash() []byte {
 	if txStateDelta.IsEmpty() {
 		return nil
 	}
@@ -122,10 +123,11 @@ func (txStateDelta *TxStateDelta) ComputeCryptoHash() []byte {
 	sortedTxSetIds := txStateDelta.GetUpdatedTxSetIDs(true)
 	for _, txSetID := range sortedTxSetIds {
 		buffer.WriteString(txSetID)
-		txSetDelta := txStateDelta.TxSetDeltas[txSetID]
-		updatedValue := txSetDelta.get()
+		updatedValue := txStateDelta.Deltas[txSetID]
 		if !updatedValue.IsDeleted() {
-			buffer.Write(updatedValue.Value)
+			marshaledValue, err := updatedValue.GetValue().Bytes()
+			panic(fmt.Errorf("Unable to Marshal the TxSetValue for txSetID: %s, %s", txSetID, err))
+			buffer.Write(marshaledValue)
 		}
 	}
 	hashingContent := buffer.Bytes()
@@ -133,33 +135,25 @@ func (txStateDelta *TxStateDelta) ComputeCryptoHash() []byte {
 	return util.ComputeCryptoHash(hashingContent)
 }
 
-//ChaincodeStateDelta maintains state for a chaincode
-type TxSetDelta struct {
-	TxSetID string
-	UpdatedKV  *UpdatedValue
+// UpdatedValue holds the value for a key
+type TxSetUpdatedValue struct {
+	Value         *txset_state.TxSetStateValue
+	PreviousValue *txset_state.TxSetStateValue
 }
 
-func newTxSetDelta(txSetID string) *TxSetDelta {
-	return &TxSetDelta{txSetID, nil}
+// IsDeleted checks whether the key was deleted
+func (updatedValue *TxSetUpdatedValue) IsDeleted() bool {
+	return updatedValue.Value == nil
 }
 
-func (txSetDelta *TxSetDelta) get() *UpdatedValue {
-	return txSetDelta.UpdatedKV
+// GetValue returns the value
+func (updatedValue *TxSetUpdatedValue) GetValue() *txset_state.TxSetStateValue {
+	return updatedValue.Value
 }
 
-func (txSetDelta *TxSetDelta) set(updatedValue []byte) {
-	txSetDelta.UpdatedKV.Value = updatedValue
-}
-
-func (txSetDelta *TxSetDelta) remove(previousValue []byte) {
-	txSetDelta.UpdatedKV.Value = nil
-	if txSetDelta.UpdatedKV.PreviousValue == nil {
-		txSetDelta.UpdatedKV.PreviousValue = previousValue
-	}
-}
-
-func (txSetDelta *TxSetDelta) hasChanges() bool {
-	return txSetDelta.UpdatedKV != nil
+// GetPreviousValue returns the previous value
+func (updatedValue *TxSetUpdatedValue) GetPreviousValue() *txset_state.TxSetStateValue {
+	return updatedValue.PreviousValue
 }
 
 // marshalling / Unmarshalling code
@@ -168,14 +162,14 @@ func (txSetDelta *TxSetDelta) hasChanges() bool {
 // completely get rid of custom marshalling / Unmarshalling of a state delta
 
 // Marshal serializes the StateDelta
-func (txStateDelta *TxStateDelta) Marshal() (b []byte) {
+func (txStateDelta *TxSetStateDelta) Marshal() (b []byte) {
 	buffer := proto.NewBuffer([]byte{})
-	err := buffer.EncodeVarint(uint64(len(txStateDelta.TxSetDeltas)))
+	err := buffer.EncodeVarint(uint64(len(txStateDelta.Deltas)))
 	if err != nil {
 		// in protobuf code the error return is always nil
 		panic(fmt.Errorf("This error should not occur: %s", err))
 	}
-	for txSetID, txSetDelta := range txStateDelta.TxSetDeltas {
+	for txSetID, txSetDelta := range txStateDelta.Deltas {
 		buffer.EncodeStringBytes(txSetID)
 		txSetDelta.marshal(buffer)
 	}
@@ -183,13 +177,13 @@ func (txStateDelta *TxStateDelta) Marshal() (b []byte) {
 	return
 }
 
-func (txSetDelta *TxSetDelta) marshal(buffer *proto.Buffer) {
-	txSetDelta.marshalValueWithMarker(buffer, txSetDelta.UpdatedKV.Value)
-	txSetDelta.marshalValueWithMarker(buffer, txSetDelta.UpdatedKV.PreviousValue)
+func (txSetDelta *TxSetUpdatedValue) marshal(buffer *proto.Buffer) {
+	txSetDelta.marshalValueWithMarker(buffer, txSetDelta.GetValue())
+	txSetDelta.marshalValueWithMarker(buffer, txSetDelta.GetPreviousValue())
 	return
 }
 
-func (txSetDelta *TxSetDelta) marshalValueWithMarker(buffer *proto.Buffer, value []byte) {
+func (txSetDelta *TxSetUpdatedValue) marshalValueWithMarker(buffer *proto.Buffer, value *txset_state.TxSetStateValue) {
 	if value == nil {
 		// Just add a marker that the value is nil
 		err := buffer.EncodeVarint(uint64(0))
@@ -204,64 +198,67 @@ func (txSetDelta *TxSetDelta) marshalValueWithMarker(buffer *proto.Buffer, value
 	}
 	// If the value happen to be an empty byte array, it would appear as a nil during
 	// deserialization - see method 'unmarshalValueWithMarker'
-	err = buffer.EncodeRawBytes(value)
+	marshaledValue, err := value.Bytes()
+	if err != nil {
+		panic(fmt.Errorf("Unable to Marshal the TxSetValue %s", err))
+	}
+	err = buffer.EncodeRawBytes(marshaledValue)
 	if err != nil {
 		panic(fmt.Errorf("This error should not occur: %s", err))
 	}
 }
 
 // Unmarshal deserializes StateDelta
-func (txStateDelta *TxStateDelta) Unmarshal(bytes []byte) error {
+func (txStateDelta *TxSetStateDelta) Unmarshal(bytes []byte) error {
 	buffer := proto.NewBuffer(bytes)
 	size, err := buffer.DecodeVarint()
 	if err != nil {
 		return fmt.Errorf("Error unmarashaling size: %s", err)
 	}
-	txStateDelta.TxSetDeltas = make(map[string]*TxSetDelta, size)
+	txStateDelta.Deltas = make(map[string]*TxSetUpdatedValue, size)
 	for i := uint64(0); i < size; i++ {
 		txSetID, err := buffer.DecodeStringBytes()
 		if err != nil {
 			return fmt.Errorf("Error unmarshaling txSetID : %s", err)
 		}
-		txSetDelta := newTxSetDelta(txSetID)
+		txSetDelta := &TxSetUpdatedValue{}
 		err = txSetDelta.unmarshal(buffer)
 		if err != nil {
 			return fmt.Errorf("Error unmarshalling txSetDelta : %s", err)
 		}
-		txStateDelta.TxSetDeltas[txSetID] = txSetDelta
+		txStateDelta.Deltas[txSetID] = txSetDelta
 	}
 
 	return nil
 }
 
-func (txSetDelta *TxSetDelta) unmarshal(buffer *proto.Buffer) error {
-	value, err := txSetDelta.unmarshalValueWithMarker(buffer)
+func (txSetStateValue *TxSetUpdatedValue) unmarshal(buffer *proto.Buffer) error {
+	value, err := txSetStateValue.unmarshalValueWithMarker(buffer)
 	if err != nil {
 		return fmt.Errorf("Error unmarshaling tx set value (delta): %s", err)
 	}
-	previousValue, err := txSetDelta.unmarshalValueWithMarker(buffer)
+	txSetStateValue.Value = value
+	previousValue, err := txSetStateValue.unmarshalValueWithMarker(buffer)
 	if err != nil {
 		return fmt.Errorf("Error unmarshaling tx set previous value (delta): %s", err)
 	}
-	txSetDelta.UpdatedKV = &UpdatedValue{value, previousValue}
+	txSetStateValue.PreviousValue = previousValue
 	return nil
 }
 
-func (txSetDelta *TxSetDelta) unmarshalValueWithMarker(buffer *proto.Buffer) ([]byte, error) {
+func (txSetDelta *TxSetUpdatedValue) unmarshalValueWithMarker(buffer *proto.Buffer) (*txset_state.TxSetStateValue, error) {
 	valueMarker, err := buffer.DecodeVarint()
 	if err != nil {
 		return nil, fmt.Errorf("Error unmarshaling state delta : %s", err)
 	}
-	if valueMarker == 0 {
-		return nil, nil
+	if valueMarker == 1 {
+		value, err := buffer.DecodeRawBytes(false)
+		if err != nil {
+			return nil, fmt.Errorf("Error unmarhsaling state delta : %s", err)
+		}
+		if value != nil {
+			return txset_state.UnmarshallTxSetStateValue(value)
+		}
 	}
-	value, err := buffer.DecodeRawBytes(false)
-	if err != nil {
-		return nil, fmt.Errorf("Error unmarhsaling state delta : %s", err)
-	}
-	// protobuff makes an empty []byte into a nil. So, assigning an empty byte array explicitly
-	if value == nil {
-		value = []byte{}
-	}
-	return value, nil
+	return nil, nil
 }

@@ -10,7 +10,7 @@ import (
 // StateImpl implements raw state management. This implementation does not support computation of crypto-hash of the state.
 // It simply stores the compositeKey and value in the db
 type TxSetStateImpl struct {
-	txSetStateDelta *statemgmt.TxStateDelta
+	txSetStateDelta *statemgmt.TxSetStateDelta
 }
 
 // NewStateImpl constructs new instance of raw state
@@ -31,7 +31,7 @@ func (impl *TxSetStateImpl) Get(txSetID string) ([]byte, error) {
 }
 
 // PrepareWorkingSet - method implementation for interface 'statemgmt.HashableTxSetState'
-func (impl *TxSetStateImpl) PrepareWorkingSet(stateDelta *statemgmt.TxStateDelta) error {
+func (impl *TxSetStateImpl) PrepareWorkingSet(stateDelta *statemgmt.TxSetStateDelta) error {
 	impl.txSetStateDelta = stateDelta
 	return nil
 }

@@ -17,7 +17,7 @@ type HashableTxSetState interface {
 	Get(txSetID string) ([]byte, error)
 
 	// PrepareWorkingSet passes a stateDelta that captures the changes that needs to be applied to the state
-	PrepareWorkingSet(txStateDelta *TxStateDelta) error
+	PrepareWorkingSet(txStateDelta *TxSetStateDelta) error
 
 	// ComputeCryptoHash state implementation to compute crypto-hash of state
 	// assuming the stateDelta (passed in PrepareWorkingSet method) is to be applied
