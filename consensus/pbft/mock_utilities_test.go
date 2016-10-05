@@ -23,7 +23,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/consensus/util/events"
-	"github.com/hyperledger/fabric/core/ledger/statemgmt"
+	"github.com/hyperledger/fabric/core/ledger/state"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
 	pb "github.com/hyperledger/fabric/protos"
@@ -174,7 +174,7 @@ type omniProto struct {
 	HashBlockImpl              func(block *pb.Block) ([]byte, error)
 	VerifyBlockchainImpl       func(start, finish uint64) (uint64, error)
 	PutBlockImpl               func(blockNumber uint64, block *pb.Block) error
-	ApplyStateDeltaImpl        func(id interface{}, delta *statemgmt.StateDelta) error
+	ApplyStateDeltaImpl        func(id interface{}, delta *state.StateDelta) error
 	CommitStateDeltaImpl       func(id interface{}) error
 	RollbackStateDeltaImpl     func(id interface{}) error
 	EmptyStateImpl             func() error
@@ -325,7 +325,7 @@ func (op *omniProto) PutBlock(blockNumber uint64, block *pb.Block) error {
 
 	panic("Unimplemented")
 }
-func (op *omniProto) ApplyStateDelta(id interface{}, delta *statemgmt.StateDelta) error {
+func (op *omniProto) ApplyStateDelta(id interface{}, delta *state.StateDelta) error {
 	if nil != op.ApplyStateDeltaImpl {
 		return op.ApplyStateDeltaImpl(id, delta)
 	}

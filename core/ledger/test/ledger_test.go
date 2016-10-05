@@ -23,7 +23,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/statemgmt"
+	"github.com/hyperledger/fabric/core/ledger/state"
 	"github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/protos"
 )
@@ -417,10 +417,10 @@ var _ = Describe("Ledger", func() {
 			Expect(bytes.Compare(hash1, hash2)).ToNot(Equal(0))
 			// put key/values from the snapshot back in the DB
 			//var keys, values [][]byte
-			delta := statemgmt.NewStateDelta()
+			delta := state.NewStateDelta()
 			for i := 0; snapshot.Next(); i++ {
 				k, v := snapshot.GetRawKeyValue()
-				cID, keyID := statemgmt.DecodeCompositeKey(k)
+				cID, keyID := state.DecodeCompositeKey(k)
 				delta.Set(cID, keyID, v, nil)
 			}
 			ledgerPtr.ApplyStateDelta(1, delta)
@@ -709,7 +709,7 @@ var _ = Describe("Ledger", func() {
 
 	Describe("Ledger InvalidOrderDelta", func() {
 		ledgerPtr := InitSpec()
-		var delta *statemgmt.StateDelta
+		var delta *state.StateDelta
 
 		// Block 0
 		It("creates, populates and finishes a batch", func() {
@@ -878,7 +878,7 @@ var _ = Describe("Ledger", func() {
 
 	Describe("Ledger RangeScanIterator", func() {
 		ledgerPtr := InitSpec()
-		AssertIteratorContains := func(itr statemgmt.RangeScanIterator, expected map[string][]byte) {
+		AssertIteratorContains := func(itr state.RangeScanIterator, expected map[string][]byte) {
 			count := 0
 			actual := make(map[string][]byte)
 			for itr.Next() {

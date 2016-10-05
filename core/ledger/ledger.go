@@ -24,9 +24,9 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/db"
-	"github.com/hyperledger/fabric/core/ledger/statemgmt"
-	"github.com/hyperledger/fabric/core/ledger/statemgmt/state"
-	"github.com/hyperledger/fabric/core/ledger/statemgmt/state_comm"
+	"github.com/hyperledger/fabric/core/ledger/state/chaincode_state"
+	"github.com/hyperledger/fabric/core/ledger/state/chaincode_state/statemgmt"
+	"github.com/hyperledger/fabric/core/ledger/state"
 	"github.com/hyperledger/fabric/events/producer"
 	"github.com/op/go-logging"
 	"github.com/tecbot/gorocksdb"
@@ -81,7 +81,7 @@ var (
 // Ledger - the struct for openchain ledger
 type Ledger struct {
 	blockchain *blockchain
-	state      *state.State
+	state      *chaincode_state.State
 	currentID  interface{}
 }
 
@@ -104,7 +104,7 @@ func GetNewLedger() (*Ledger, error) {
 		return nil, err
 	}
 
-	state := state.NewState()
+	state := chaincode_state.NewState()
 	return &Ledger{blockchain, state, nil}, nil
 }
 

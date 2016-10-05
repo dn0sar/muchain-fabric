@@ -20,7 +20,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hyperledger/fabric/core/ledger/statemgmt"
+	"github.com/hyperledger/fabric/core/ledger/state"
 	"github.com/hyperledger/fabric/core/ledger/testutil"
 	"github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/protos"
@@ -193,7 +193,7 @@ func (ledgerTestWrapper *ledgerTestWrapper) PutRawBlock(block *protos.Block, blo
 	testutil.AssertNoError(ledgerTestWrapper.tb, err, "error while verifying chain")
 }
 
-func (ledgerTestWrapper *ledgerTestWrapper) GetStateDelta(blockNumber uint64) *statemgmt.StateDelta {
+func (ledgerTestWrapper *ledgerTestWrapper) GetStateDelta(blockNumber uint64) *state.StateDelta {
 	delta, err := ledgerTestWrapper.ledger.GetStateDelta(blockNumber)
 	testutil.AssertNoError(ledgerTestWrapper.tb, err, "error while getting state delta from ledger")
 	return delta
@@ -205,7 +205,7 @@ func (ledgerTestWrapper *ledgerTestWrapper) GetTempStateHash() []byte {
 	return hash
 }
 
-func (ledgerTestWrapper *ledgerTestWrapper) ApplyStateDelta(id interface{}, delta *statemgmt.StateDelta) {
+func (ledgerTestWrapper *ledgerTestWrapper) ApplyStateDelta(id interface{}, delta *state.StateDelta) {
 	err := ledgerTestWrapper.ledger.ApplyStateDelta(id, delta)
 	testutil.AssertNoError(ledgerTestWrapper.tb, err, "error applying state delta")
 }

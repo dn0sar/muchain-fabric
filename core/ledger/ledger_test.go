@@ -21,7 +21,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/hyperledger/fabric/core/ledger/statemgmt"
+	"github.com/hyperledger/fabric/core/ledger/state"
 	"github.com/hyperledger/fabric/core/ledger/testutil"
 	"github.com/hyperledger/fabric/protos"
 )
@@ -282,10 +282,10 @@ func TestLedgerSetRawState(t *testing.T) {
 
 	// put key/values from the snapshot back in the DB
 	//var keys, values [][]byte
-	delta := statemgmt.NewStateDelta()
+	delta := state.NewStateDelta()
 	for i := 0; snapshot.Next(); i++ {
 		k, v := snapshot.GetRawKeyValue()
-		cID, keyID := statemgmt.DecodeCompositeKey(k)
+		cID, keyID := state.DecodeCompositeKey(k)
 		delta.Set(cID, keyID, v, nil)
 	}
 
@@ -713,11 +713,11 @@ func TestRangeScanIterator(t *testing.T) {
 	///////// Test with an empty Ledger //////////
 	//////////////////////////////////////////////
 	itr, _ := ledger.GetStateRangeScanIterator("chaincodeID2", "key2", "key5", false)
-	statemgmt.AssertIteratorContains(t, itr, map[string][]byte{})
+	state.AssertIteratorContains(t, itr, map[string][]byte{})
 	itr.Close()
 
 	itr, _ = ledger.GetStateRangeScanIterator("chaincodeID2", "key2", "key5", true)
-	statemgmt.AssertIteratorContains(t, itr, map[string][]byte{})
+	state.AssertIteratorContains(t, itr, map[string][]byte{})
 	itr.Close()
 
 	// Commit initial data to ledger
@@ -757,7 +757,7 @@ func TestRangeScanIterator(t *testing.T) {
 	//////////////////////////////////////////////////////////
 	// test range scan for chaincodeID4
 	itr, _ = ledger.GetStateRangeScanIterator("chaincodeID4", "key2", "key5", true)
-	statemgmt.AssertIteratorContains(t, itr,
+	state.AssertIteratorContains(t, itr,
 		map[string][]byte{
 			"key2": []byte("value2"),
 			"key3": []byte("value3"),
@@ -768,7 +768,7 @@ func TestRangeScanIterator(t *testing.T) {
 
 	// test with empty start-key
 	itr, _ = ledger.GetStateRangeScanIterator("chaincodeID4", "", "key5", true)
-	statemgmt.AssertIteratorContains(t, itr,
+	state.AssertIteratorContains(t, itr,
 		map[string][]byte{
 			"key1": []byte("value1"),
 			"key2": []byte("value2"),
@@ -780,7 +780,7 @@ func TestRangeScanIterator(t *testing.T) {
 
 	// test with empty end-key
 	itr, _ = ledger.GetStateRangeScanIterator("chaincodeID4", "", "", true)
-	statemgmt.AssertIteratorContains(t, itr,
+	state.AssertIteratorContains(t, itr,
 		map[string][]byte{
 			"key1": []byte("value1"),
 			"key2": []byte("value2"),
@@ -796,7 +796,7 @@ func TestRangeScanIterator(t *testing.T) {
 	//////////////////////////////////////////////////////////
 	// test range scan for chaincodeID4
 	itr, _ = ledger.GetStateRangeScanIterator("chaincodeID4", "key2", "key5", false)
-	statemgmt.AssertIteratorContains(t, itr,
+	state.AssertIteratorContains(t, itr,
 		map[string][]byte{
 			"key2": []byte("value2_new"),
 			"key4": []byte("value4"),
@@ -806,7 +806,7 @@ func TestRangeScanIterator(t *testing.T) {
 
 	// test with empty start-key
 	itr, _ = ledger.GetStateRangeScanIterator("chaincodeID4", "", "key5", false)
-	statemgmt.AssertIteratorContains(t, itr,
+	state.AssertIteratorContains(t, itr,
 		map[string][]byte{
 			"key1": []byte("value1"),
 			"key2": []byte("value2_new"),
@@ -817,7 +817,7 @@ func TestRangeScanIterator(t *testing.T) {
 
 	// test with empty end-key
 	itr, _ = ledger.GetStateRangeScanIterator("chaincodeID4", "", "", false)
-	statemgmt.AssertIteratorContains(t, itr,
+	state.AssertIteratorContains(t, itr,
 		map[string][]byte{
 			"key1": []byte("value1"),
 			"key2": []byte("value2_new"),

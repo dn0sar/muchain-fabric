@@ -25,7 +25,7 @@ import (
 
 	_ "github.com/hyperledger/fabric/core" // Logging format init
 
-	"github.com/hyperledger/fabric/core/ledger/statemgmt"
+	state "github.com/hyperledger/fabric/core/ledger/state/chaincode_state/statemgmt"
 	"github.com/hyperledger/fabric/core/peer"
 	pb "github.com/hyperledger/fabric/protos"
 	"github.com/op/go-logging"
@@ -691,7 +691,7 @@ func (sts *coordinatorImpl) playStateUpToBlockNumber(toBlockNumber uint64, peerI
 					}
 
 					for _, delta := range deltaMessage.Deltas {
-						umDelta := &statemgmt.StateDelta{}
+						umDelta := &state.StateDelta{}
 						if err := umDelta.Unmarshal(delta); nil != err {
 							return fmt.Errorf("Received a corrupt state delta from %v : %s", peerID, err)
 						}
@@ -792,7 +792,7 @@ func (sts *coordinatorImpl) syncStateSnapshot(minBlockNumber uint64, peerIDs []*
 					logger.Debugf("Received final piece of state snapshot from %v after %d deltas, now has hash %x", peerID, counter, stateHash)
 					return nil
 				}
-				umDelta := &statemgmt.StateDelta{}
+				umDelta := &state.StateDelta{}
 				if err := umDelta.Unmarshal(piece.Delta); nil != err {
 					return fmt.Errorf("received a corrupt delta from %v after %d deltas : %s", peerID, counter, err)
 				}

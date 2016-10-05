@@ -24,7 +24,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/hyperledger/fabric/core/ledger/statemgmt"
+	"github.com/hyperledger/fabric/core/ledger/state"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/protos"
 )
@@ -484,7 +484,7 @@ func (mock *MockLedger) PutBlock(blockNumber uint64, block *protos.Block) error 
 	return nil
 }
 
-func (mock *MockLedger) ApplyStateDelta(id interface{}, delta *statemgmt.StateDelta) error {
+func (mock *MockLedger) ApplyStateDelta(id interface{}, delta *state.StateDelta) error {
 	mock.mutex.Lock()
 	defer func() {
 		mock.mutex.Unlock()
@@ -657,18 +657,18 @@ func SimpleGetTransactions(blockNumber uint64) []*protos.Transaction {
 	}}
 }
 
-func SimpleBytesToStateDelta(bDelta []byte) *statemgmt.StateDelta {
-	mDelta := &statemgmt.StateDelta{
+func SimpleBytesToStateDelta(bDelta []byte) *state.StateDelta {
+	mDelta := &state.StateDelta{
 		RollBackwards: false,
 	}
-	mDelta.ChaincodeStateDeltas = make(map[string]*statemgmt.ChaincodeStateDelta)
-	mDelta.ChaincodeStateDeltas[MagicDeltaKey] = &statemgmt.ChaincodeStateDelta{}
-	mDelta.ChaincodeStateDeltas[MagicDeltaKey].UpdatedKVs = make(map[string]*statemgmt.UpdatedValue)
-	mDelta.ChaincodeStateDeltas[MagicDeltaKey].UpdatedKVs[MagicDeltaKey] = &statemgmt.UpdatedValue{Value: bDelta}
+	mDelta.ChaincodeStateDeltas = make(map[string]*state.ChaincodeStateDelta)
+	mDelta.ChaincodeStateDeltas[MagicDeltaKey] = &state.ChaincodeStateDelta{}
+	mDelta.ChaincodeStateDeltas[MagicDeltaKey].UpdatedKVs = make(map[string]*state.UpdatedValue)
+	mDelta.ChaincodeStateDeltas[MagicDeltaKey].UpdatedKVs[MagicDeltaKey] = &state.UpdatedValue{Value: bDelta}
 	return mDelta
 }
 
-func SimpleStateDeltaToBytes(sDelta *statemgmt.StateDelta) []byte {
+func SimpleStateDeltaToBytes(sDelta *state.StateDelta) []byte {
 	return sDelta.ChaincodeStateDeltas[MagicDeltaKey].UpdatedKVs[MagicDeltaKey].Value
 }
 
@@ -774,7 +774,7 @@ func TestMockLedger(t *testing.T) {
 			break
 		}
 
-		delta := &statemgmt.StateDelta{}
+		delta := &state.StateDelta{}
 		if err := delta.Unmarshal(syncStateMessage.Delta); nil != err {
 			t.Fatalf("Error unmarshaling state delta : %s", err)
 		}

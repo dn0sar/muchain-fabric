@@ -26,7 +26,7 @@ import (
 
 	"github.com/hyperledger/fabric/consensus"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/statemgmt"
+	state "github.com/hyperledger/fabric/core/ledger/state/chaincode_state/statemgmt"
 	"github.com/hyperledger/fabric/core/util"
 	pb "github.com/hyperledger/fabric/protos"
 )
@@ -189,7 +189,7 @@ func (i *Noops) processBlock() error {
 		return nil
 	}
 	var data *pb.Block
-	var delta *statemgmt.StateDelta
+	var delta *state.StateDelta
 	var err error
 
 	if err = i.processTransactions(); nil != err {
@@ -244,7 +244,7 @@ func (i *Noops) getTxFromMsg(msg *pb.Message) (*pb.InBlockTransaction, error) {
 	return txs.GetTransactions()[0], nil
 }
 
-func (i *Noops) getBlockData() (*pb.Block, *statemgmt.StateDelta, error) {
+func (i *Noops) getBlockData() (*pb.Block, *state.StateDelta, error) {
 	ledger, err := ledger.GetLedger()
 	if err != nil {
 		return nil, nil, fmt.Errorf("Fail to get the ledger: %v", err)
@@ -270,7 +270,7 @@ func (i *Noops) getBlockData() (*pb.Block, *statemgmt.StateDelta, error) {
 	return block, delta, nil
 }
 
-func (i *Noops) notifyBlockAdded(block *pb.Block, delta *statemgmt.StateDelta) error {
+func (i *Noops) notifyBlockAdded(block *pb.Block, delta *state.StateDelta) error {
 	//make Payload nil to reduce block size..
 	//anything else to remove .. do we need StateDelta ?
 	// REVIEW: look for some other ways to reduce the block size.mail.
