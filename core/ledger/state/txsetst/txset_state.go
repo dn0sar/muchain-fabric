@@ -31,13 +31,13 @@ const defaultTxSetStateImpl = rawType
 // This encapsulates a particular implementation for managing the state persistence
 // This is not thread safe
 type TxSetState struct {
-	txSetStateImpl        statemgmt.HashableTxSetState
-	txSetStateDelta       *statemgmt.TxSetStateDelta
-	currentTxStateDelta   *statemgmt.TxSetStateDelta
-	currentTxID           string
-	txStateDeltaHash      map[string][]byte
-	updateStateImpl       bool
-	historyStateDeltaSize uint64
+	txSetStateImpl         statemgmt.HashableTxSetState
+	txSetStateDelta        *statemgmt.TxSetStateDelta
+	currentTxSetStateDelta *statemgmt.TxSetStateDelta
+	currentTxID            string
+	txStateDeltaHash       map[string][]byte
+	updateStateImpl        bool
+	historyStateDeltaSize  uint64
 }
 
 // NewTxSetState constructs a new TxSetState. This Initializes encapsulated state implementation
@@ -80,16 +80,16 @@ func (state *TxSetState) TxFinish(txID string, txSuccessful bool) {
 		panic(fmt.Errorf("Different txId in tx-begin [%s] and tx-finish [%s]", state.currentTxID, txID))
 	}
 	if txSuccessful {
-		if !state.currentTxStateDelta.IsEmpty() {
+		if !state.currentTxSetStateDelta.IsEmpty() {
 			txSetStateLogger.Debugf("txFinish() for txId [%s] merging state changes", txID)
-			state.txSetStateDelta.ApplyChanges(state.currentTxStateDelta)
-			state.txStateDeltaHash[txID] = state.currentTxStateDelta.ComputeCryptoHash()
+			state.txSetStateDelta.ApplyChanges(state.currentTxSetStateDelta)
+			state.txStateDeltaHash[txID] = state.currentTxSetStateDelta.ComputeCryptoHash()
 			state.updateStateImpl = true
 		} else {
 			state.txStateDeltaHash[txID] = nil
 		}
 	}
-	state.currentTxStateDelta = statemgmt.NewTxSetStateDelta()
+	state.currentTxSetStateDelta = statemgmt.NewTxSetStateDelta()
 	state.currentTxID = ""
 }
 
@@ -101,7 +101,7 @@ func (state *TxSetState) txInProgress() bool {
 // pulls from db. If committed is true, this pulls from the db only.
 func (state *TxSetState) Get(txID string, committed bool) (*statemgmt.TxSetStateValue, error) {
 	if !committed {
-		valueHolder := state.currentTxStateDelta.Get(txID)
+		valueHolder := state.currentTxSetStateDelta.Get(txID)
 		if valueHolder != nil {
 			return valueHolder.GetValue()
 		}
@@ -124,7 +124,7 @@ func (state *TxSetState) Set(txSetID string, stateValue *statemgmt.TxSetStateVal
 	// Check if a previous value is already set in the state delta,
 	// if so raise a warning and not change the value. A transactionSet
 	// index can be changed only one time per block.
-	if state.currentTxStateDelta.IsUpdatedValueSet(txSetID) {
+	if state.currentTxSetStateDelta.IsUpdatedValueSet(txSetID) || state.txSetStateDelta.IsUpdatedValueSet(txSetID) {
 		txSetStateLogger.Warning("Potential dependency cycle avoided by not changing an already modified tx set index")
 		// No need to bother looking up the previous value as we will not
 		// set it again. Just pass nil
@@ -136,12 +136,13 @@ func (state *TxSetState) Set(txSetID string, stateValue *statemgmt.TxSetStateVal
 	if err != nil {
 		return err
 	}
-	state.currentTxStateDelta.Set(txSetID, stateValue, previousValue)
+	state.currentTxSetStateDelta.Set(txSetID, stateValue, previousValue)
 
 	return nil
 }
 
 // Delete tracks the deletion of state for txSetID. Does not immediately write to DB
+// REVIEW: Should delete be allowed??
 func (state *TxSetState) Delete(txSetID string) error {
 	txSetStateLogger.Debugf("delete() txSetID=[%s]", txSetID)
 	if !state.txInProgress() {
@@ -152,7 +153,7 @@ func (state *TxSetState) Delete(txSetID string) error {
 	if err != nil {
 		return err
 	}
-	state.currentTxStateDelta.Delete(txSetID, previousStateValue)
+	state.currentTxSetStateDelta.Delete(txSetID, previousStateValue)
 	return nil
 }
 
