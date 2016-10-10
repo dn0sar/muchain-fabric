@@ -1,19 +1,19 @@
 package raw
 
 import (
-	"github.com/hyperledger/fabric/core/ledger/state/txset_state"
 	"github.com/hyperledger/fabric/core/db"
-	"github.com/tecbot/gorocksdb"
 	"github.com/hyperledger/fabric/core/ledger/state"
+	"github.com/hyperledger/fabric/core/ledger/state/txset_state/statemgmt"
+	"github.com/tecbot/gorocksdb"
 )
 
-// StateImpl implements raw state management. This implementation does not support computation of crypto-hash of the state.
+// TxSetStateImpl implements raw state management. This implementation does not support computation of crypto-hash of the state.
 // It simply stores the compositeKey and value in the db
 type TxSetStateImpl struct {
-	txSetStateDelta *txset_state.TxSetStateDelta
+	txSetStateDelta *statemgmt.TxSetStateDelta
 }
 
-// NewStateImpl constructs new instance of raw state
+// NewTxSetStateImpl constructs new instance of raw state
 func NewTxSetStateImpl() *TxSetStateImpl {
 	return &TxSetStateImpl{}
 }
@@ -24,14 +24,18 @@ func (impl *TxSetStateImpl) Initialize(configs map[string]interface{}) error {
 }
 
 // Get - method implementation for interface 'statemgmt.HashableTxSetState'
-func (impl *TxSetStateImpl) Get(txSetID string) ([]byte, error) {
+func (impl *TxSetStateImpl) Get(txSetID string) (*statemgmt.TxSetStateValue, error) {
 	txSetKey := state_comm.ConstructTxSetKey(txSetID)
 	openchainDB := db.GetDBHandle()
-	return openchainDB.GetFromTxSetStateCF(txSetKey)
+	stateValueBytes, err := openchainDB.GetFromTxSetStateCF(txSetKey)
+	if err {
+		return nil, err
+	}
+	return statemgmt.UnmarshallTxSetStateValue(stateValueBytes)
 }
 
 // PrepareWorkingSet - method implementation for interface 'statemgmt.HashableTxSetState'
-func (impl *TxSetStateImpl) PrepareWorkingSet(stateDelta *txset_state.TxSetStateDelta) error {
+func (impl *TxSetStateImpl) PrepareWorkingSet(stateDelta *statemgmt.TxSetStateDelta) error {
 	impl.txSetStateDelta = stateDelta
 	return nil
 }
@@ -55,12 +59,17 @@ func (impl *TxSetStateImpl) AddChangesForPersistence(writeBatch *gorocksdb.Write
 	openchainDB := db.GetDBHandle()
 	updatedTxSetIds := delta.GetUpdatedTxSetIDs(false)
 	for _, updatedTxSetID := range updatedTxSetIds {
-		updatedKV := delta.GetUpdates(updatedTxSetID)
+		updatedTxSetStateValue := delta.GetUpdates(updatedTxSetID)
 		key := state_comm.ConstructTxSetKey(updatedTxSetID)
-		if updatedKV.IsDeleted() {
+		// REVIEW: Should I prevent the deletion altogether??
+		if updatedTxSetStateValue.IsDeleted() {
 			writeBatch.DeleteCF(openchainDB.TxSetStateCF, key)
 		} else {
-			writeBatch.PutCF(openchainDB.TxSetStateCF, key, updatedKV.GetValue())
+			marshalledTxSetValue, err := updatedTxSetStateValue.GetValue().Bytes()
+			if err {
+				return err
+			}
+			writeBatch.PutCF(openchainDB.TxSetStateCF, key, marshalledTxSetValue)
 		}
 	}
 	return nil

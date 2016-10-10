@@ -34,16 +34,14 @@ func (txStateDelta *TxSetStateDelta) Get(txSetID string) *TxSetUpdatedValue {
 }
 
 // Set sets state value for a txSet
-func (txStateDelta *TxSetStateDelta) Set(txSetID string, value *TxSetStateValue) {
-	prev := txStateDelta.getOrCreateTxSetUpValue(txSetID).GetPreviousValue()
+func (txStateDelta *TxSetStateDelta) Set(txSetID string, value, prev *TxSetStateValue) {
 	txStateDelta.Deltas[txSetID] = &TxSetUpdatedValue{value, prev}
 	return
 }
 
 // Delete deletes a txSet from the state
 func (txStateDelta *TxSetStateDelta) Delete(txSetID string, previousValue *TxSetStateValue) {
-	prev := txStateDelta.getOrCreateTxSetUpValue(txSetID).GetPreviousValue()
-	txStateDelta.Deltas[txSetID] = &TxSetUpdatedValue{nil, prev}
+	txStateDelta.Deltas[txSetID] = &TxSetUpdatedValue{nil, previousValue}
 	return
 }
 
@@ -69,7 +67,7 @@ func (txStateDelta *TxSetStateDelta) ApplyChanges(anotherTxStateDelta *TxSetStat
 		if txSetUPValue.IsDeleted() {
 			txStateDelta.Delete(txSetID, previousValue)
 		} else {
-			txStateDelta.Set(txSetID, txSetUPValue.GetValue())
+			txStateDelta.Set(txSetID, txSetUPValue.GetValue(), previousValue)
 		}
 	}
 }

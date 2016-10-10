@@ -14,7 +14,7 @@ type HashableTxSetState interface {
 	Initialize(configs map[string]interface{}) error
 
 	// Get get the value from DB
-	Get(txSetID string) ([]byte, error)
+	Get(txSetID string) (*TxSetStateValue, error)
 
 	// PrepareWorkingSet passes a stateDelta that captures the changes that needs to be applied to the state
 	PrepareWorkingSet(txStateDelta *TxSetStateDelta) error

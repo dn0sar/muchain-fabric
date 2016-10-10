@@ -9,7 +9,7 @@ import (
 //	"github.com/hyperledger/fabric/core/ledger/state/txset_state/trie"
 	"github.com/hyperledger/fabric/core/ledger/state/txset_state/raw"
 	"github.com/tecbot/gorocksdb"
-	"github.com/hyperledger/fabric/core/ledger/state/state_comm"
+	"github.com/hyperledger/fabric/core/ledger/state"
 	"github.com/op/go-logging"
 )
 
@@ -114,8 +114,8 @@ func (state *TxSetState) Get(txID string, committed bool) (*statemgmt.TxSetState
 }
 
 // Set sets state to given index for the txSetID. Does not immediately writes to DB
-func (state *TxSetState) Set(txSetID string, index uint32) error {
-	txSetStateLogger.Debugf("set() txSetID=[%s], key=[%s], index=[%#v]", txSetID, index)
+func (state *TxSetState) Set(txSetID string, stateValue *statemgmt.TxSetStateValue) error {
+	txSetStateLogger.Debugf("set() txSetID=[%s], key=[%s], index=[%#v]", txSetID, stateValue)
 	// TODO: Do I need to start a transaction if this is primarily called for mutant transactions?
 	if !state.txInProgress() {
 		panic("State can be changed only in context of a tx.")
@@ -131,11 +131,11 @@ func (state *TxSetState) Set(txSetID string, index uint32) error {
 		return nil
 	} else {
 		// Need to lookup the previous value
-		previousIndex, err := state.Get(txSetID, true)
+		previousValue, err := state.Get(txSetID, true)
 		if err != nil {
 			return err
 		}
-		state.currentTxStateDelta.Set(txSetID, index, previousIndex)
+		state.currentTxStateDelta.Set(txSetID, stateValue, previousValue)
 	}
 
 	return nil
@@ -147,21 +147,12 @@ func (state *TxSetState) Delete(txSetID string) error {
 	if !state.txInProgress() {
 		panic("State can be changed only in context of a tx.")
 	}
-
-	// Check if a previous value is already set in the state delta
-	if state.currentTxStateDelta.IsUpdatedValueSet(txSetID) {
-		// No need to bother looking up the previous value as we will not
-		// set it again. Just pass nil
-		state.currentTxStateDelta.Delete(txSetID, nil)
-	} else {
-		// Need to lookup the previous value
-		previousIndex, err := state.Get(txSetID, true)
-		if err != nil {
-			return err
-		}
-		state.currentTxStateDelta.Delete(txSetID, previousIndex)
+	// Need to lookup the previous value
+	previousStateValue, err := state.Get(txSetID, true)
+	if err != nil {
+		return err
 	}
-
+	state.currentTxStateDelta.Delete(txSetID, previousStateValue)
 	return nil
 }
 
