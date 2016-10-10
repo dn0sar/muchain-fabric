@@ -56,7 +56,7 @@ func (txStateDelta *TxSetStateDelta) IsUpdatedValueSet(txSetID string) bool {
 func (txStateDelta *TxSetStateDelta) ApplyChanges(anotherTxStateDelta *TxSetStateDelta) {
 	for txSetID, txSetUPValue := range anotherTxStateDelta.Deltas {
 		existingTxStateDelta, exists := txStateDelta.Deltas[txSetID]
-		var previousValue *TxSetUpdatedValue
+		var previousValue *TxSetStateValue
 		if exists {
 			// The current state delta already has an updated value for this txSetID.
 			previousValue = existingTxStateDelta.GetPreviousValue()

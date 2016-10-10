@@ -28,7 +28,7 @@ func (impl *TxSetStateImpl) Get(txSetID string) (*statemgmt.TxSetStateValue, err
 	txSetKey := stcomm.ConstructTxSetKey(txSetID)
 	openchainDB := db.GetDBHandle()
 	stateValueBytes, err := openchainDB.GetFromTxSetStateCF(txSetKey)
-	if err {
+	if err != nil {
 		return nil, err
 	}
 	return statemgmt.UnmarshallTxSetStateValue(stateValueBytes)
@@ -66,7 +66,7 @@ func (impl *TxSetStateImpl) AddChangesForPersistence(writeBatch *gorocksdb.Write
 			writeBatch.DeleteCF(openchainDB.TxSetStateCF, key)
 		} else {
 			marshalledTxSetValue, err := updatedTxSetStateValue.GetValue().Bytes()
-			if err {
+			if err != nil {
 				return err
 			}
 			writeBatch.PutCF(openchainDB.TxSetStateCF, key, marshalledTxSetValue)

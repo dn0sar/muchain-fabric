@@ -3,7 +3,6 @@ package statemgmt
 import (
 	"github.com/tecbot/gorocksdb"
 	"github.com/hyperledger/fabric/core/ledger/state"
-	"github.com/ethereum/go-ethereum/core/state"
 )
 
 // HashableTxSetState - Interface that is be implemented by state management

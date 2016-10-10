@@ -103,11 +103,11 @@ func (state *TxSetState) Get(txID string, committed bool) (*statemgmt.TxSetState
 	if !committed {
 		valueHolder := state.currentTxSetStateDelta.Get(txID)
 		if valueHolder != nil {
-			return valueHolder.GetValue()
+			return valueHolder.GetValue(), nil
 		}
 		valueHolder = state.txSetStateDelta.Get(txID)
 		if valueHolder != nil {
-			return valueHolder.GetValue()
+			return valueHolder.GetValue(), nil
 		}
 	}
 	return state.txSetStateImpl.Get(txID)
