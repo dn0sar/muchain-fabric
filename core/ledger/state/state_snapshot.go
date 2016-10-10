@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package state_comm
+package stcomm
 
 import (
 	"github.com/tecbot/gorocksdb"
@@ -27,7 +27,7 @@ type StateSnapshot struct {
 	dbSnapshot   *gorocksdb.Snapshot
 }
 
-// newStateSnapshot creates a new snapshot of the global state for the current block.
+// NewStateSnapshot creates a new snapshot of the global state for the current block.
 func NewStateSnapshot(blockNumber uint64, stateItr StateSnapshotIterator, dbSnapshot *gorocksdb.Snapshot) (*StateSnapshot, error) {
 	snapshot := &StateSnapshot{blockNumber, stateItr, dbSnapshot}
 	return snapshot, nil

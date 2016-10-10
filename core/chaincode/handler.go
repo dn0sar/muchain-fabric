@@ -60,7 +60,7 @@ type transactionContext struct {
 	responseNotifier      chan *pb.ChaincodeMessage
 
 	// tracks open iterators used for range queries
-	rangeQueryIteratorMap map[string]state_comm.RangeScanIterator
+	rangeQueryIteratorMap map[string]stcomm.RangeScanIterator
 }
 
 type nextStateInfo struct {
@@ -123,7 +123,7 @@ func (handler *Handler) createTxContext(txid string, tx *pb.Transaction) (*trans
 		return nil, fmt.Errorf("txid:%s exists", txid)
 	}
 	txctx := &transactionContext{transactionSecContext: tx, responseNotifier: make(chan *pb.ChaincodeMessage, 1),
-		rangeQueryIteratorMap: make(map[string]state_comm.RangeScanIterator)}
+		rangeQueryIteratorMap: make(map[string]stcomm.RangeScanIterator)}
 	handler.txCtxs[txid] = txctx
 	return txctx, nil
 }
@@ -143,13 +143,13 @@ func (handler *Handler) deleteTxContext(txid string) {
 }
 
 func (handler *Handler) putRangeQueryIterator(txContext *transactionContext, txid string,
-	rangeScanIterator state_comm.RangeScanIterator) {
+	rangeScanIterator stcomm.RangeScanIterator) {
 	handler.Lock()
 	defer handler.Unlock()
 	txContext.rangeQueryIteratorMap[txid] = rangeScanIterator
 }
 
-func (handler *Handler) getRangeQueryIterator(txContext *transactionContext, txid string) state_comm.RangeScanIterator {
+func (handler *Handler) getRangeQueryIterator(txContext *transactionContext, txid string) stcomm.RangeScanIterator {
 	handler.Lock()
 	defer handler.Unlock()
 	return txContext.rangeQueryIteratorMap[txid]

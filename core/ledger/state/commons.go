@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package state_comm
+package stcomm
 
 import (
 	"bytes"
@@ -35,7 +35,7 @@ func ConstructTxSetKey(txSetID string) []byte {
 }
 
 func GetTxSetIDfromKey(txSetKey []byte) string {
-	return  string(txSetKey)
+	return string(txSetKey)
 }
 
 // DecodeCompositeKey decodes the compositeKey constructed by ConstructCompositeKey method
@@ -69,4 +69,3 @@ func encodeUint64(number uint64) []byte {
 func decodeToUint64(bytes []byte) uint64 {
 	return binary.BigEndian.Uint64(bytes)
 }
-

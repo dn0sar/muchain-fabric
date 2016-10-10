@@ -14,16 +14,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package stcomm
+package chaincodest
 
 import (
 	"os"
 	"testing"
 
 	"github.com/hyperledger/fabric/core/db"
-	"github.com/hyperledger/fabric/core/ledger/state/chaincodest"
-	"github.com/hyperledger/fabric/core/ledger/state/chaincodest/statemgmt"
+	"github.com/hyperledger/fabric/core/ledger/state"
 	"github.com/hyperledger/fabric/core/ledger/testutil"
+	"github.com/hyperledger/fabric/core/ledger/state/chaincodest/statemgmt"
 	"github.com/tecbot/gorocksdb"
 )
 
@@ -34,7 +34,7 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func createFreshDBAndConstructState(t *testing.T) (*stateTestWrapper, *chaincodest.State) {
+func createFreshDBAndConstructState(t *testing.T) (*stateTestWrapper, *State) {
 	testDBWrapper.CleanDB(t)
 	stateTestWrapper := newStateTestWrapper(t)
 	return stateTestWrapper, stateTestWrapper.state
@@ -42,11 +42,11 @@ func createFreshDBAndConstructState(t *testing.T) (*stateTestWrapper, *chaincode
 
 type stateTestWrapper struct {
 	t     *testing.T
-	state *chaincodest.State
+	state *State
 }
 
 func newStateTestWrapper(t *testing.T) *stateTestWrapper {
-	return &stateTestWrapper{t, chaincodest.NewState()}
+	return &stateTestWrapper{t, NewState()}
 }
 
 func (testWrapper *stateTestWrapper) get(chaincodeID string, key string, committed bool) []byte {
@@ -55,7 +55,7 @@ func (testWrapper *stateTestWrapper) get(chaincodeID string, key string, committ
 	return value
 }
 
-func (testWrapper *stateTestWrapper) getSnapshot() *StateSnapshot {
+func (testWrapper *stateTestWrapper) getSnapshot() *stcomm.StateSnapshot {
 	dbSnapshot := db.GetDBHandle().GetSnapshot()
 	stateSnapshot, err := testWrapper.state.GetSnapshot(0, dbSnapshot)
 	testutil.AssertNoError(testWrapper.t, err, "Error during creation of state snapshot")
@@ -72,6 +72,6 @@ func (testWrapper *stateTestWrapper) persistAndClearInMemoryChanges(blockNumber 
 
 func (testWrapper *stateTestWrapper) fetchStateDeltaFromDB(blockNumber uint64) *statemgmt.StateDelta {
 	delta := statemgmt.NewStateDelta()
-	delta.Unmarshal(testDBWrapper.GetFromStateDeltaCF(testWrapper.t, EncodeStateDeltaKey(blockNumber)))
+	delta.Unmarshal(testDBWrapper.GetFromStateDeltaCF(testWrapper.t, stcomm.EncodeStateDeltaKey(blockNumber)))
 	return delta
 }

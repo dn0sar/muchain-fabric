@@ -27,7 +27,7 @@ import (
 
 	"github.com/hyperledger/fabric/core/ledger/state"
 	pb "github.com/hyperledger/fabric/protos"
-	"github.com/hyperledger/fabric/core/ledger/state/chaincode_state/statemgmt"
+	"github.com/hyperledger/fabric/core/ledger/state/chaincodest/statemgmt"
 )
 
 // Handler peer handler implementation.
@@ -532,7 +532,7 @@ func (d *Handler) sendStateSnapshot(syncStateSnapshotRequest *pb.SyncStateSnapsh
 	for i := 0; snapshot.Next(); i++ {
 		delta := statemgmt.NewStateDelta()
 		k, v := snapshot.GetRawKeyValue()
-		cID, keyID := state_comm.DecodeCompositeKey(k)
+		cID, keyID := stcomm.DecodeCompositeKey(k)
 		delta.Set(cID, keyID, v, nil)
 
 		deltaAsBytes := delta.Marshal()

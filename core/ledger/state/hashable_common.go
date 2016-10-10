@@ -1,4 +1,4 @@
-package state_comm
+package stcomm
 
 // StateSnapshotIterator An interface that is to be implemented by the return value of
 // GetStateSnapshotIterator method in the implementation of HashableState interface

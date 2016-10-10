@@ -26,7 +26,7 @@ import (
 
 	"github.com/hyperledger/fabric/consensus"
 	"github.com/hyperledger/fabric/core/ledger"
-	state "github.com/hyperledger/fabric/core/ledger/state/chaincode_state/statemgmt"
+	state "github.com/hyperledger/fabric/core/ledger/state/chaincodest/statemgmt"
 	"github.com/hyperledger/fabric/core/util"
 	pb "github.com/hyperledger/fabric/protos"
 )

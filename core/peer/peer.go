@@ -41,7 +41,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/state"
 	"github.com/hyperledger/fabric/core/util"
 	pb "github.com/hyperledger/fabric/protos"
-	"github.com/hyperledger/fabric/core/ledger/state/chaincode_state/statemgmt"
+	"github.com/hyperledger/fabric/core/ledger/state/chaincodest/statemgmt"
 )
 
 // Peer provides interface for a peer
@@ -91,7 +91,7 @@ type BlockChainUtil interface {
 
 // StateAccessor interface for retreiving blocks by block number
 type StateAccessor interface {
-	GetStateSnapshot() (*state_comm.StateSnapshot, error)
+	GetStateSnapshot() (*stcomm.StateSnapshot, error)
 	GetStateDelta(blockNumber uint64) (*statemgmt.StateDelta, error)
 }
 
@@ -732,7 +732,7 @@ func (p *Impl) EmptyState() error {
 }
 
 // GetStateSnapshot return the state snapshot
-func (p *Impl) GetStateSnapshot() (*state_comm.StateSnapshot, error) {
+func (p *Impl) GetStateSnapshot() (*stcomm.StateSnapshot, error) {
 	p.ledgerWrapper.RLock()
 	defer p.ledgerWrapper.RUnlock()
 	return p.ledgerWrapper.ledger.GetStateSnapshot()

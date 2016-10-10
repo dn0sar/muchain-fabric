@@ -24,8 +24,8 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/db"
-	"github.com/hyperledger/fabric/core/ledger/state/chaincode_state"
-	"github.com/hyperledger/fabric/core/ledger/state/chaincode_state/statemgmt"
+	"github.com/hyperledger/fabric/core/ledger/state/chaincodest"
+	"github.com/hyperledger/fabric/core/ledger/state/chaincodest/statemgmt"
 	"github.com/hyperledger/fabric/core/ledger/state"
 	"github.com/hyperledger/fabric/events/producer"
 	"github.com/op/go-logging"
@@ -81,7 +81,7 @@ var (
 // Ledger - the struct for openchain ledger
 type Ledger struct {
 	blockchain *blockchain
-	state      *chaincode_state.State
+	state      *chaincodest.State
 	currentID  interface{}
 }
 
@@ -104,7 +104,7 @@ func GetNewLedger() (*Ledger, error) {
 		return nil, err
 	}
 
-	state := chaincode_state.NewState()
+	state := chaincodest.NewState()
 	return &Ledger{blockchain, state, nil}, nil
 }
 
@@ -266,7 +266,7 @@ func (ledger *Ledger) GetState(chaincodeID string, key string, committed bool) (
 // If committed is true, the key-values are retrieved only from the db. If committed is false, the results from db
 // are mergerd with the results in memory (giving preference to in-memory data)
 // The key-values in the returned iterator are not guaranteed to be in any specific order
-func (ledger *Ledger) GetStateRangeScanIterator(chaincodeID string, startKey string, endKey string, committed bool) (state_comm.RangeScanIterator, error) {
+func (ledger *Ledger) GetStateRangeScanIterator(chaincodeID string, startKey string, endKey string, committed bool) (stcomm.RangeScanIterator, error) {
 	return ledger.state.GetRangeScanIterator(chaincodeID, startKey, endKey, committed)
 }
 
@@ -304,7 +304,7 @@ func (ledger *Ledger) SetStateMultipleKeys(chaincodeID string, kvs map[string][]
 // GetStateSnapshot returns a point-in-time view of the global state for the current block. This
 // should be used when transferring the state from one peer to another peer. You must call
 // stateSnapshot.Release() once you are done with the snapshot to free up resources.
-func (ledger *Ledger) GetStateSnapshot() (*state_comm.StateSnapshot, error) {
+func (ledger *Ledger) GetStateSnapshot() (*stcomm.StateSnapshot, error) {
 	dbSnapshot := db.GetDBHandle().GetSnapshot()
 	blockHeight, err := fetchBlockchainSizeFromSnapshot(dbSnapshot)
 	if err != nil {

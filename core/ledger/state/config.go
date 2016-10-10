@@ -14,21 +14,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package state_comm
+package stcomm
 
 import (
 	"fmt"
 	"sync"
 
-	"github.com/spf13/viper"
 	"github.com/op/go-logging"
+	"github.com/spf13/viper"
 )
 
-var conf_logger = logging.MustGetLogger("state-conf")
+var confLogger = logging.MustGetLogger("state-conf")
 
 var configMap = make(map[string]*loadConfEl)
 var confMapLock = sync.Mutex{}
-
 
 type ConfigurationData struct {
 	StateImplName    string
@@ -37,7 +36,7 @@ type ConfigurationData struct {
 }
 
 type loadConfEl struct {
-	once sync.Once
+	once     sync.Once
 	confData ConfigurationData
 }
 
@@ -50,13 +49,13 @@ func GetConfig(stateKind string, defImpl interface{}, validValues ...interface{}
 func checkMapSafe(stateKind string) {
 	confMapLock.Lock()
 	defer confMapLock.Unlock()
-	if  _ , exists := configMap[stateKind]; !exists {
+	if _, exists := configMap[stateKind]; !exists {
 		configMap[stateKind] = &loadConfEl{}
 	}
 }
 
 func loadConfig(stateSpec string, defImpl interface{}, validValues ...interface{}) {
-	conf_logger.Info("Loading configurations...")
+	confLogger.Info("Loading configurations...")
 
 	data := &configMap[stateSpec].confData
 
@@ -80,6 +79,6 @@ func loadConfig(stateSpec string, defImpl interface{}, validValues ...interface{
 	if data.DeltaHistorySize < 0 {
 		panic(fmt.Errorf("Delta history size must be greater than or equal to 0. Current value is %d.", data.DeltaHistorySize))
 	}
-	conf_logger.Infof("Configurations loaded for %s. implName=[%s], implConfigs=%s, deltaHistorySize=[%d]",
+	confLogger.Infof("Configurations loaded for %s. implName=[%s], implConfigs=%s, deltaHistorySize=[%d]",
 		stateSpec, data.StateImplName, data.StateImplConfigs, data.DeltaHistorySize)
 }

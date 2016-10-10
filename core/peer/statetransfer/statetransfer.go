@@ -25,7 +25,7 @@ import (
 
 	_ "github.com/hyperledger/fabric/core" // Logging format init
 
-	state "github.com/hyperledger/fabric/core/ledger/state/chaincode_state/statemgmt"
+	state "github.com/hyperledger/fabric/core/ledger/state/chaincodest/statemgmt"
 	"github.com/hyperledger/fabric/core/peer"
 	pb "github.com/hyperledger/fabric/protos"
 	"github.com/op/go-logging"
