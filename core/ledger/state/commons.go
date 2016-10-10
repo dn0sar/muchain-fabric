@@ -30,19 +30,21 @@ func ConstructCompositeKey(chaincodeID string, key string) []byte {
 	return bytes.Join([][]byte{[]byte(chaincodeID), []byte(key)}, stateKeyDelimiter)
 }
 
-func ConstructTxSetKey(txSetID string) []byte {
-	return []byte(txSetID)
-}
-
-func GetTxSetIDfromKey(txSetKey []byte) string {
-	return string(txSetKey)
-}
-
 // DecodeCompositeKey decodes the compositeKey constructed by ConstructCompositeKey method
 // back to the original chaincodeID and key form
 func DecodeCompositeKey(compositeKey []byte) (string, string) {
 	split := bytes.SplitN(compositeKey, stateKeyDelimiter, 2)
 	return string(split[0]), string(split[1])
+}
+
+// ConstructTxSetKey returns a []byte that uniquely represents a given txSetID
+func ConstructTxSetKey(txSetID string) []byte {
+	return []byte(txSetID)
+}
+// GetTxSetIDfromKey returns the txSetID that was used to create the key given as input.
+// i.e. the following is guaranteed GetTxSetIDfromKey(ConstructTxSetKey(txSetID)) == txSetID
+func GetTxSetIDfromKey(txSetKey []byte) string {
+	return string(txSetKey)
 }
 
 // Copy returns a copy of given bytes
