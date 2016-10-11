@@ -2,9 +2,27 @@ syntax = "proto3";
 
 package statemgmt;
 
+// The representation of the state of a transactions set
 message TxSetStateValue {
+    // Nonce incremented every time the state of this Tx Set is changed
     uint64 nonce = 1;
-    uint64 index = 2;
-    uint64 size = 3;
-    repeated uint64 blockFor = 4 [packed=true];
+    // Index of the current default transaction
+    TxSetIndex index = 2;
+    // The number of transactions that belong to this Transactions Set
+    uint64 txNumber = 3;
+    // txsInBlock[nlockNr] gives the number of transactions belonging to'
+    // this TxSet defined at block blockNr
+    map<uint64, uint64> txsInBlock = 4;
+}
+
+// The TxSetIndex identifies a transaction among the ones
+// of a transactions set by providing the block number where that
+// transaction was defined and the index among the transactions
+// belonging to the part of the set included in that block number.
+message TxSetIndex {
+    // The block where the transaction at which this index refers to is contained
+    uint64 blockNr = 1;
+    // Index of a transaction among the list of transactions belonging
+    // to the transactions set at blockNr
+    uint64 inBlockIndex = 2;
 }
