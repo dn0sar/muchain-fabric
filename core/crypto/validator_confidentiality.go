@@ -151,7 +151,7 @@ func (validator *validatorImpl) deepCloneAndDecryptTx1_2(tx *obc.InBlockTransact
 		validator.Debug("Transaction kind: [Mutant]")
 		mutant := clone.GetMutantTransaction()
 		// Decrypt block ref
-		blockRef, err := cipher.Process(mutant.BlockRef)
+		blockRef, err := cipher.Process(mutant.TxSetIndex.BlockNr)
 		if err != nil {
 			validator.Errorf("Failed decrypting block number for mutant transaction [%s].", err.Error())
 			return nil, err

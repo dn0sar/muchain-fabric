@@ -7,7 +7,11 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/util"
+	pb "github.com/hyperledger/fabric/protos"
+	"github.com/op/go-logging"
 )
+
+var mgmtLogger = logging.MustGetLogger("txset_statemgmt")
 
 // StateDelta holds the changes to existing state. This struct is used for holding the uncommitted changes during execution of a tx-batch
 // Also, to be used for transferring the state to another peer in chunks
@@ -34,13 +38,13 @@ func (txStateDelta *TxSetStateDelta) Get(txSetID string) *TxSetUpdatedValue {
 }
 
 // Set sets state value for a txSet
-func (txStateDelta *TxSetStateDelta) Set(txSetID string, value, prev *TxSetStateValue) {
+func (txStateDelta *TxSetStateDelta) Set(txSetID string, value, prev *pb.TxSetStateValue) {
 	txStateDelta.Deltas[txSetID] = &TxSetUpdatedValue{value, prev}
 	return
 }
 
 // Delete deletes a txSet from the state
-func (txStateDelta *TxSetStateDelta) Delete(txSetID string, previousValue *TxSetStateValue) {
+func (txStateDelta *TxSetStateDelta) Delete(txSetID string, previousValue *pb.TxSetStateValue) {
 	txStateDelta.Deltas[txSetID] = &TxSetUpdatedValue{nil, previousValue}
 	return
 }
@@ -56,7 +60,7 @@ func (txStateDelta *TxSetStateDelta) IsUpdatedValueSet(txSetID string) bool {
 func (txStateDelta *TxSetStateDelta) ApplyChanges(anotherTxStateDelta *TxSetStateDelta) {
 	for txSetID, txSetUPValue := range anotherTxStateDelta.Deltas {
 		existingTxStateDelta, exists := txStateDelta.Deltas[txSetID]
-		var previousValue *TxSetStateValue
+		var previousValue *pb.TxSetStateValue
 		if exists {
 			// The current state delta already has an updated value for this txSetID.
 			previousValue = existingTxStateDelta.GetPreviousValue()
@@ -134,8 +138,8 @@ func (txStateDelta *TxSetStateDelta) ComputeCryptoHash() []byte {
 
 // UpdatedValue holds the value for a key
 type TxSetUpdatedValue struct {
-	Value         *TxSetStateValue
-	PreviousValue *TxSetStateValue
+	Value         *pb.TxSetStateValue
+	PreviousValue *pb.TxSetStateValue
 }
 
 // IsDeleted checks whether the key was deleted
@@ -144,12 +148,12 @@ func (updatedValue *TxSetUpdatedValue) IsDeleted() bool {
 }
 
 // GetValue returns the value
-func (updatedValue *TxSetUpdatedValue) GetValue() *TxSetStateValue {
+func (updatedValue *TxSetUpdatedValue) GetValue() *pb.TxSetStateValue {
 	return updatedValue.Value
 }
 
 // GetPreviousValue returns the previous value
-func (updatedValue *TxSetUpdatedValue) GetPreviousValue() *TxSetStateValue {
+func (updatedValue *TxSetUpdatedValue) GetPreviousValue() *pb.TxSetStateValue {
 	return updatedValue.PreviousValue
 }
 
@@ -180,7 +184,7 @@ func (txSetDelta *TxSetUpdatedValue) marshal(buffer *proto.Buffer) {
 	return
 }
 
-func (txSetDelta *TxSetUpdatedValue) marshalValueWithMarker(buffer *proto.Buffer, value *TxSetStateValue) {
+func (txSetDelta *TxSetUpdatedValue) marshalValueWithMarker(buffer *proto.Buffer, value *pb.TxSetStateValue) {
 	if value == nil {
 		// Just add a marker that the value is nil
 		err := buffer.EncodeVarint(uint64(0))
@@ -243,7 +247,7 @@ func (txSetStateValue *TxSetUpdatedValue) unmarshal(buffer *proto.Buffer) error 
 	return nil
 }
 
-func (txSetDelta *TxSetUpdatedValue) unmarshalValueWithMarker(buffer *proto.Buffer) (*TxSetStateValue, error) {
+func (txSetDelta *TxSetUpdatedValue) unmarshalValueWithMarker(buffer *proto.Buffer) (*pb.TxSetStateValue, error) {
 	valueMarker, err := buffer.DecodeVarint()
 	if err != nil {
 		return nil, fmt.Errorf("Error unmarshaling state delta : %s", err)
@@ -254,7 +258,7 @@ func (txSetDelta *TxSetUpdatedValue) unmarshalValueWithMarker(buffer *proto.Buff
 			return nil, fmt.Errorf("Error unmarhsaling state delta : %s", err)
 		}
 		if value != nil {
-			return UnmarshalTxSetStateValue(value)
+			return pb.UnmarshalTxSetStateValue(value)
 		}
 	}
 	return nil, nil

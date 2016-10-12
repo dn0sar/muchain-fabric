@@ -5,6 +5,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/state"
 	"github.com/hyperledger/fabric/core/ledger/state/txsetst/statemgmt"
 	"github.com/tecbot/gorocksdb"
+	pb "github.com/hyperledger/fabric/protos"
 )
 
 // TxSetStateImpl implements raw state management. This implementation does not support computation of crypto-hash of the state.
@@ -24,14 +25,14 @@ func (impl *TxSetStateImpl) Initialize(configs map[string]interface{}) error {
 }
 
 // Get - method implementation for interface 'statemgmt.HashableTxSetState'
-func (impl *TxSetStateImpl) Get(txSetID string) (*statemgmt.TxSetStateValue, error) {
+func (impl *TxSetStateImpl) Get(txSetID string) (*pb.TxSetStateValue, error) {
 	txSetKey := stcomm.ConstructTxSetKey(txSetID)
 	openchainDB := db.GetDBHandle()
 	stateValueBytes, err := openchainDB.GetFromTxSetStateCF(txSetKey)
 	if err != nil {
 		return nil, err
 	}
-	return statemgmt.UnmarshalTxSetStateValue(stateValueBytes)
+	return pb.UnmarshalTxSetStateValue(stateValueBytes)
 }
 
 // PrepareWorkingSet - method implementation for interface 'statemgmt.HashableTxSetState'

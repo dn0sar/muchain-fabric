@@ -1,13 +1,11 @@
-package statemgmt
+package protos
 
 import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/op/go-logging"
 )
 
-var mgmtLogger = logging.MustGetLogger("txset_statemgmt")
 
 // IsValidBlockExtension checks whether the other txSetStateValue is a valid extension of this txSetStateValue blockwise
 // meaning it only adds new blocks or nothing, and the txNumber is consistent with the total number of transactions
@@ -24,7 +22,7 @@ func (txSetStateValue *TxSetStateValue) IsValidBlockExtension(other *TxSetStateV
 		}
 		if otherTxs != txs {
 			return fmt.Errorf("The next state for this transactions set contains conflicting " +
-				"info about the transactions at block %d. Current: %d, Next: %d", txs, otherTxs)
+				"info about the transactions at block %d. Current: %d, Next: %d", block, txs, otherTxs)
 		}
 	}
 	otherTotTxs := uint64(0)
@@ -54,7 +52,6 @@ func (txSetStateValue *TxSetStateValue) IsIndexInRange() error {
 func (txStateValue *TxSetStateValue) Bytes() ([]byte, error) {
 	data, err := proto.Marshal(txStateValue)
 	if err != nil {
-		mgmtLogger.Errorf("Error marshalling txSetStateValue: %s", err)
 		return nil, fmt.Errorf("Could not marshal txSetStateValue: %s", err)
 	}
 	return data, nil
@@ -65,7 +62,6 @@ func UnmarshalTxSetStateValue(marshalledState []byte) (*TxSetStateValue, error) 
 	stateValue := &TxSetStateValue{}
 	err := proto.Unmarshal(marshalledState, stateValue)
 	if err != nil {
-		mgmtLogger.Errorf("Error unmarshalling txSetStateValue: %s", err)
 		return nil, fmt.Errorf("Could not unmarshal txSetStateValue: %s", err)
 	}
 	return stateValue, nil

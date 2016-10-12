@@ -11,6 +11,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/state/txsetst/raw"
 	"github.com/op/go-logging"
 	"github.com/tecbot/gorocksdb"
+	pb "github.com/hyperledger/fabric/protos"
 )
 
 var txSetStateImpl statemgmt.HashableTxSetState
@@ -99,7 +100,7 @@ func (state *TxSetState) txInProgress() bool {
 
 // Get returns state for txID. If committed is false, this first looks in memory and if missing,
 // pulls from db. If committed is true, this pulls from the db only.
-func (state *TxSetState) Get(txID string, committed bool) (*statemgmt.TxSetStateValue, error) {
+func (state *TxSetState) Get(txID string, committed bool) (*pb.TxSetStateValue, error) {
 	if !committed {
 		valueHolder := state.currentTxSetStateDelta.Get(txID)
 		if valueHolder != nil {
@@ -114,7 +115,7 @@ func (state *TxSetState) Get(txID string, committed bool) (*statemgmt.TxSetState
 }
 
 // Set sets state to given index for the txSetID. Does not immediately writes to DB
-func (state *TxSetState) Set(txSetID string, stateValue *statemgmt.TxSetStateValue) error {
+func (state *TxSetState) Set(txSetID string, stateValue *pb.TxSetStateValue) error {
 	txSetStateLogger.Debugf("set() txSetID=[%s], key=[%s], index=[%#v]", txSetID, stateValue)
 	// TODO: Do I need to start a transaction if this is primarily called for mutant transactions?
 	if !state.txInProgress() {

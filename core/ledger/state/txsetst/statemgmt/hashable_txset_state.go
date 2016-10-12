@@ -3,6 +3,8 @@ package statemgmt
 import (
 	"github.com/tecbot/gorocksdb"
 	"github.com/hyperledger/fabric/core/ledger/state"
+
+	"github.com/hyperledger/fabric/protos"
 )
 
 // HashableTxSetState - Interface that is be implemented by state management
@@ -14,7 +16,7 @@ type HashableTxSetState interface {
 	Initialize(configs map[string]interface{}) error
 
 	// Get get the value from DB
-	Get(txSetID string) (*TxSetStateValue, error)
+	Get(txSetID string) (*protos.TxSetStateValue, error)
 
 	// PrepareWorkingSet passes a stateDelta that captures the changes that needs to be applied to the state
 	PrepareWorkingSet(txStateDelta *TxSetStateDelta) error

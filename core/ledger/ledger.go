@@ -27,7 +27,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/state"
 	"github.com/hyperledger/fabric/core/ledger/state/chaincodest"
 	chstatemgmt "github.com/hyperledger/fabric/core/ledger/state/chaincodest/statemgmt"
-	txstatemgmt "github.com/hyperledger/fabric/core/ledger/state/txsetst/statemgmt"
 	"github.com/hyperledger/fabric/events/producer"
 	"github.com/op/go-logging"
 	"github.com/tecbot/gorocksdb"
@@ -291,7 +290,7 @@ func (ledger *Ledger) GetState(chaincodeID string, key string, committed bool) (
 
 // GetTxSetState get state for txSetID. If committed is false, this first looks in memory
 // and if missing, pulls from db.  If committed is true, this pulls from the db only.
-func (ledger *Ledger) GetTxSetState(txSetID string, committed bool) (*txstatemgmt.TxSetStateValue, error) {
+func (ledger *Ledger) GetTxSetState(txSetID string, committed bool) (*protos.TxSetStateValue, error) {
 	return ledger.txSetState.Get(txSetID, committed)
 }
 
@@ -314,7 +313,7 @@ func (ledger *Ledger) SetState(chaincodeID string, key string, value []byte) err
 }
 
 // SetTxSetState sets state to given value for txSetID. Does not immediately write to DB
-func (ledger *Ledger) SetTxSetState(txSetID string, txSetStateValue *txstatemgmt.TxSetStateValue) error {
+func (ledger *Ledger) SetTxSetState(txSetID string, txSetStateValue *protos.TxSetStateValue) error {
 	if txSetStateValue == nil {
 		return newLedgerError(ErrorTypeInvalidArgument,
 			fmt.Sprintf("An empty transaction set state value is not supported. Method invoked with stateValue='%#v'", txSetStateValue))
