@@ -177,20 +177,22 @@ func (blockchain *blockchain) getBlockchainInfoForBlock(height uint64, block *pr
 	info := &protos.BlockchainInfo{
 		Height:            height,
 		CurrentBlockHash:  hash,
-		PreviousBlockHash: block.PreviousBlockHash}
+		PreviousBlockHash: block.PreviousBlockHash,
+	}
 
 	return info
 }
 
-func (blockchain *blockchain) buildBlock(block *protos.Block, stateHash []byte) *protos.Block {
+func (blockchain *blockchain) buildBlock(block *protos.Block, chaincodeStHash, txSetStHash []byte) *protos.Block {
 	block.SetPreviousBlockHash(blockchain.previousBlockHash)
-	block.StateHash = stateHash
+	block.StateHash = chaincodeStHash
+	block.TxSetStateHash = txSetStHash
 	return block
 }
 
 func (blockchain *blockchain) addPersistenceChangesForNewBlock(ctx context.Context,
-	block *protos.Block, stateHash []byte, writeBatch *gorocksdb.WriteBatch) (uint64, error) {
-	block = blockchain.buildBlock(block, stateHash)
+	block *protos.Block, chaincodeStHash, txSetStHash []byte, writeBatch *gorocksdb.WriteBatch) (uint64, error) {
+	block = blockchain.buildBlock(block, chaincodeStHash, txSetStHash)
 	if block.NonHashData == nil {
 		block.NonHashData = &protos.NonHashData{LocalLedgerCommitTimestamp: util.CreateUtcTimestamp()}
 	} else {

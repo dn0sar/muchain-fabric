@@ -31,7 +31,7 @@ func (impl *TxSetStateImpl) Get(txSetID string) (*statemgmt.TxSetStateValue, err
 	if err != nil {
 		return nil, err
 	}
-	return statemgmt.UnmarshallTxSetStateValue(stateValueBytes)
+	return statemgmt.UnmarshalTxSetStateValue(stateValueBytes)
 }
 
 // PrepareWorkingSet - method implementation for interface 'statemgmt.HashableTxSetState'

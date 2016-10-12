@@ -254,7 +254,7 @@ func (txSetDelta *TxSetUpdatedValue) unmarshalValueWithMarker(buffer *proto.Buff
 			return nil, fmt.Errorf("Error unmarhsaling state delta : %s", err)
 		}
 		if value != nil {
-			return UnmarshallTxSetStateValue(value)
+			return UnmarshalTxSetStateValue(value)
 		}
 	}
 	return nil, nil

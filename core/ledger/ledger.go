@@ -24,15 +24,17 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/db"
-	"github.com/hyperledger/fabric/core/ledger/state/chaincodest"
-	"github.com/hyperledger/fabric/core/ledger/state/chaincodest/statemgmt"
 	"github.com/hyperledger/fabric/core/ledger/state"
+	"github.com/hyperledger/fabric/core/ledger/state/chaincodest"
+	chstatemgmt "github.com/hyperledger/fabric/core/ledger/state/chaincodest/statemgmt"
+	txstatemgmt "github.com/hyperledger/fabric/core/ledger/state/txsetst/statemgmt"
 	"github.com/hyperledger/fabric/events/producer"
 	"github.com/op/go-logging"
 	"github.com/tecbot/gorocksdb"
 
 	"github.com/hyperledger/fabric/protos"
 	"golang.org/x/net/context"
+	"github.com/hyperledger/fabric/core/ledger/state/txsetst"
 )
 
 var ledgerLogger = logging.MustGetLogger("ledger")
@@ -80,9 +82,10 @@ var (
 
 // Ledger - the struct for openchain ledger
 type Ledger struct {
-	blockchain *blockchain
-	state      *chaincodest.State
-	currentID  interface{}
+	blockchain     *blockchain
+	chaincodeState *chaincodest.State
+	txSetState	   *txsetst.TxSetState
+	currentID      interface{}
 }
 
 var ledger *Ledger
@@ -104,8 +107,9 @@ func GetNewLedger() (*Ledger, error) {
 		return nil, err
 	}
 
-	state := chaincodest.NewState()
-	return &Ledger{blockchain, state, nil}, nil
+	chaincodeState := chaincodest.NewState()
+	txSetState := txsetst.NewTxSetState()
+	return &Ledger{blockchain, chaincodeState, txSetState, nil}, nil
 }
 
 /////////////////// Transaction-batch related methods ///////////////////////////////
@@ -132,12 +136,16 @@ func (ledger *Ledger) GetTXBatchPreviewBlockInfo(id interface{},
 	if err != nil {
 		return nil, err
 	}
-	stateHash, err := ledger.state.GetHash()
+	chaincodeStHash, err := ledger.chaincodeState.GetHash()
 	if err != nil {
 		return nil, err
 	}
-	block := ledger.blockchain.buildBlock(protos.NewBlock(transactions, metadata), stateHash)
-	info := ledger.blockchain.getBlockchainInfoForBlock(ledger.blockchain.getSize()+1, block)
+	txSetStHash, err := ledger.txSetState.GetHash()
+	if err != nil {
+		return nil, err
+	}
+	block := ledger.blockchain.buildBlock(protos.NewBlock(transactions, metadata), chaincodeStHash, txSetStHash)
+	info := ledger.blockchain.getBlockchainInfoForBlock(ledger.blockchain.getSize() + 1, block)
 	return info, nil
 }
 
@@ -150,11 +158,17 @@ func (ledger *Ledger) CommitTxBatch(id interface{}, transactions []*protos.InBlo
 		return err
 	}
 
-	stateHash, err := ledger.state.GetHash()
+	chaincodeStHash, err := ledger.chaincodeState.GetHash()
 	if err != nil {
 		ledger.resetForNextTxGroup(false)
 		ledger.blockchain.blockPersistenceStatus(false)
 		return err
+	}
+
+	txSetStHash, err := ledger.txSetState.GetHash()
+	if err != nil {
+		ledger.resetForNextTxGroup(false)
+		ledger.blockchain.blockPersistenceStatus(false)
 	}
 
 	writeBatch := gorocksdb.NewWriteBatch()
@@ -185,13 +199,13 @@ func (ledger *Ledger) CommitTxBatch(id interface{}, transactions []*protos.InBlo
 
 	//store chaincode events directly in NonHashData. This will likely change in New Consensus where we can move them to Transaction
 	block.NonHashData = &protos.NonHashData{ChaincodeEvents: ccEvents}
-	newBlockNumber, err := ledger.blockchain.addPersistenceChangesForNewBlock(context.TODO(), block, stateHash, writeBatch)
+	newBlockNumber, err := ledger.blockchain.addPersistenceChangesForNewBlock(context.TODO(), block, chaincodeStHash, txSetStHash, writeBatch)
 	if err != nil {
 		ledger.resetForNextTxGroup(false)
 		ledger.blockchain.blockPersistenceStatus(false)
 		return err
 	}
-	ledger.state.AddChangesForPersistence(newBlockNumber, writeBatch)
+	ledger.chaincodeState.AddChangesForPersistence(newBlockNumber, writeBatch)
 	opt := gorocksdb.NewDefaultWriteOptions()
 	defer opt.Destroy()
 	dbErr := db.GetDBHandle().DB.Write(opt, writeBatch)
@@ -229,13 +243,13 @@ func (ledger *Ledger) RollbackTxBatch(id interface{}) error {
 
 // TxBegin - Marks the begin of a new transaction in the ongoing batch
 func (ledger *Ledger) TxBegin(txID string) {
-	ledger.state.TxBegin(txID)
+	ledger.chaincodeState.TxBegin(txID)
 }
 
 // TxFinished - Marks the finish of the on-going transaction.
 // If txSuccessful is false, the state changes made by the transaction are discarded
 func (ledger *Ledger) TxFinished(txID string, txSuccessful bool) {
-	ledger.state.TxFinish(txID, txSuccessful)
+	ledger.chaincodeState.TxFinish(txID, txSuccessful)
 }
 
 /////////////////// world-state related methods /////////////////////////////////////
@@ -244,21 +258,41 @@ func (ledger *Ledger) TxFinished(txID string, txSuccessful bool) {
 // GetTempStateHash - Computes state hash by taking into account the state changes that may have taken
 // place during the execution of current transaction-batch
 func (ledger *Ledger) GetTempStateHash() ([]byte, error) {
-	return ledger.state.GetHash()
+	return ledger.chaincodeState.GetHash()
+}
+
+// GetTemptTxSetStateHash - Computes the transaction set state hash by taking into account the state changes that may
+// have taken place during the execution of current transaction-batch
+func (ledger *Ledger) GetTemptTxSetStateHash() ([]byte, error) {
+	return ledger.txSetState.GetHash()
 }
 
 // GetTempStateHashWithTxDeltaStateHashes - In addition to the state hash (as defined in method GetTempStateHash),
 // this method returns a map [txUuid of Tx --> cryptoHash(stateChangesMadeByTx)]
 // Only successful txs appear in this map
 func (ledger *Ledger) GetTempStateHashWithTxDeltaStateHashes() ([]byte, map[string][]byte, error) {
-	stateHash, err := ledger.state.GetHash()
-	return stateHash, ledger.state.GetTxStateDeltaHash(), err
+	chaincodeStHash, err := ledger.chaincodeState.GetHash()
+	return chaincodeStHash, ledger.chaincodeState.GetTxStateDeltaHash(), err
+}
+
+// GetTempTxSetStateHashWithTxDeltaStateHashes - In addition to the transactions set state hash
+// (as defined in method GetTempStateHash), this method returns a map [txUuid of Tx --> cryptoHash(stateChangesMadeByTx)]
+// Only successful txs appear in this map
+func (ledger *Ledger) GetTempTxSetStateHashWithTxDeltaStateHashes() ([]byte, map[string][]byte, error) {
+	txSetStateHash, err := ledger.txSetState.GetHash()
+	return txSetStateHash, ledger.txSetState.GetTxStateDeltaHash(), err
 }
 
 // GetState get state for chaincodeID and key. If committed is false, this first looks in memory
 // and if missing, pulls from db.  If committed is true, this pulls from the db only.
 func (ledger *Ledger) GetState(chaincodeID string, key string, committed bool) ([]byte, error) {
-	return ledger.state.Get(chaincodeID, key, committed)
+	return ledger.chaincodeState.Get(chaincodeID, key, committed)
+}
+
+// GetTxSetState get state for txSetID. If committed is false, this first looks in memory
+// and if missing, pulls from db.  If committed is true, this pulls from the db only.
+func (ledger *Ledger) GetTxSetState(txSetID string, committed bool) (*txstatemgmt.TxSetStateValue, error) {
+	return ledger.txSetState.Get(txSetID, committed)
 }
 
 // GetStateRangeScanIterator returns an iterator to get all the keys (and values) between startKey and endKey
@@ -267,38 +301,64 @@ func (ledger *Ledger) GetState(chaincodeID string, key string, committed bool) (
 // are mergerd with the results in memory (giving preference to in-memory data)
 // The key-values in the returned iterator are not guaranteed to be in any specific order
 func (ledger *Ledger) GetStateRangeScanIterator(chaincodeID string, startKey string, endKey string, committed bool) (stcomm.RangeScanIterator, error) {
-	return ledger.state.GetRangeScanIterator(chaincodeID, startKey, endKey, committed)
+	return ledger.chaincodeState.GetRangeScanIterator(chaincodeID, startKey, endKey, committed)
 }
 
-// SetState sets state to given value for chaincodeID and key. Does not immideatly writes to DB
+// SetState sets state to given value for chaincodeID and key. Does not immediately write to DB
 func (ledger *Ledger) SetState(chaincodeID string, key string, value []byte) error {
 	if key == "" || value == nil {
 		return newLedgerError(ErrorTypeInvalidArgument,
 			fmt.Sprintf("An empty string key or a nil value is not supported. Method invoked with key='%s', value='%#v'", key, value))
 	}
-	return ledger.state.Set(chaincodeID, key, value)
+	return ledger.chaincodeState.Set(chaincodeID, key, value)
+}
+
+// SetTxSetState sets state to given value for txSetID. Does not immediately write to DB
+func (ledger *Ledger) SetTxSetState(txSetID string, txSetStateValue *txstatemgmt.TxSetStateValue) error {
+	if txSetStateValue == nil {
+		return newLedgerError(ErrorTypeInvalidArgument,
+			fmt.Sprintf("An empty transaction set state value is not supported. Method invoked with stateValue='%#v'", txSetStateValue))
+	}
+	previousValue, err :=  ledger.GetTxSetState(txSetID, true)
+	if err != nil {
+		return newLedgerError(ErrorTypeResourceNotFound,
+			fmt.Sprintf("Error while trying to retrieve the previous state for txSetID='%s', err='%#v'", txSetID, err))
+	}
+	if txSetStateValue.Nonce != previousValue.Nonce + 1 {
+		return  newLedgerError(ErrorTypeInvalidArgument,
+			fmt.Sprintf("Wrong nonce update. Previous nonce: %d, new nonce: %d", previousValue.Nonce, txSetStateValue.Nonce))
+	}
+	err = previousValue.IsValidBlockExtension(txSetStateValue)
+	if err != nil {
+		return newLedgerError(ErrorTypeInvalidArgument, err.Error())
+	}
+	err = txSetStateValue.IsIndexInRange()
+	if err != nil {
+		return newLedgerError(ErrorTypeOutOfBounds, err.Error())
+	}
+	return ledger.txSetState.Set(txSetID, txSetStateValue)
 }
 
 // DeleteState tracks the deletion of state for chaincodeID and key. Does not immediately writes to DB
 func (ledger *Ledger) DeleteState(chaincodeID string, key string) error {
-	return ledger.state.Delete(chaincodeID, key)
+	return ledger.chaincodeState.Delete(chaincodeID, key)
 }
 
 // CopyState copies all the key-values from sourceChaincodeID to destChaincodeID
 func (ledger *Ledger) CopyState(sourceChaincodeID string, destChaincodeID string) error {
-	return ledger.state.CopyState(sourceChaincodeID, destChaincodeID)
+	return ledger.chaincodeState.CopyState(sourceChaincodeID, destChaincodeID)
 }
 
 // GetStateMultipleKeys returns the values for the multiple keys.
 // This method is mainly to amortize the cost of grpc communication between chaincode shim peer
 func (ledger *Ledger) GetStateMultipleKeys(chaincodeID string, keys []string, committed bool) ([][]byte, error) {
-	return ledger.state.GetMultipleKeys(chaincodeID, keys, committed)
+	return ledger.chaincodeState.GetMultipleKeys(chaincodeID, keys, committed)
 }
 
 // SetStateMultipleKeys sets the values for the multiple keys.
 // This method is mainly to amortize the cost of grpc communication between chaincode shim peer
 func (ledger *Ledger) SetStateMultipleKeys(chaincodeID string, kvs map[string][]byte) error {
-	return ledger.state.SetMultipleKeys(chaincodeID, kvs)
+	return ledger.chaincodeState.SetMultipleKeys(chaincodeID, kvs)
 }
 
 // GetStateSnapshot returns a point-in-time view of the global state for the current block. This
@@ -315,16 +375,16 @@ func (ledger *Ledger) GetStateSnapshot() (*stcomm.StateSnapshot, error) {
 		dbSnapshot.Release()
 		return nil, fmt.Errorf("Blockchain has no blocks, cannot determine block number")
 	}
-	return ledger.state.GetSnapshot(blockHeight-1, dbSnapshot)
+	return ledger.chaincodeState.GetSnapshot(blockHeight-1, dbSnapshot)
 }
 
 // GetStateDelta will return the state delta for the specified block if
 // available.  If not available because it has been discarded, returns nil,nil.
-func (ledger *Ledger) GetStateDelta(blockNumber uint64) (*statemgmt.StateDelta, error) {
+func (ledger *Ledger) GetStateDelta(blockNumber uint64) (*chstatemgmt.StateDelta, error) {
 	if blockNumber >= ledger.GetBlockchainSize() {
 		return nil, ErrOutOfBounds
 	}
-	return ledger.state.FetchStateDeltaFromDB(blockNumber)
+	return ledger.chaincodeState.FetchStateDeltaFromDB(blockNumber)
 }
 
 // ApplyStateDelta applies a state delta to the current state. This is an
@@ -345,13 +405,13 @@ func (ledger *Ledger) GetStateDelta(blockNumber uint64) (*statemgmt.StateDelta, 
 // be used to roll forwards from state at block 2 to state at block 3. If
 // stateDelta.RollBackwards=false, the delta retrieved for block 3 can be
 // used to roll backwards from the state at block 3 to the state at block 2.
-func (ledger *Ledger) ApplyStateDelta(id interface{}, delta *statemgmt.StateDelta) error {
+func (ledger *Ledger) ApplyStateDelta(id interface{}, delta *chstatemgmt.StateDelta) error {
 	err := ledger.checkValidIDBegin()
 	if err != nil {
 		return err
 	}
 	ledger.currentID = id
-	ledger.state.ApplyStateDelta(delta)
+	ledger.chaincodeState.ApplyStateDelta(delta)
 	return nil
 }
 
@@ -363,7 +423,7 @@ func (ledger *Ledger) CommitStateDelta(id interface{}) error {
 		return err
 	}
 	defer ledger.resetForNextTxGroup(true)
-	return ledger.state.CommitStateDelta()
+	return ledger.chaincodeState.CommitStateDelta()
 }
 
 // RollbackStateDelta will discard the state delta passed
@@ -381,7 +441,7 @@ func (ledger *Ledger) RollbackStateDelta(id interface{}) error {
 // This is generally only used during state synchronization when creating a
 // new state from a snapshot.
 func (ledger *Ledger) DeleteALLStateKeysAndValues() error {
-	return ledger.state.DeleteState()
+	return ledger.chaincodeState.DeleteState()
 }
 
 /////////////////// blockchain related methods /////////////////////////////////////
@@ -492,7 +552,8 @@ func (ledger *Ledger) checkValidIDCommitORRollback(id interface{}) error {
 func (ledger *Ledger) resetForNextTxGroup(txCommited bool) {
 	ledgerLogger.Debug("resetting ledger state for next transaction batch")
 	ledger.currentID = nil
-	ledger.state.ClearInMemoryChanges(txCommited)
+	ledger.chaincodeState.ClearInMemoryChanges(txCommited)
+	ledger.txSetState.ClearInMemoryChanges(txCommited)
 }
 
 func sendProducerBlockEvent(block *protos.Block) {
