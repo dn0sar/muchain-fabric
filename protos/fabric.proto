@@ -56,7 +56,7 @@ message Transaction {
 
 message MutantTransaction {
     // txSetID: the transaction set ID of the transaction set that this mutant transaction is modifying
-    bytes txSetID = 1;
+    string txSetID = 1;
     // The index of the new active transaction for this tx set
     TxSetIndex txSetIndex = 2;
 }
