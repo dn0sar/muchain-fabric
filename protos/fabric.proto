@@ -243,6 +243,7 @@ message Response {
 message BlockState {
     Block block = 1;
     bytes stateDelta = 2;
+    bytes txSetStateDelta = 3;
 }
 
 // SyncBlockRange is the payload of Message.SYNC_GET_BLOCKS, where
@@ -274,6 +275,7 @@ message SyncStateSnapshotRequest {
 // starting at 0.  The terminating message will have len(delta) == 0.
 message SyncStateSnapshot {
     bytes delta = 1;
+    bytes txSetDelta = 5;
     uint64 sequence = 2;
     uint64 blockNumber = 3;
     SyncStateSnapshotRequest request = 4;
@@ -292,6 +294,7 @@ message SyncStateDeltasRequest {
 message SyncStateDeltas {
     SyncBlockRange range = 1;
     repeated bytes deltas = 2;
+    repeated bytes txSetDeltas = 3;
 }
 
 // The representation of the state of a transactions set

@@ -35,11 +35,11 @@ type HashableTxSetState interface {
 	// for computing cryptoHash and persisting the changes for the stateDelta (passed in PrepareWorkingSet method)
 	ClearWorkingSet(changesPersisted bool)
 
-	// GetStateSnapshotIterator state implementation to provide an iterator that is supposed to give
+	// GetTxSetStateSnapshotIterator state implementation to provide an iterator that is supposed to give
 	// All the key-value of global state. A particular implementation may need to remove additional information
 	// that the implementation keeps for faster crypto-hash computation. For instance, filter a few of the
 	// key-values or remove some data from particular key-values.
-	GetStateSnapshotIterator(snapshot *gorocksdb.Snapshot) (stcomm.StateSnapshotIterator, error)
+	GetTxSetStateSnapshotIterator(snapshot *gorocksdb.Snapshot) (stcomm.StateSnapshotIterator, error)
 
 	// PerfHintKeyChanged state implementation may be provided with some hints before (e.g., during tx execution)
 	// the StateDelta is prepared and passed in PrepareWorkingSet method.

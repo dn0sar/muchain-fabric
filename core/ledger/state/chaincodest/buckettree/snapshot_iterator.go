@@ -34,6 +34,10 @@ func newStateSnapshotIterator(snapshot *gorocksdb.Snapshot) (*StateSnapshotItera
 	return &StateSnapshotIterator{dbItr}, nil
 }
 
+func (snapshotItr *StateSnapshotIterator) Valid() bool {
+	return snapshotItr.dbItr.Valid()
+}
+
 // Next - see interface 'statemgmt.StateSnapshotIterator' for details
 func (snapshotItr *StateSnapshotIterator) Next() bool {
 	snapshotItr.dbItr.Next()

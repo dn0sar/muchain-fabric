@@ -207,8 +207,8 @@ func (state *TxSetState) getStateDelta() *statemgmt.TxSetStateDelta {
 
 // GetSnapshot returns a snapshot of the global state for the current block. stateSnapshot.Release()
 // must be called once you are done.
-func (state *TxSetState) GetSnapshot(blockNumber uint64, dbSnapshot *gorocksdb.Snapshot) (*stcomm.StateSnapshot, error) {
-	itr, err := txSetStateImpl.GetStateSnapshotIterator(dbSnapshot)
+func (state *TxSetState) GetTxSetSnapshot(blockNumber uint64, dbSnapshot *gorocksdb.Snapshot) (*stcomm.StateSnapshot, error) {
+	itr, err := txSetStateImpl.GetTxSetStateSnapshotIterator(dbSnapshot)
 	if err != nil {
 		return nil, err
 	}

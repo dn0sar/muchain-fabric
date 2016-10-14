@@ -37,6 +37,17 @@ func newStateSnapshotIterator(snapshot *gorocksdb.Snapshot) (*StateSnapshotItera
 	return &StateSnapshotIterator{dbItr, nil, nil}, nil
 }
 
+func (snapshotItr *StateSnapshotIterator) Valid() bool {
+	var valid = false
+	for ; snapshotItr.dbItr.Valid(); snapshotItr.dbItr.Next() {
+		if unmarshalTrieNodeValue(stcomm.Copy(snapshotItr.dbItr.Value().Data())) != nil {
+			valid = true;
+			break
+		}
+	}
+	return valid
+}
+
 // Next - see interface 'statemgmt.StateSnapshotIterator' for details
 func (snapshotItr *StateSnapshotIterator) Next() bool {
 	var available bool

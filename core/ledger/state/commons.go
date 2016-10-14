@@ -43,7 +43,7 @@ func ConstructTxSetKey(txSetID string) []byte {
 }
 // GetTxSetIDfromKey returns the txSetID that was used to create the key given as input.
 // i.e. the following is guaranteed GetTxSetIDfromKey(ConstructTxSetKey(txSetID)) == txSetID
-func GetTxSetIDfromKey(txSetKey []byte) string {
+func DecomposeTxSetKey(txSetKey []byte) string {
 	return string(txSetKey)
 }
 

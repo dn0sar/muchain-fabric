@@ -146,13 +146,13 @@ func (openchainDB *OpenchainDB) GetStateDeltaCFIterator() *gorocksdb.Iterator {
 }
 
 // GetTxSetStateCFIterator get iterator for column family - txSetStateCF
-func (OpenchainDB *OpenchainDB) GetTxSetStateCFSnapshotIterator(snapshot *gorocksdb.Snapshot) *gorocksdb.Iterator {
+func (openchainDB *OpenchainDB) GetTxSetStateCFSnapshotIterator(snapshot *gorocksdb.Snapshot) *gorocksdb.Iterator {
 	return openchainDB.getSnapshotIterator(snapshot, openchainDB.TxSetStateCF)
 }
 
 // GetTxSetStateDeltaCFIterator get iterator for column family - txSetStateCF
-func (OpenchainDB *OpenchainDB) GetTxSetStateDeltaCFSnapshotIterator(snapshot *gorocksdb.Snapshot) *gorocksdb.Iterator {
-	return openchainDB.getSnapshotIterator(snapshot, openchainDB.TxSetStateDeltaCF)
+func (openchainDB *OpenchainDB) GetTxSetStateDeltaCFSnapshotIterator() *gorocksdb.Iterator {
+	return openchainDB.GetIterator(openchainDB.TxSetStateDeltaCF)
 }
 
 // GetSnapshot returns a point-in-time view of the DB. You MUST call snapshot.Release()

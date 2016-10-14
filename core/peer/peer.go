@@ -41,7 +41,8 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/state"
 	"github.com/hyperledger/fabric/core/util"
 	pb "github.com/hyperledger/fabric/protos"
-	"github.com/hyperledger/fabric/core/ledger/state/chaincodest/statemgmt"
+	chainstmgmt "github.com/hyperledger/fabric/core/ledger/state/chaincodest/statemgmt"
+	txsetstmgmt "github.com/hyperledger/fabric/core/ledger/state/txsetst/statemgmt"
 )
 
 // Peer provides interface for a peer
@@ -72,11 +73,12 @@ type BlockChainAccessor interface {
 	GetBlockByNumber(blockNumber uint64) (*pb.Block, error)
 	GetBlockchainSize() uint64
 	GetCurrentStateHash() (stateHash []byte, err error)
+	GetCurrentTxSetStateHash() (txSetStateHash []byte, err error)
 }
 
 // BlockChainModifier interface for applying changes to the block chain
 type BlockChainModifier interface {
-	ApplyStateDelta(id interface{}, delta *statemgmt.StateDelta) error
+	ApplyStateDelta(id interface{}, delta *chainstmgmt.StateDelta, txSetDelta *txsetstmgmt.TxSetStateDelta) error
 	RollbackStateDelta(id interface{}) error
 	CommitStateDelta(id interface{}) error
 	EmptyState() error
@@ -89,10 +91,10 @@ type BlockChainUtil interface {
 	VerifyBlockchain(start, finish uint64) (uint64, error)
 }
 
-// StateAccessor interface for retreiving blocks by block number
+// StateAccessor interface for retrieving blocks by block number
 type StateAccessor interface {
-	GetStateSnapshot() (*stcomm.StateSnapshot, error)
-	GetStateDelta(blockNumber uint64) (*statemgmt.StateDelta, error)
+	GetStateSnapshot() (*stcomm.StateSnapshot, *stcomm.StateSnapshot, error)
+	GetStateDelta(blockNumber uint64) (*chainstmgmt.StateDelta, *txsetstmgmt.TxSetStateDelta, error)
 }
 
 // MessageHandler standard interface for handling Openchain messages.
@@ -685,6 +687,13 @@ func (p *Impl) GetCurrentStateHash() (stateHash []byte, err error) {
 	return p.ledgerWrapper.ledger.GetTempStateHash()
 }
 
+// GetCurrentTxSetStateHash returns the current non-committed hash of the in memory tx set state
+func (p *Impl) GetCurrentTxSetStateHash() (stateHash []byte, err error) {
+	p.ledgerWrapper.RLock()
+	defer p.ledgerWrapper.RUnlock()
+	return p.ledgerWrapper.ledger.GetTempTxSetStateHash()
+}
+
 // HashBlock returns the hash of the included block, useful for mocking
 func (p *Impl) HashBlock(block *pb.Block) ([]byte, error) {
 	return block.GetHash()
@@ -702,10 +711,10 @@ func (p *Impl) VerifyBlockchain(start, finish uint64) (uint64, error) {
 // The result of this function can be retrieved using GetCurrentStateDelta
 // To commit the result, call CommitStateDelta, or to roll it back
 // call RollbackStateDelta
-func (p *Impl) ApplyStateDelta(id interface{}, delta *statemgmt.StateDelta) error {
+func (p *Impl) ApplyStateDelta(id interface{}, delta *chainstmgmt.StateDelta, txSetDelta *txsetstmgmt.TxSetStateDelta) error {
 	p.ledgerWrapper.Lock()
 	defer p.ledgerWrapper.Unlock()
-	return p.ledgerWrapper.ledger.ApplyStateDelta(id, delta)
+	return p.ledgerWrapper.ledger.ApplyStateDelta(id, delta, txSetDelta)
 }
 
 // CommitStateDelta makes the result of ApplyStateDelta permanent
@@ -732,14 +741,14 @@ func (p *Impl) EmptyState() error {
 }
 
 // GetStateSnapshot return the state snapshot
-func (p *Impl) GetStateSnapshot() (*stcomm.StateSnapshot, error) {
+func (p *Impl) GetStateSnapshot() (*stcomm.StateSnapshot, *stcomm.StateSnapshot, error) {
 	p.ledgerWrapper.RLock()
 	defer p.ledgerWrapper.RUnlock()
 	return p.ledgerWrapper.ledger.GetStateSnapshot()
 }
 
 // GetStateDelta return the state delta for the requested block number
-func (p *Impl) GetStateDelta(blockNumber uint64) (*statemgmt.StateDelta, error) {
+func (p *Impl) GetStateDelta(blockNumber uint64) (*chainstmgmt.StateDelta, *txsetstmgmt.TxSetStateDelta, error) {
 	p.ledgerWrapper.RLock()
 	defer p.ledgerWrapper.RUnlock()
 	return p.ledgerWrapper.ledger.GetStateDelta(blockNumber)

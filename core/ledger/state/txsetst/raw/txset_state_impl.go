@@ -80,7 +80,7 @@ func (impl *TxSetStateImpl) AddChangesForPersistence(writeBatch *gorocksdb.Write
 func (impl *TxSetStateImpl) PerfHintKeyChanged(txSetID string) {
 }
 
-// GetStateSnapshotIterator - method implementation for interface 'statemgmt.HashableTxSetState'
-func (impl *TxSetStateImpl) GetStateSnapshotIterator(snapshot *gorocksdb.Snapshot) (stcomm.StateSnapshotIterator, error) {
+// GetTxSetStateSnapshotIterator - method implementation for interface 'statemgmt.HashableTxSetState'
+func (impl *TxSetStateImpl) GetTxSetStateSnapshotIterator(snapshot *gorocksdb.Snapshot) (stcomm.StateSnapshotIterator, error) {
 	panic("Not a full-fledged state implementation. Implemented only for measuring best-case performance benchmark")
 }

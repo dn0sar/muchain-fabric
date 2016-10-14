@@ -27,7 +27,8 @@ import (
 
 	"github.com/hyperledger/fabric/core/ledger/state"
 	pb "github.com/hyperledger/fabric/protos"
-	"github.com/hyperledger/fabric/core/ledger/state/chaincodest/statemgmt"
+	chainstmgmt "github.com/hyperledger/fabric/core/ledger/state/chaincodest/statemgmt"
+	txsetstmgmt "github.com/hyperledger/fabric/core/ledger/state/txsetst/statemgmt"
 )
 
 // Handler peer handler implementation.
@@ -518,27 +519,42 @@ func (d *Handler) beforeSyncStateSnapshot(e *fsm.Event) {
 func (d *Handler) sendStateSnapshot(syncStateSnapshotRequest *pb.SyncStateSnapshotRequest) {
 	peerLogger.Debugf("Sending state snapshot with correlationId = %d", syncStateSnapshotRequest.CorrelationId)
 
-	snapshot, err := d.Coordinator.GetStateSnapshot()
+	chainSnapshot, txSetSnaphot, err := d.Coordinator.GetStateSnapshot()
 	if err != nil {
 		peerLogger.Errorf("Error getting snapshot: %s", err)
 		return
 	}
-	defer snapshot.Release()
+	defer chainSnapshot.Release()
+	defer txSetSnaphot.Release()
 
 	// Iterate over the state deltas and send to requestor
-	currBlockNumber := snapshot.GetBlockNumber()
+	currBlockNumber := chainSnapshot.GetBlockNumber()
 	var sequence uint64
 	// Loop through and send the Deltas
-	for i := 0; snapshot.Next(); i++ {
-		delta := statemgmt.NewStateDelta()
-		k, v := snapshot.GetRawKeyValue()
-		cID, keyID := stcomm.DecodeCompositeKey(k)
-		delta.Set(cID, keyID, v, nil)
+	for i := 0; (chainSnapshot.Valid() && chainSnapshot.Next()) || (txSetSnaphot.Valid() && txSetSnaphot.Next()); i++ {
+		delta := chainstmgmt.NewStateDelta()
+		if chainSnapshot.Valid() {
+			k, v := chainSnapshot.GetRawKeyValue()
+			cID, keyID := stcomm.DecodeCompositeKey(k)
+			delta.Set(cID, keyID, v, nil)
+		}
+		txSetStateDelta := txsetstmgmt.NewTxSetStateDelta()
+		if txSetSnaphot.Valid() {
+			k, v := txSetSnaphot.GetRawKeyValue()
+			txID := stcomm.DecomposeTxSetKey(k)
+			txSetStateValue, err := pb.UnmarshalTxSetStateValue(v)
+			if err != nil {
+				peerLogger.Errorf("Error unmarshalling TxSetStateValue for BlockNum = %d and TxId = %d: %s", currBlockNumber, txID, err)
+				break
+			}
+			txSetStateDelta.Set(txID, txSetStateValue, nil)
+		}
 
 		deltaAsBytes := delta.Marshal()
+		txSetStateDeltaBytes := txSetStateDelta.Marshal()
 		// Encode a SyncStateSnapsot into the payload
 		sequence = uint64(i)
-		syncStateSnapshot := &pb.SyncStateSnapshot{Delta: deltaAsBytes, Sequence: sequence, BlockNumber: currBlockNumber, Request: syncStateSnapshotRequest}
+		syncStateSnapshot := &pb.SyncStateSnapshot{Delta: deltaAsBytes, TxSetDelta: txSetStateDeltaBytes, Sequence: sequence, BlockNumber: currBlockNumber, Request: syncStateSnapshotRequest}
 
 		syncStateSnapshotBytes, err := proto.Marshal(syncStateSnapshot)
 		if err != nil {
@@ -552,7 +568,7 @@ func (d *Handler) sendStateSnapshot(syncStateSnapshotRequest *pb.SyncStateSnapsh
 	}
 
 	// Now send the terminating message
-	syncStateSnapshot := &pb.SyncStateSnapshot{Delta: []byte{}, Sequence: sequence + 1, BlockNumber: currBlockNumber, Request: syncStateSnapshotRequest}
+	syncStateSnapshot := &pb.SyncStateSnapshot{Delta: []byte{}, TxSetDelta: []byte{}, Sequence: sequence + 1, BlockNumber: currBlockNumber, Request: syncStateSnapshotRequest}
 	syncStateSnapshotBytes, err := proto.Marshal(syncStateSnapshot)
 	if err != nil {
 		peerLogger.Errorf("Error marshalling terminating syncStateSnapsot message for correlationId = %d, BlockNum = %d: %s", syncStateSnapshotRequest.CorrelationId, currBlockNumber, err)
@@ -634,7 +650,7 @@ func (d *Handler) sendStateDeltas(syncStateDeltasRequest *pb.SyncStateDeltasRequ
 	}
 	for _, currBlockNum := range blockNums {
 		// Get the state deltas for Block from coordinator
-		stateDelta, err := d.Coordinator.GetStateDelta(currBlockNum)
+		stateDelta, txSetStDelta, err := d.Coordinator.GetStateDelta(currBlockNum)
 		if err != nil {
 			peerLogger.Errorf("Error sending stateDelta for blockNum %d: %s", currBlockNum, err)
 			break
@@ -645,7 +661,8 @@ func (d *Handler) sendStateDeltas(syncStateDeltasRequest *pb.SyncStateDeltasRequ
 		}
 		// Encode a SyncStateDeltas into the payload
 		stateDeltaBytes := stateDelta.Marshal()
-		syncStateDeltas := &pb.SyncStateDeltas{Range: &pb.SyncBlockRange{Start: currBlockNum, End: currBlockNum, CorrelationId: syncBlockRange.CorrelationId}, Deltas: [][]byte{stateDeltaBytes}}
+		txSetStDelaBytes := txSetStDelta.Marshal()
+		syncStateDeltas := &pb.SyncStateDeltas{Range: &pb.SyncBlockRange{Start: currBlockNum, End: currBlockNum, CorrelationId: syncBlockRange.CorrelationId}, Deltas: [][]byte{stateDeltaBytes}, TxSetDeltas: [][]byte{txSetStDelaBytes}}
 		syncStateDeltasBytes, err := proto.Marshal(syncStateDeltas)
 		if err != nil {
 			peerLogger.Errorf("Error marshalling syncStateDeltas for BlockNum = %d: %s", currBlockNum, err)

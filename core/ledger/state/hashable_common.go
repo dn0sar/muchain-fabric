@@ -4,6 +4,9 @@ package stcomm
 // GetStateSnapshotIterator method in the implementation of HashableState interface
 type StateSnapshotIterator interface {
 
+	// Valid returns true if the the iterator is positioned at a valid key/value
+	Valid() bool
+
 	// Next moves to next key-value. Returns true if next key-value exists
 	Next() bool
 

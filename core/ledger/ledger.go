@@ -27,6 +27,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/state"
 	"github.com/hyperledger/fabric/core/ledger/state/chaincodest"
 	chstatemgmt "github.com/hyperledger/fabric/core/ledger/state/chaincodest/statemgmt"
+	txsetstmgmt "github.com/hyperledger/fabric/core/ledger/state/txsetst/statemgmt"
 	"github.com/hyperledger/fabric/events/producer"
 	"github.com/op/go-logging"
 	"github.com/tecbot/gorocksdb"
@@ -243,12 +244,14 @@ func (ledger *Ledger) RollbackTxBatch(id interface{}) error {
 // TxBegin - Marks the begin of a new transaction in the ongoing batch
 func (ledger *Ledger) TxBegin(txID string) {
 	ledger.chaincodeState.TxBegin(txID)
+	ledger.txSetState.TxBegin(txID)
 }
 
 // TxFinished - Marks the finish of the on-going transaction.
 // If txSuccessful is false, the state changes made by the transaction are discarded
 func (ledger *Ledger) TxFinished(txID string, txSuccessful bool) {
 	ledger.chaincodeState.TxFinish(txID, txSuccessful)
+	ledger.txSetState.TxFinish(txID, txSuccessful)
 }
 
 /////////////////// world-state related methods /////////////////////////////////////
@@ -262,7 +265,7 @@ func (ledger *Ledger) GetTempStateHash() ([]byte, error) {
 
 // GetTemptTxSetStateHash - Computes the transaction set state hash by taking into account the state changes that may
 // have taken place during the execution of current transaction-batch
-func (ledger *Ledger) GetTemptTxSetStateHash() ([]byte, error) {
+func (ledger *Ledger) GetTempTxSetStateHash() ([]byte, error) {
 	return ledger.txSetState.GetHash()
 }
 
@@ -363,27 +366,42 @@ func (ledger *Ledger) SetStateMultipleKeys(chaincodeID string, kvs map[string][]
 // GetStateSnapshot returns a point-in-time view of the global state for the current block. This
 // should be used when transferring the state from one peer to another peer. You must call
 // stateSnapshot.Release() once you are done with the snapshot to free up resources.
-func (ledger *Ledger) GetStateSnapshot() (*stcomm.StateSnapshot, error) {
+// REVIEW: Check if this contains also all the values of the TxSet State: Does not!!
+func (ledger *Ledger) GetStateSnapshot() (*stcomm.StateSnapshot, *stcomm.StateSnapshot, error) {
 	dbSnapshot := db.GetDBHandle().GetSnapshot()
+	dbSnapshotForTxSet := db.GetDBHandle().GetSnapshot()
 	blockHeight, err := fetchBlockchainSizeFromSnapshot(dbSnapshot)
 	if err != nil {
 		dbSnapshot.Release()
-		return nil, err
+		return nil, nil, err
 	}
 	if 0 == blockHeight {
 		dbSnapshot.Release()
-		return nil, fmt.Errorf("Blockchain has no blocks, cannot determine block number")
+		return nil, nil, fmt.Errorf("Blockchain has no blocks, cannot determine block number")
 	}
-	return ledger.chaincodeState.GetSnapshot(blockHeight-1, dbSnapshot)
+	chainSnap, err := ledger.chaincodeState.GetSnapshot(blockHeight-1, dbSnapshot)
+	if err != nil {
+		return nil, nil, err
+	}
+	txSetSnap, err := ledger.txSetState.GetTxSetSnapshot(blockHeight -1, dbSnapshotForTxSet)
+	return chainSnap, txSetSnap, nil
 }
 
 // GetStateDelta will return the state delta for the specified block if
 // available.  If not available because it has been discarded, returns nil,nil.
-func (ledger *Ledger) GetStateDelta(blockNumber uint64) (*chstatemgmt.StateDelta, error) {
+func (ledger *Ledger) GetStateDelta(blockNumber uint64) (*chstatemgmt.StateDelta, *txsetstmgmt.TxSetStateDelta, error) {
 	if blockNumber >= ledger.GetBlockchainSize() {
-		return nil, ErrOutOfBounds
+		return nil, nil, ErrOutOfBounds
 	}
-	return ledger.chaincodeState.FetchStateDeltaFromDB(blockNumber)
+	chainstDelta, err := ledger.chaincodeState.FetchStateDeltaFromDB(blockNumber)
+	if err != nil {
+		return nil, nil, err
+	}
+	txSetStDelta, err := ledger.txSetState.FetchStateDeltaFromDB(blockNumber)
+	if err != nil {
+		return nil, nil, err
+	}
+	return chainstDelta, txSetStDelta, nil
 }
 
 // ApplyStateDelta applies a state delta to the current state. This is an
@@ -404,13 +422,14 @@ func (ledger *Ledger) GetStateDelta(blockNumber uint64) (*chstatemgmt.StateDelta
 // be used to roll forwards from state at block 2 to state at block 3. If
 // stateDelta.RollBackwards=false, the delta retrieved for block 3 can be
 // used to roll backwards from the state at block 3 to the state at block 2.
-func (ledger *Ledger) ApplyStateDelta(id interface{}, delta *chstatemgmt.StateDelta) error {
+func (ledger *Ledger) ApplyStateDelta(id interface{}, chaincodeDelta *chstatemgmt.StateDelta, txSetStDelta *txsetstmgmt.TxSetStateDelta) error {
 	err := ledger.checkValidIDBegin()
 	if err != nil {
 		return err
 	}
 	ledger.currentID = id
-	ledger.chaincodeState.ApplyStateDelta(delta)
+	ledger.chaincodeState.ApplyStateDelta(chaincodeDelta)
+	ledger.txSetState.ApplyStateDelta(txSetStDelta)
 	return nil
 }
 
@@ -422,7 +441,11 @@ func (ledger *Ledger) CommitStateDelta(id interface{}) error {
 		return err
 	}
 	defer ledger.resetForNextTxGroup(true)
-	return ledger.chaincodeState.CommitStateDelta()
+	err = ledger.chaincodeState.CommitStateDelta()
+	if err != nil {
+		return err
+	}
+	return ledger.txSetState.CommitStateDelta()
 }
 
 // RollbackStateDelta will discard the state delta passed
@@ -440,7 +463,12 @@ func (ledger *Ledger) RollbackStateDelta(id interface{}) error {
 // This is generally only used during state synchronization when creating a
 // new state from a snapshot.
 func (ledger *Ledger) DeleteALLStateKeysAndValues() error {
-	return ledger.chaincodeState.DeleteState()
+	err := ledger.chaincodeState.DeleteState()
+	if err != nil {
+		return err
+	}
+	// REVIEW: Probably not needed, since deleting from the chaincode state should clear all values in the db
+	return ledger.txSetState.DeleteState()
 }
 
 /////////////////// blockchain related methods /////////////////////////////////////

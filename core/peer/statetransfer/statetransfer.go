@@ -25,11 +25,13 @@ import (
 
 	_ "github.com/hyperledger/fabric/core" // Logging format init
 
-	state "github.com/hyperledger/fabric/core/ledger/state/chaincodest/statemgmt"
+	chainstmgmt "github.com/hyperledger/fabric/core/ledger/state/chaincodest/statemgmt"
+	txsetstmgmt "github.com/hyperledger/fabric/core/ledger/state/txsetst/statemgmt"
 	"github.com/hyperledger/fabric/core/peer"
 	pb "github.com/hyperledger/fabric/protos"
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
+
 )
 
 // =============================================================================
@@ -662,6 +664,7 @@ func (sts *coordinatorImpl) attemptStateTransfer(blockNumber uint64, peerIDs []*
 func (sts *coordinatorImpl) playStateUpToBlockNumber(toBlockNumber uint64, peerIDs []*pb.PeerID) error {
 	logger.Debugf("Attempting to play state forward from %v to block %d", peerIDs, toBlockNumber)
 	var stateHash []byte
+	var txSetStateHash []byte
 	err := sts.tryOverPeers(peerIDs, func(peerID *pb.PeerID) error {
 
 		var deltaMessages <-chan *pb.SyncStateDeltas
@@ -690,12 +693,16 @@ func (sts *coordinatorImpl) playStateUpToBlockNumber(toBlockNumber uint64, peerI
 						return fmt.Errorf("Received a state delta from %v either in the wrong order (backwards) or not next in sequence, aborting, start=%d, end=%d", peerID, deltaMessage.Range.Start, deltaMessage.Range.End)
 					}
 
-					for _, delta := range deltaMessage.Deltas {
-						umDelta := &state.StateDelta{}
-						if err := umDelta.Unmarshal(delta); nil != err {
+					for i := range deltaMessage.Deltas {
+						umDelta := &chainstmgmt.StateDelta{}
+						if err := umDelta.Unmarshal(deltaMessage.Deltas[i]); nil != err {
 							return fmt.Errorf("Received a corrupt state delta from %v : %s", peerID, err)
 						}
-						sts.stack.ApplyStateDelta(deltaMessage, umDelta)
+						umTxSetStateDelta := &txsetstmgmt.TxSetStateDelta{}
+						if err := umTxSetStateDelta.Unmarshal(deltaMessage.TxSetDeltas[i]); nil != err {
+							return fmt.Errorf("Received a corrupt tx set state delta from %v : %s", peerID, err)
+						}
+						sts.stack.ApplyStateDelta(deltaMessage, umDelta, umTxSetStateDelta)
 
 						success := false
 
@@ -710,7 +717,12 @@ func (sts *coordinatorImpl) playStateUpToBlockNumber(toBlockNumber uint64, peerI
 								logger.Warningf("Could not compute state hash for some reason: %s", err)
 							}
 							logger.Debugf("Played state forward from %v to block %d with StateHash (%x), block has StateHash (%x)", peerID, deltaMessage.Range.End, stateHash, testBlock.StateHash)
-							if bytes.Equal(testBlock.StateHash, stateHash) {
+							txSetStateHash, err = sts.stack.GetCurrentTxSetStateHash()
+							if err != nil {
+								logger.Warningf("Could not compute tx set state hash for some reason: %s", err)
+							}
+							logger.Debugf("Played state forward from %v to block %d with TxSetStateHash (%x), block has TxSetStateHash (%x)", peerID, deltaMessage.Range.End, txSetStateHash, testBlock.TxSetStateHash)
+							if bytes.Equal(testBlock.StateHash, stateHash) && bytes.Equal(testBlock.TxSetStateHash, txSetStateHash) {
 								success = true
 							}
 						}
@@ -718,9 +730,9 @@ func (sts *coordinatorImpl) playStateUpToBlockNumber(toBlockNumber uint64, peerI
 						if !success {
 							if sts.stack.RollbackStateDelta(deltaMessage) != nil {
 								sts.stateValid = false
-								return fmt.Errorf("played state forward according to %v, but the state hash did not match, failed to roll back, invalidated state", peerID)
+								return fmt.Errorf("played state forward according to %v, but the state hash or the tx set state hash did not match, failed to roll back, invalidated state", peerID)
 							}
-							return fmt.Errorf("Played state forward according to %v, but the state hash did not match, rolled back", peerID)
+							return fmt.Errorf("Played state forward according to %v, but the state hash or the tx set state hash did not match, rolled back", peerID)
 
 						}
 
@@ -781,22 +793,34 @@ func (sts *coordinatorImpl) syncStateSnapshot(minBlockNumber uint64, peerIDs []*
 				if !ok {
 					return fmt.Errorf("had state snapshot channel close prematurely after %d deltas: %s", counter, err)
 				}
-				if 0 == len(piece.Delta) {
+				if len(piece.Delta) == 0 && len(piece.TxSetDelta) == 0 {
 					stateHash, err := sts.stack.GetCurrentStateHash()
 					if nil != err {
 						sts.stateValid = false
 						return fmt.Errorf("could not compute its current state hash: %x", err)
-
 					}
 
-					logger.Debugf("Received final piece of state snapshot from %v after %d deltas, now has hash %x", peerID, counter, stateHash)
+					txSetStateHash, err := sts.stack.GetCurrentTxSetStateHash()
+					if nil != err {
+						sts.stateValid = false
+						return fmt.Errorf("could not compute its current tx set state hash: %x", err)
+					}
+
+					logger.Debugf("Received final piece of state snapshot from %v after %d deltas. Chaincode state now has hash %x, Tx Set State now has hash: %x", peerID, counter, stateHash, txSetStateHash)
 					return nil
 				}
-				umDelta := &state.StateDelta{}
+				//TODO REVIEW: Check if unmarshalling an empty state produces any problem.
+				umDelta := &chainstmgmt.StateDelta{}
 				if err := umDelta.Unmarshal(piece.Delta); nil != err {
 					return fmt.Errorf("received a corrupt delta from %v after %d deltas : %s", peerID, counter, err)
 				}
-				sts.stack.ApplyStateDelta(piece, umDelta)
+
+				//TODO REVIEW: Check if unmarshalling an empty state produces any problem.
+				umTxSetState := &txsetstmgmt.TxSetStateDelta{}
+				if err := umTxSetState.Unmarshal(piece.TxSetDelta); nil != err {
+					return fmt.Errorf("received a corrupt tx set state delta from %v after %d deltas : %s", peerID, counter, err)
+				}
+				sts.stack.ApplyStateDelta(piece, umDelta, umTxSetState)
 				currentStateBlock = piece.BlockNumber
 				if err := sts.stack.CommitStateDelta(piece); nil != err {
 					return fmt.Errorf("could not commit state delta from %v after %d deltas: %s", peerID, counter, err)

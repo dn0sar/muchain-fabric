@@ -39,6 +39,11 @@ func (ss *StateSnapshot) Release() {
 	ss.dbSnapshot.Release()
 }
 
+// HasNext returns true if the iterator has a next key/value pair
+func (ss *StateSnapshot) Valid() bool {
+	return ss.stateImplItr.Valid()
+}
+
 // Next moves the iterator to the next key/value pair in the state
 func (ss *StateSnapshot) Next() bool {
 	return ss.stateImplItr.Next()

@@ -26,7 +26,8 @@ import (
 
 	"github.com/hyperledger/fabric/consensus"
 	"github.com/hyperledger/fabric/core/ledger"
-	state "github.com/hyperledger/fabric/core/ledger/state/chaincodest/statemgmt"
+	chainstmgmt "github.com/hyperledger/fabric/core/ledger/state/chaincodest/statemgmt"
+	txsetstmgmt "github.com/hyperledger/fabric/core/ledger/state/txsetst/statemgmt"
 	"github.com/hyperledger/fabric/core/util"
 	pb "github.com/hyperledger/fabric/protos"
 )
@@ -189,16 +190,17 @@ func (i *Noops) processBlock() error {
 		return nil
 	}
 	var data *pb.Block
-	var delta *state.StateDelta
+	var delta *chainstmgmt.StateDelta
+	var txSetDelta *txsetstmgmt.TxSetStateDelta
 	var err error
 
 	if err = i.processTransactions(); nil != err {
 		return err
 	}
-	if data, delta, err = i.getBlockData(); nil != err {
+	if data, delta, txSetDelta, err = i.getBlockData(); nil != err {
 		return err
 	}
-	go i.notifyBlockAdded(data, delta)
+	go i.notifyBlockAdded(data, delta, txSetDelta)
 	return nil
 }
 
@@ -244,10 +246,10 @@ func (i *Noops) getTxFromMsg(msg *pb.Message) (*pb.InBlockTransaction, error) {
 	return txs.GetTransactions()[0], nil
 }
 
-func (i *Noops) getBlockData() (*pb.Block, *state.StateDelta, error) {
+func (i *Noops) getBlockData() (*pb.Block, *chainstmgmt.StateDelta, *txsetstmgmt.TxSetStateDelta, error) {
 	ledger, err := ledger.GetLedger()
 	if err != nil {
-		return nil, nil, fmt.Errorf("Fail to get the ledger: %v", err)
+		return nil, nil, nil, fmt.Errorf("Fail to get the ledger: %v", err)
 	}
 
 	blockHeight := ledger.GetBlockchainSize()
@@ -256,21 +258,21 @@ func (i *Noops) getBlockData() (*pb.Block, *state.StateDelta, error) {
 	}
 	block, err := ledger.GetBlockByNumber(blockHeight - 1)
 	if nil != err {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	//delta, err := ledger.GetStateDeltaBytes(blockHeight)
-	delta, err := ledger.GetStateDelta(blockHeight - 1)
+	chDelta, txSetDelta, err := ledger.GetStateDelta(blockHeight - 1)
 	if nil != err {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	if logger.IsEnabledFor(logging.DEBUG) {
 		logger.Debugf("Got the delta state of block number %v", blockHeight)
 	}
 
-	return block, delta, nil
+	return block, chDelta, txSetDelta, nil
 }
 
-func (i *Noops) notifyBlockAdded(block *pb.Block, delta *state.StateDelta) error {
+func (i *Noops) notifyBlockAdded(block *pb.Block, delta *chainstmgmt.StateDelta, txSetDelta *txsetstmgmt.TxSetStateDelta) error {
 	//make Payload nil to reduce block size..
 	//anything else to remove .. do we need StateDelta ?
 	// REVIEW: look for some other ways to reduce the block size.mail.
@@ -278,7 +280,7 @@ func (i *Noops) notifyBlockAdded(block *pb.Block, delta *state.StateDelta) error
 	//for _, tx := range block.Transactions {
 	//	tx.Payload = nil
 	//}
-	data, err := proto.Marshal(&pb.BlockState{Block: block, StateDelta: delta.Marshal()})
+	data, err := proto.Marshal(&pb.BlockState{Block: block, StateDelta: delta.Marshal(), TxSetStateDelta: txSetDelta.Marshal()})
 	if err != nil {
 		return fmt.Errorf("Fail to marshall BlockState structure: %v", err)
 	}
