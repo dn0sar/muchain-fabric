@@ -65,7 +65,7 @@ message TransactionSet {
     // transactions: the transactions in this set
     repeated Transaction transactions = 1;
     // defaultInx: the index of the default transaction in this set
-    uint32 defaultInx = 2;
+    uint64 defaultInx = 2;
 }
 
 message InBlockTransaction {

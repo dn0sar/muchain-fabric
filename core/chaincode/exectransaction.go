@@ -47,10 +47,42 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, inBlockTx *pb.InBloc
 			return nil, nil, err
 		}
 	}
+
+	nextBlockNr := ledger.GetBlockchainSize()
+
 	switch tx := inBlockTx.Transaction.(type) {
 	case *pb.InBlockTransaction_TransactionSet:
-		// TODO: Get the current default here instead
-		t := tx.TransactionSet.Transactions[tx.TransactionSet.DefaultInx]
+		// Extend the set here and terminate the inBlockTransaction
+		var txSetExistedAlready = true
+		ledger.TxBegin(inBlockTx.Txid)
+		txSetStValue, err := ledger.GetTxSetState(inBlockTx.Txid, true)
+		if err != nil {
+			ledger.TxFinished(inBlockTx.Txid, false)
+			return  nil, nil, fmt.Errorf("Failed to retrieve the txSet state, txID: %d, err: %s.", inBlockTx.Txid, err)
+		}
+		if txSetStValue == nil {
+			txSetExistedAlready = false
+			txSetStValue = &pb.TxSetStateValue{}
+			txSetStValue.Index = &pb.TxSetIndex{BlockNr: nextBlockNr, InBlockIndex: tx.TransactionSet.DefaultInx}
+		}
+		txSetStValue.Nonce++
+		txInSet := uint64(len(tx.TransactionSet.Transactions))
+		txSetStValue.TxNumber += txInSet
+		txSetStValue.TxsInBlock[nextBlockNr] = txInSet
+		ledger.SetTxSetState(inBlockTx.Txid, txSetStValue)
+		ledger.TxFinished(inBlockTx.Txid, true)
+
+		if txSetExistedAlready {
+			// The default transaction did not change, hence there is no need to execute the default transaction
+			return nil, nil, err
+		}
+
+		if txSetStValue.Index.BlockNr != nextBlockNr {
+			// The default transaction is not the one of this block
+			// do not execute it
+			return nil, nil, err
+		}
+		t := tx.TransactionSet.Transactions[txSetStValue.Index.InBlockIndex]
 		if t.Type == pb.Transaction_CHAINCODE_DEPLOY {
 			_, err := chain.Deploy(ctxt, t)
 			if err != nil {
@@ -134,11 +166,24 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, inBlockTx *pb.InBloc
 		}
 		return nil, nil, err
 	case *pb.InBlockTransaction_MutantTransaction:
-	// TODO: Handle mutant transactions here
-		return nil,nil, err
-	default:
+		// TODO: Trigger chaincode state re-computation here.
+		ledger.TxBegin(tx.MutantTransaction.TxSetID)
+		txSetStValue, err := ledger.GetTxSetState(tx.MutantTransaction.TxSetID, true)
+		if err != nil {
+			ledger.TxFinished(tx.MutantTransaction.TxSetID, false)
+			return  nil, nil, fmt.Errorf("Failed to retrieve the txSet state, txID: %d, err: %s.", inBlockTx.Txid, err)
+		}
+		if txSetStValue == nil {
+			ledger.TxFinished(tx.MutantTransaction.TxSetID, false)
+			return nil, nil, fmt.Errorf("Issuing a mutant transaction for an inexisted tx set id.")
+		}
+		txSetStValue.Nonce++
+		txSetStValue.Index = tx.MutantTransaction.TxSetIndex
+		ledger.SetTxSetState(tx.MutantTransaction.TxSetID, txSetStValue)
+		ledger.TxFinished(tx.MutantTransaction.TxSetID, true)
 		return nil,nil, err
 	}
+	return nil, nil, err
 }
 
 //ExecuteTransactions - will execute transactions on the array one by one

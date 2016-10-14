@@ -126,7 +126,7 @@ func (state *TxSetState) Set(txSetID string, stateValue *pb.TxSetStateValue) err
 	// if so raise a warning and not change the value. A transactionSet
 	// index can be changed only one time per block.
 	if state.currentTxSetStateDelta.IsUpdatedValueSet(txSetID) || state.txSetStateDelta.IsUpdatedValueSet(txSetID) {
-		txSetStateLogger.Warning("Potential dependency cycle avoided by not changing an already modified tx set index")
+		txSetStateLogger.Warning("Potential dependency cycle avoided by not changing an already modified tx set value")
 		// No need to bother looking up the previous value as we will not
 		// set it again. Just pass nil
 		return nil
