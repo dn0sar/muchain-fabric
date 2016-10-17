@@ -67,7 +67,7 @@ func NewTransaction(chaincodeID ChaincodeID, uuid string, function string, argum
 // NewChaincodeDeployTransaction is used to deploy chaincode.
 func NewChaincodeDeployTransaction(chaincodeDeploymentSpec *ChaincodeDeploymentSpec, uuid string) (*Transaction, error) {
 	transaction := new(Transaction)
-	transaction.Type = Transaction_CHAINCODE_DEPLOY
+	transaction.Type = ChaincodeAction_CHAINCODE_DEPLOY
 	transaction.Txid = uuid
 	transaction.Timestamp = util.CreateUtcTimestamp()
 	cID := chaincodeDeploymentSpec.ChaincodeSpec.GetChaincodeID()
@@ -92,7 +92,7 @@ func NewChaincodeDeployTransaction(chaincodeDeploymentSpec *ChaincodeDeploymentS
 }
 
 // NewChaincodeExecute is used to invoke chaincode.
-func NewChaincodeExecute(chaincodeInvocationSpec *ChaincodeInvocationSpec, uuid string, typ Transaction_Type) (*Transaction, error) {
+func NewChaincodeExecute(chaincodeInvocationSpec *ChaincodeInvocationSpec, uuid string, typ ChaincodeAction) (*Transaction, error) {
 	transaction := new(Transaction)
 	transaction.Type = typ
 	transaction.Txid = uuid

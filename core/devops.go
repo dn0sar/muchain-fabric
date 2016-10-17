@@ -289,11 +289,11 @@ func (d *Devops) createExecTx(spec *pb.ChaincodeInvocationSpec, attributes []str
 		if devopsLogger.IsEnabledFor(logging.DEBUG) {
 			devopsLogger.Debugf("Creating invocation transaction (%s)", uuid)
 		}
-		var t pb.Transaction_Type
+		var t pb.ChaincodeAction
 		if invokeTx {
-			t = pb.Transaction_CHAINCODE_INVOKE
+			t = pb.ChaincodeAction_CHAINCODE_INVOKE
 		} else {
-			t = pb.Transaction_CHAINCODE_QUERY
+			t = pb.ChaincodeAction_CHAINCODE_QUERY
 		}
 		tx, err = pb.NewChaincodeExecute(spec, uuid, t)
 		if nil != err {
@@ -301,6 +301,16 @@ func (d *Devops) createExecTx(spec *pb.ChaincodeInvocationSpec, attributes []str
 		}
 	}
 	return tx, nil
+}
+
+func (d *Devops) issueTxSet(ctx context.Context, txSetSpec *pb.TxSetSpec) (*pb.Response, error) {
+	// TODO: Create a Tx for every transaction given in the set specification.
+
+	return nil, nil
+}
+
+func (d *Devops) mutateTx(ctx context.Context, mutantSpec *pb.MutantSpec) (*pb.Response, error) {
+	return nil, nil
 }
 
 // Invoke performs the supplied invocation on the specified chaincode through a transaction
@@ -311,6 +321,16 @@ func (d *Devops) Invoke(ctx context.Context, chaincodeInvocationSpec *pb.Chainco
 // Query performs the supplied query on the specified chaincode through a transaction
 func (d *Devops) Query(ctx context.Context, chaincodeInvocationSpec *pb.ChaincodeInvocationSpec) (*pb.Response, error) {
 	return d.invokeOrQuery(ctx, chaincodeInvocationSpec, chaincodeInvocationSpec.ChaincodeSpec.Attributes, false)
+}
+
+// IssueTxSet deploys a transactions set or an extension of it in case the set that it refers to was already defined
+func (d *Devops) IssueTxSet(ctx context.Context, txSetSpec *pb.TxSetSpec) (*pb.Response, error) {
+	return d.issueTxSet(ctx, txSetSpec)
+}
+
+// Modifies the active transaction of a transactions set
+func (d *Devops) Mutate(ctx context.Context, mutantSpec *pb.MutantSpec) (*pb.Response, error) {
+	return d.mutateTx(ctx, mutantSpec)
 }
 
 // CheckSpec to see if chaincode resides within current package capture for language.

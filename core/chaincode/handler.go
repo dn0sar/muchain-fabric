@@ -207,11 +207,11 @@ func (handler *Handler) encryptOrDecrypt(encrypt bool, txid string, payload []by
 
 	var enc crypto.StateEncryptor
 	var err error
-	if txctx.transactionSecContext.Type == pb.Transaction_CHAINCODE_DEPLOY {
+	if txctx.transactionSecContext.Type == pb.ChaincodeAction_CHAINCODE_DEPLOY {
 		if enc, err = secHelper.GetStateEncryptor(handler.deployTXSecContext, pb.EncapsulateTransactionToInBlock(handler.deployTXSecContext)); err != nil {
 			return nil, fmt.Errorf("error getting crypto encryptor for deploy tx :%s", err)
 		}
-	} else if txctx.transactionSecContext.Type == pb.Transaction_CHAINCODE_INVOKE || txctx.transactionSecContext.Type == pb.Transaction_CHAINCODE_QUERY {
+	} else if txctx.transactionSecContext.Type == pb.ChaincodeAction_CHAINCODE_INVOKE || txctx.transactionSecContext.Type == pb.ChaincodeAction_CHAINCODE_QUERY {
 		if enc, err = secHelper.GetStateEncryptor(handler.deployTXSecContext, pb.EncapsulateTransactionToInBlock(txctx.transactionSecContext)); err != nil {
 			return nil, fmt.Errorf("error getting crypto encryptor %s", err)
 		}
@@ -1063,7 +1063,7 @@ func (handler *Handler) enterBusyState(e *fsm.Event, state string) {
 
 			// Create the transaction object
 			chaincodeInvocationSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: chaincodeSpec}
-			transaction, _ := pb.NewChaincodeExecute(chaincodeInvocationSpec, msg.Txid, pb.Transaction_CHAINCODE_INVOKE)
+			transaction, _ := pb.NewChaincodeExecute(chaincodeInvocationSpec, msg.Txid, pb.ChaincodeAction_CHAINCODE_INVOKE)
 
 			// Launch the new chaincode if not already running
 			_, chaincodeInput, launchErr := handler.chaincodeSupport.Launch(context.Background(), transaction)
@@ -1335,7 +1335,7 @@ func (handler *Handler) handleQueryChaincode(msg *pb.ChaincodeMessage) {
 
 		// Create the transaction object
 		chaincodeInvocationSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: chaincodeSpec}
-		transaction, _ := pb.NewChaincodeExecute(chaincodeInvocationSpec, msg.Txid, pb.Transaction_CHAINCODE_QUERY)
+		transaction, _ := pb.NewChaincodeExecute(chaincodeInvocationSpec, msg.Txid, pb.ChaincodeAction_CHAINCODE_QUERY)
 
 		// Launch the new chaincode if not already running
 		_, chaincodeInput, launchErr := handler.chaincodeSupport.Launch(context.Background(), transaction)

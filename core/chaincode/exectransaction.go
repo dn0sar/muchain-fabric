@@ -32,7 +32,7 @@ import (
 //Execute - execute the default transaction of a transaction set (which might also be a query transaction) or a mutable transaction
 func Execute(ctxt context.Context, chain *ChaincodeSupport, inBlockTx *pb.InBlockTransaction) ([]byte, *pb.ChaincodeEvent, error) {
 	var err error
-
+	//TODO: Check if the same transaction set was already part of the block
 	// get a handle to ledger to mark the begin/finish of a tx
 	ledger, ledgerErr := ledger.GetLedger()
 	if ledgerErr != nil {
@@ -83,7 +83,7 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, inBlockTx *pb.InBloc
 			return nil, nil, err
 		}
 		t := tx.TransactionSet.Transactions[txSetStValue.Index.InBlockIndex]
-		if t.Type == pb.Transaction_CHAINCODE_DEPLOY {
+		if t.Type == pb.ChaincodeAction_CHAINCODE_DEPLOY {
 			_, err := chain.Deploy(ctxt, t)
 			if err != nil {
 				return nil, nil, fmt.Errorf("Failed to deploy chaincode spec(%s)", err)
@@ -97,7 +97,7 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, inBlockTx *pb.InBloc
 				return nil, nil, fmt.Errorf("%s", err)
 			}
 			markTxFinish(ledger, t, true)
-		} else if t.Type == pb.Transaction_CHAINCODE_INVOKE || t.Type == pb.Transaction_CHAINCODE_QUERY {
+		} else if t.Type == pb.ChaincodeAction_CHAINCODE_INVOKE || t.Type == pb.ChaincodeAction_CHAINCODE_QUERY {
 			//will launch if necessary (and wait for ready)
 			cID, cMsg, err := chain.Launch(ctxt, t)
 			if err != nil {
@@ -120,7 +120,7 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, inBlockTx *pb.InBloc
 			}
 
 			var ccMsg *pb.ChaincodeMessage
-			if t.Type == pb.Transaction_CHAINCODE_INVOKE {
+			if t.Type == pb.ChaincodeAction_CHAINCODE_INVOKE {
 				ccMsg, err = createTransactionMessage(t.Txid, cMsg)
 				if err != nil {
 					return nil, nil, fmt.Errorf("Failed to transaction message(%s)", err)
@@ -257,14 +257,14 @@ func getTimeout(cID *pb.ChaincodeID) (time.Duration, error) {
 }
 
 func markTxBegin(ledger *ledger.Ledger, t *pb.Transaction) {
-	if t.Type == pb.Transaction_CHAINCODE_QUERY {
+	if t.Type == pb.ChaincodeAction_CHAINCODE_QUERY {
 		return
 	}
 	ledger.TxBegin(t.Txid)
 }
 
 func markTxFinish(ledger *ledger.Ledger, t *pb.Transaction, successful bool) {
-	if t.Type == pb.Transaction_CHAINCODE_QUERY {
+	if t.Type == pb.ChaincodeAction_CHAINCODE_QUERY {
 		return
 	}
 	ledger.TxFinished(t.Txid, successful)

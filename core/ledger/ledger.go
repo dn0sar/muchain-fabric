@@ -594,7 +594,7 @@ func sendProducerBlockEvent(block *protos.Block) {
 		case *protos.InBlockTransaction_TransactionSet:
 			// TODO: This should get the *current* default transaction instead of the first default
 			transaction := tx.TransactionSet.GetTransactions()[tx.TransactionSet.DefaultInx]
-			if transaction.Type == protos.Transaction_CHAINCODE_DEPLOY {
+			if transaction.Type == protos.ChaincodeAction_CHAINCODE_DEPLOY {
 				deploymentSpec := &protos.ChaincodeDeploymentSpec{}
 				err := proto.Unmarshal(transaction.Payload, deploymentSpec)
 				if err != nil {

@@ -19,6 +19,7 @@ syntax = "proto3";
 package protos;
 option java_package = "org.hyperledger.protos";
 import "chaincodeevent.proto";
+import "state.proto";
 import "google/protobuf/timestamp.proto";
 
 
@@ -26,6 +27,18 @@ import "google/protobuf/timestamp.proto";
 enum ConfidentialityLevel {
     PUBLIC = 0;
     CONFIDENTIAL = 1;
+}
+
+enum ChaincodeAction {
+    UNDEFINED = 0;
+    // deploy a chaincode to the network and call `Init` function
+    CHAINCODE_DEPLOY = 1;
+    // call a chaincode `Invoke` function as a transaction
+    CHAINCODE_INVOKE = 2;
+    // call a chaincode `query` function
+    CHAINCODE_QUERY = 3;
+    // terminate a chaincode; not implemented yet
+    CHAINCODE_TERMINATE = 4;
 }
 
 
@@ -72,6 +85,33 @@ message ChaincodeSpec {
     ConfidentialityLevel confidentialityLevel = 6;
     bytes metadata = 7;
     repeated string attributes = 8;
+}
+
+message TxSpec {
+    ChaincodeSpec spec = 1;
+    ChaincodeAction action = 2;
+}
+
+// Carries the specification for a transactions set.
+// It is composed by the chaincode specification of all the transactions forming the tx set
+message TxSetSpec {
+
+    enum Type {
+        CREATION = 0;
+        EXTENSION = 1;
+    }
+
+    Type type = 1;
+    repeated TxSpec txSet = 2;
+    string secureContext = 3;
+    ConfidentialityLevel confidentialityLevel = 4;
+    bytes metadata = 5;
+}
+
+// Carries the specification for a Mutant transaction.
+message MutantSpec {
+    string txSetID = 1;
+    TxSetIndex index = 2;
 }
 
 // Specify the deployment of a chaincode.

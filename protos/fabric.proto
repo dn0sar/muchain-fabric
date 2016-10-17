@@ -15,7 +15,8 @@ limitations under the License.
 */
 syntax = "proto3";
 package protos;
-import "chaincode.proto";
+import "blockchainmessages.proto";
+import "state.proto";
 import "chaincodeevent.proto";
 import "google/protobuf/timestamp.proto";
 
@@ -26,18 +27,7 @@ import "google/protobuf/timestamp.proto";
 // For example, they may wish to use JSON, XML, or a custom format.
 // TODO: Defined remaining fields.
 message Transaction {
-    enum Type {
-        UNDEFINED = 0;
-        // deploy a chaincode to the network and call `Init` function
-        CHAINCODE_DEPLOY = 1;
-        // call a chaincode `Invoke` function as a transaction
-        CHAINCODE_INVOKE = 2;
-        // call a chaincode `query` function
-        CHAINCODE_QUERY = 3;
-        // terminate a chaincode; not implemented yet
-        CHAINCODE_TERMINATE = 4;
-    }
-    Type type = 1;
+    ChaincodeAction type = 1;
     //store ChaincodeID as bytes so its encrypted value can be stored
     bytes chaincodeID = 2;
     bytes payload = 3;
@@ -45,7 +35,7 @@ message Transaction {
     string txid = 5;    // Mantaining this just for compatibility, but in reality the stuff in the tranSet is enough
     google.protobuf.Timestamp timestamp = 6;
 
-    ConfidentialityLevel confidentialityLevel = 7;
+   ConfidentialityLevel confidentialityLevel = 7;
     string confidentialityProtocolVersion = 8;
     bytes nonce = 9;
 
@@ -295,29 +285,4 @@ message SyncStateDeltas {
     SyncBlockRange range = 1;
     repeated bytes deltas = 2;
     repeated bytes txSetDeltas = 3;
-}
-
-// The representation of the state of a transactions set
-message TxSetStateValue {
-    // Nonce incremented every time the state of this Tx Set is changed
-    uint64 nonce = 1;
-    // Index of the current default transaction
-    TxSetIndex index = 2;
-    // The number of transactions that belong to this Transactions Set
-    uint64 txNumber = 3;
-    // txsInBlock[nlockNr] gives the number of transactions belonging to'
-    // this TxSet defined at block blockNr
-    map<uint64, uint64> txsInBlock = 4;
-}
-
-// The TxSetIndex identifies a transaction among the ones
-// of a transactions set by providing the block number where that
-// transaction was defined and the index among the transactions
-// belonging to the part of the set included in that block number.
-message TxSetIndex {
-    // The block where the transaction at which this index refers to is contained
-    uint64 blockNr = 1;
-    // Index of a transaction among the list of transactions belonging
-    // to the transactions set at blockNr
-    uint64 inBlockIndex = 2;
 }

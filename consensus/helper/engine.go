@@ -47,11 +47,9 @@ func (eng *EngineImpl) GetHandlerFactory() peer.HandlerFactory {
 func (eng *EngineImpl) ProcessTransactionMsg(msg *pb.Message,inBlockTx *pb.InBlockTransaction) (response *pb.Response) {
 	switch tx := inBlockTx.Transaction.(type) {
 	case *pb.InBlockTransaction_TransactionSet:
-		//TODO: Store here the state of this transaction set. Also check if the same transaction set was already stored.
-		//TODO: Get the current default transaction instead
-		defaultTx := tx.TransactionSet.Transactions[tx.TransactionSet.DefaultInx]
+		// Check if this is a query transaction. A TxSet is a query tx if it contains only one transaction and it is of type Query.
 		//TODO: Do we always verify security, or can we supply a flag on the invoke ot this functions so to bypass check for locally generated transactions?
-		if defaultTx.Type == pb.Transaction_CHAINCODE_QUERY {
+		if len(tx.TransactionSet.Transactions) == 1 && tx.TransactionSet.Transactions[0].Type == pb.ChaincodeAction_CHAINCODE_QUERY {
 			if !engine.helper.valid {
 				logger.Warning("Rejecting query because state is currently not valid")
 				return &pb.Response{Status: pb.Response_FAILURE,
@@ -70,36 +68,30 @@ func (eng *EngineImpl) ProcessTransactionMsg(msg *pb.Message,inBlockTx *pb.InBlo
 			} else {
 				response = &pb.Response{Status: pb.Response_SUCCESS, Msg: result}
 			}
-		} else {
-			// Chaincode Transaction
-			response = &pb.Response{Status: pb.Response_SUCCESS, Msg: []byte(inBlockTx.Txid)}
-
-			//TODO: Do we need to verify security, or can we supply a flag on the invoke ot this functions
-			// If we fail to marshal or verify the tx, don't send it to consensus plugin
-			if response.Status == pb.Response_FAILURE {
-				return response
-			}
-
-			// Pass the message to the consenter (eg. PBFT) NOTE: Make sure engine has been initialized
-			if eng.consenter == nil {
-				return &pb.Response{Status: pb.Response_FAILURE, Msg: []byte("Engine not initialized")}
-			}
-			// TODO, do we want to put these requests into a queue? This will block until
-			// the consenter gets around to handling the message, but it also provides some
-			// natural feedback to the REST API to determine how long it takes to queue messages
-			err := eng.consenter.RecvMsg(msg, eng.peerEndpoint.ID)
-			if err != nil {
-				response = &pb.Response{Status: pb.Response_FAILURE, Msg: []byte(err.Error())}
-			}
+			return response
 		}
-		return response
-	case *pb.InBlockTransaction_MutantTransaction:
-		response = &pb.Response{Status: pb.Response_FAILURE,
-			Msg: []byte(fmt.Sprintf("Error, mutant transaction not implemented yet",))}
+	}
+	// Chaincode Transaction
+	response = &pb.Response{Status: pb.Response_SUCCESS, Msg: []byte(inBlockTx.Txid)}
+
+	//TODO: Do we need to verify security, or can we supply a flag on the invoke ot this functions
+	// If we fail to marshal or verify the tx, don't send it to consensus plugin
+	if response.Status == pb.Response_FAILURE {
 		return response
 	}
-	response = &pb.Response{Status: pb.Response_FAILURE,
-		Msg: []byte(fmt.Sprintf("Error unindentified type of trasaction"))}
+
+	// Pass the message to the consenter (eg. PBFT) NOTE: Make sure engine has been initialized
+	if eng.consenter == nil {
+		return &pb.Response{Status: pb.Response_FAILURE, Msg: []byte("Engine not initialized")}
+	}
+	// TODO, do we want to put these requests into a queue? This will block until
+	// the consenter gets around to handling the message, but it also provides some
+	// natural feedback to the REST API to determine how long it takes to queue messages
+	err := eng.consenter.RecvMsg(msg, eng.peerEndpoint.ID)
+	if err != nil {
+		response = &pb.Response{Status: pb.Response_FAILURE, Msg: []byte(err.Error())}
+	}
+
 	return response
 }
 

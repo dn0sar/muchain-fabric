@@ -76,7 +76,7 @@ func (validator *validatorImpl) getStateEncryptor1_2(deployTx, executeTx *obc.Tr
 
 	deployStateKey, err := validator.getStateKeyFromTransaction(deployTx)
 
-	if executeTx.Type == obc.Transaction_CHAINCODE_QUERY {
+	if executeTx.Type == obc.ChaincodeAction_CHAINCODE_QUERY {
 		validator.Debug("Parsing Query transaction...")
 
 		executeStateKey, err := validator.getStateKeyFromTransaction(executeTx)

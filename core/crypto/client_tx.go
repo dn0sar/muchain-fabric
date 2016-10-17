@@ -100,7 +100,7 @@ func getMetadata(chaincodeSpec *obc.ChaincodeSpec, tCert tCert, attrs ...string)
 
 func (client *clientImpl) createExecuteTx(chaincodeInvocation *obc.ChaincodeInvocationSpec, uuid string, nonce []byte, tCert tCert, attrs ...string) (*obc.Transaction, error) {
 	/// Create a new transaction
-	tx, err := obc.NewChaincodeExecute(chaincodeInvocation, uuid, obc.Transaction_CHAINCODE_INVOKE)
+	tx, err := obc.NewChaincodeExecute(chaincodeInvocation, uuid, obc.ChaincodeAction_CHAINCODE_INVOKE)
 	if err != nil {
 		client.Errorf("Failed creating new transaction [%s].", err.Error())
 		return nil, err
@@ -145,7 +145,7 @@ func (client *clientImpl) createExecuteTx(chaincodeInvocation *obc.ChaincodeInvo
 
 func (client *clientImpl) createQueryTx(chaincodeInvocation *obc.ChaincodeInvocationSpec, uuid string, nonce []byte, tCert tCert, attrs ...string) (*obc.Transaction, error) {
 	// Create a new transaction
-	tx, err := obc.NewChaincodeExecute(chaincodeInvocation, uuid, obc.Transaction_CHAINCODE_QUERY)
+	tx, err := obc.NewChaincodeExecute(chaincodeInvocation, uuid, obc.ChaincodeAction_CHAINCODE_QUERY)
 	if err != nil {
 		client.Errorf("Failed creating new transaction [%s].", err.Error())
 		return nil, err

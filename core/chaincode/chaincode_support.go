@@ -418,7 +418,7 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, t *pb.
 	var initargs [][]byte
 
 	cds := &pb.ChaincodeDeploymentSpec{}
-	if t.Type == pb.Transaction_CHAINCODE_DEPLOY {
+	if t.Type == pb.ChaincodeAction_CHAINCODE_DEPLOY {
 		err := proto.Unmarshal(t.Payload, cds)
 		if err != nil {
 			return nil, nil, err
@@ -427,7 +427,7 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, t *pb.
 		cMsg = cds.ChaincodeSpec.CtorMsg
 		cLang = cds.ChaincodeSpec.Type
 		initargs = cMsg.Args
-	} else if t.Type == pb.Transaction_CHAINCODE_INVOKE || t.Type == pb.Transaction_CHAINCODE_QUERY {
+	} else if t.Type == pb.ChaincodeAction_CHAINCODE_INVOKE || t.Type == pb.ChaincodeAction_CHAINCODE_QUERY {
 		ci := &pb.ChaincodeInvocationSpec{}
 		err := proto.Unmarshal(t.Payload, ci)
 		if err != nil {
@@ -475,7 +475,7 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, t *pb.
 	//         5) query successfully retrives committed tx and calls sendInitOrReady
 	// See issue #710
 
-	if t.Type != pb.Transaction_CHAINCODE_DEPLOY {
+	if t.Type != pb.ChaincodeAction_CHAINCODE_DEPLOY {
 		ledger, ledgerErr := ledger.GetLedger()
 
 		if chaincodeSupport.userRunsCC {

@@ -108,7 +108,7 @@ func (s *ServerOpenchain) GetBlockByNumber(ctx context.Context, num *pb.BlockNum
 			//REVIEW look whether I'm really compressing data here, and if they can access the information returned
 			// i.e. can they see the correct thing, or I'm just changing local information here?
 			transaction := tx.TransactionSet.Transactions[tx.TransactionSet.DefaultInx]
-			if transaction.Type == pb.Transaction_CHAINCODE_DEPLOY {
+			if transaction.Type == pb.ChaincodeAction_CHAINCODE_DEPLOY {
 				deploymentSpec := &pb.ChaincodeDeploymentSpec{}
 				err := proto.Unmarshal(transaction.Payload, deploymentSpec)
 				if err != nil {

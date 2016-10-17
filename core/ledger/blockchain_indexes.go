@@ -91,12 +91,12 @@ func addIndexDataForPersistence(block *protos.Block, blockNumber uint64, blockHa
 
 		txExecutingAddress := getTxExecutingAddress(inBlockTx)
 		addressToTxIndexesMap[txExecutingAddress] = append(addressToTxIndexesMap[txExecutingAddress], uint64(txIndex))
-		//Note that this should be executed when I'm creating a block, hence I should take the first default transaction
+		//REVIEW: this should be executed when I'm creating a block, hence I should take the first default transaction
 		switch tx := inBlockTx.Transaction.(type) {
 		case *protos.InBlockTransaction_TransactionSet:
 			defaultTx := tx.TransactionSet.GetTransactions()[tx.TransactionSet.DefaultInx]
 			switch defaultTx.Type {
-			case protos.Transaction_CHAINCODE_DEPLOY, protos.Transaction_CHAINCODE_INVOKE:
+			case protos.ChaincodeAction_CHAINCODE_DEPLOY, protos.ChaincodeAction_CHAINCODE_INVOKE:
 				authroizedAddresses, chaincodeID := getAuthorisedAddresses(defaultTx)
 				for _, authroizedAddress := range authroizedAddresses {
 					addressToChaincodeIDsMap[authroizedAddress] = append(addressToChaincodeIDsMap[authroizedAddress], chaincodeID)

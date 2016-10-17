@@ -64,7 +64,7 @@ func (client *clientImpl) encryptTxVersion1_2(tx *obc.Transaction) error {
 	)
 
 	switch tx.Type {
-	case obc.Transaction_CHAINCODE_DEPLOY:
+	case obc.ChaincodeAction_CHAINCODE_DEPLOY:
 		// Prepare chaincode stateKey and privateKey
 		stateKey, err = primitives.GenAESKey()
 		if err != nil {
@@ -81,7 +81,7 @@ func (client *clientImpl) encryptTxVersion1_2(tx *obc.Transaction) error {
 		}
 
 		break
-	case obc.Transaction_CHAINCODE_QUERY:
+	case obc.ChaincodeAction_CHAINCODE_QUERY:
 		// Prepare chaincode stateKey and privateKey
 		stateKey = primitives.HMACAESTruncated(client.queryStateKey, append([]byte{6}, tx.Nonce...))
 
@@ -93,7 +93,7 @@ func (client *clientImpl) encryptTxVersion1_2(tx *obc.Transaction) error {
 		}
 
 		break
-	case obc.Transaction_CHAINCODE_INVOKE:
+	case obc.ChaincodeAction_CHAINCODE_INVOKE:
 		// Prepare chaincode stateKey and privateKey
 		stateKey = make([]byte, 0)
 

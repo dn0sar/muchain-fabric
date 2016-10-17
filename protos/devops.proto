@@ -18,7 +18,7 @@ syntax = "proto3";
 
 package protos;
 
-import "chaincode.proto";
+import "blockchainmessages.proto";
 import "fabric.proto";
 
 // Interface exported by the server.
@@ -38,6 +38,12 @@ service Devops {
 
     // Query chaincode.
     rpc Query(ChaincodeInvocationSpec) returns (Response) {}
+
+    // IssueTxSet deploys a transactions set or an extension of it in case the set that it refers to was already defined
+    rpc IssueTxSet(TxSetSpec) returns (Response) {}
+
+    // Modifies the active transaction of a transactions set
+    rpc Mutate(MutantSpec) returns (Response) {}
 
     // Retrieve a TCert.
     rpc EXP_GetApplicationTCert(Secret) returns (Response) {}
