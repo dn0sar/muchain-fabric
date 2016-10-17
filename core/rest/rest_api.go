@@ -37,12 +37,13 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/golang/protobuf/ptypes/empty"
-	core "github.com/hyperledger/fabric/core"
+	"github.com/hyperledger/fabric/core"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/crypto"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 	pb "github.com/hyperledger/fabric/protos"
+	"github.com/golang/protobuf/proto"
 )
 
 var restLogger = logging.MustGetLogger("rest")
@@ -847,7 +848,7 @@ func (s *ServerOpenchainREST) Deploy(rw web.ResponseWriter, req *web.Request) {
 	}
 
 	// Deploy the ChaincodeSpec
-	chaincodeDeploymentSpec, err := s.devops.Deploy(context.Background(), &spec)
+	resp, err := s.devops.Deploy(context.Background(), &spec)
 	if err != nil {
 		// Replace " characters with '
 		errVal := strings.Replace(err.Error(), "\"", "'", -1)
@@ -859,8 +860,19 @@ func (s *ServerOpenchainREST) Deploy(rw web.ResponseWriter, req *web.Request) {
 		return
 	}
 
+	chainDepSpec := &pb.ChaincodeDeploymentSpec{}
+	err = proto.Unmarshal(resp.Msg, chainDepSpec)
+	if err != nil {
+		// Replace " characters with '
+		errVal := strings.Replace(err.Error(), "\"", "'", -1)
+
+		rw.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(rw, "{\"Error\": \"%s\"}", errVal)
+		restLogger.Errorf("{\"Error\": \"Unmarshaling Cahincode Deployment Specification -- %s\"}", errVal)
+		return
+	}
 	// Clients will need the chaincode name in order to invoke or query it
-	chainID := chaincodeDeploymentSpec.ChaincodeSpec.ChaincodeID.Name
+	chainID := chainDepSpec.ChaincodeSpec.ChaincodeID.Name
 
 	rw.WriteHeader(http.StatusOK)
 	fmt.Fprintf(rw, "{\"OK\": \"Successfully deployed chainCode.\",\"message\":\""+chainID+"\"}")
@@ -1471,7 +1483,7 @@ func (s *ServerOpenchainREST) processChaincodeDeploy(spec *pb.ChaincodeSpec) rpc
 	//
 	// Trigger the chaincode deployment through the devops service
 	//
-	chaincodeDeploymentSpec, err := s.devops.Deploy(context.Background(), spec)
+	resp, err := s.devops.Deploy(context.Background(), spec)
 
 	//
 	// Deployment failed
@@ -1486,11 +1498,25 @@ func (s *ServerOpenchainREST) processChaincodeDeploy(spec *pb.ChaincodeSpec) rpc
 	}
 
 	//
+	// Unmarshal response
+	//
+
+	chainDepSpec := &pb.ChaincodeDeploymentSpec{}
+	err = proto.Unmarshal(resp.Msg, chainDepSpec)
+	if err != nil {
+		// Format the error appropriately for further processing
+		error := formatRPCError(ChaincodeDeployError.Code, ChaincodeDeployError.Message, fmt.Sprintf("Error when unmarshaling the response containing the chaincode deployment specification: %s", err))
+		restLogger.Errorf("Error when deploying chaincode: %s", err)
+
+		return error
+	}
+
+	//
 	// Deployment succeeded
 	//
 
 	// Clients will need the chaincode name in order to invoke or query it, record it
-	chainID := chaincodeDeploymentSpec.ChaincodeSpec.ChaincodeID.Name
+	chainID := chainDepSpec.ChaincodeSpec.ChaincodeID.Name
 
 	//
 	// Output correctly formatted response

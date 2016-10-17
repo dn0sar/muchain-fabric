@@ -28,10 +28,13 @@ service Devops {
     rpc Login(Secret) returns (Response) {}
 
     // Build the chaincode package.
-    rpc Build(ChaincodeSpec) returns (ChaincodeDeploymentSpec) {}
+    // Response vs. ChaincodeDeploymentSpec see the comments at for Deploy
+    rpc Build(ChaincodeSpec) returns (Response) {}
 
     // Deploy the chaincode package to the chain.
-    rpc Deploy(ChaincodeSpec) returns (ChaincodeDeploymentSpec) {}
+    // Before the call was returning a ChaincodeDeploymentSpec
+    // Now it is inglobated into the response message to uniform the call
+    rpc Deploy(ChaincodeSpec) returns (Response) {}
 
     // Invoke chaincode.
     rpc Invoke(ChaincodeInvocationSpec) returns (Response) {}
@@ -41,6 +44,8 @@ service Devops {
 
     // IssueTxSet deploys a transactions set or an extension of it in case the set that it refers to was already defined
     rpc IssueTxSet(TxSetSpec) returns (Response) {}
+
+    // TODO: Add method to allow the extension of a TxSet
 
     // Modifies the active transaction of a transactions set
     rpc Mutate(MutantSpec) returns (Response) {}

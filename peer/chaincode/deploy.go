@@ -23,6 +23,8 @@ import (
 
 	"github.com/hyperledger/fabric/peer/common"
 	"github.com/spf13/cobra"
+	"github.com/hyperledger/fabric/protos"
+	"github.com/golang/protobuf/proto"
 )
 
 // Cmd returns the cobra command for Chaincode Deploy
@@ -54,9 +56,17 @@ func chaincodeDeploy(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("Error building %s: %s", chainFuncName, err)
 	}
 
-	chaincodeDeploymentSpec, err := devopsClient.Deploy(context.Background(), spec)
+	resp, err := devopsClient.Deploy(context.Background(), spec)
 	if err != nil {
 		return fmt.Errorf("Error building %s: %s\n", chainFuncName, err)
+	}
+	if resp.Status != protos.Response_SUCCESS {
+		return fmt.Errorf("No error returned, but the response was not successfull.")
+	}
+	chaincodeDeploymentSpec := &protos.ChaincodeDeploymentSpec{}
+	err = proto.Unmarshal(resp.Msg, chaincodeDeploymentSpec)
+	if err != nil {
+		return fmt.Errorf("Unable to unmarshal the chaincode deployment specification (%s).", err)
 	}
 	logger.Infof("Deploy result: %s", chaincodeDeploymentSpec.ChaincodeSpec)
 

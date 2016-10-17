@@ -88,8 +88,11 @@ message ChaincodeSpec {
 }
 
 message TxSpec {
-    ChaincodeSpec spec = 1;
-    ChaincodeAction action = 2;
+    oneof Spec {
+        ChaincodeSpec codeSpec = 1;
+        ChaincodeInvocationSpec invocationSpec = 2;
+    }
+    ChaincodeAction action = 3;
 }
 
 // Carries the specification for a transactions set.
@@ -102,7 +105,7 @@ message TxSetSpec {
     }
 
     Type type = 1;
-    repeated TxSpec txSet = 2;
+    repeated TxSpec txSpecs = 2;
     uint64 defaultInx = 3;
     string secureContext = 4;
     ConfidentialityLevel confidentialityLevel = 5;
@@ -128,7 +131,7 @@ message ChaincodeDeploymentSpec {
     // Controls when the chaincode becomes executable.
     google.protobuf.Timestamp effectiveDate = 2;
     bytes codePackage = 3;
-    ExecutionEnvironment execEnv=  4;
+    ExecutionEnvironment execEnv = 4;
 
 }
 

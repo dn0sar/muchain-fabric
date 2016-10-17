@@ -35,7 +35,7 @@ message Transaction {
     string txid = 5;    // Mantaining this just for compatibility, but in reality the stuff in the tranSet is enough
     google.protobuf.Timestamp timestamp = 6;
 
-   ConfidentialityLevel confidentialityLevel = 7;
+    ConfidentialityLevel confidentialityLevel = 7;
     string confidentialityProtocolVersion = 8;
     bytes nonce = 9;
 
