@@ -103,9 +103,10 @@ message TxSetSpec {
 
     Type type = 1;
     repeated TxSpec txSet = 2;
-    string secureContext = 3;
-    ConfidentialityLevel confidentialityLevel = 4;
-    bytes metadata = 5;
+    uint64 defaultInx = 3;
+    string secureContext = 4;
+    ConfidentialityLevel confidentialityLevel = 5;
+    bytes metadata = 6;
 }
 
 // Carries the specification for a Mutant transaction.
