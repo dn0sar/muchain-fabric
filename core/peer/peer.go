@@ -39,10 +39,10 @@ import (
 	"github.com/hyperledger/fabric/core/discovery"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/state"
-	"github.com/hyperledger/fabric/core/util"
-	pb "github.com/hyperledger/fabric/protos"
 	chainstmgmt "github.com/hyperledger/fabric/core/ledger/state/chaincodest/statemgmt"
 	txsetstmgmt "github.com/hyperledger/fabric/core/ledger/state/txsetst/statemgmt"
+	"github.com/hyperledger/fabric/core/util"
+	pb "github.com/hyperledger/fabric/protos"
 )
 
 // Peer provides interface for a peer
@@ -508,7 +508,7 @@ func (p *Impl) sendTransactionsToLocalEngine(transaction *pb.InBlockTransaction)
 		peerLogger.Debugf("Marshalling transaction set to send to local engine")
 	} else if transaction.GetMutantTransaction() != nil {
 		peerLogger.Debugf("Marshalling mutant transaction to send to local engine")
-	} else  {
+	} else {
 		peerLogger.Errorf("What is this transaction type?! %s", transaction.GetTransaction())
 	}
 

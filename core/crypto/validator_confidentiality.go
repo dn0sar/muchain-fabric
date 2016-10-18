@@ -121,7 +121,6 @@ func (validator *validatorImpl) deepCloneAndDecryptTx1_2(tx *pb.InBlockTransacti
 			currDefault.Metadata = metadata
 		}
 
-
 		// Decrypt Payload
 		payload, err := cipher.Process(currDefault.Payload)
 		if err != nil {

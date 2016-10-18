@@ -22,8 +22,8 @@ import (
 
 	"github.com/hyperledger/fabric/core/db"
 	"github.com/hyperledger/fabric/core/ledger/state"
-	"github.com/hyperledger/fabric/core/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/state/chaincodest/statemgmt"
+	"github.com/hyperledger/fabric/core/ledger/testutil"
 	"github.com/tecbot/gorocksdb"
 )
 

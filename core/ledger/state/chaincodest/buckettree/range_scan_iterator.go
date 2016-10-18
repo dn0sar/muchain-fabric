@@ -18,8 +18,8 @@ package buckettree
 
 import (
 	"github.com/hyperledger/fabric/core/db"
-	"github.com/tecbot/gorocksdb"
 	"github.com/hyperledger/fabric/core/ledger/state"
+	"github.com/tecbot/gorocksdb"
 )
 
 // RangeScanIterator implements the interface 'statemgmt.RangeScanIterator'

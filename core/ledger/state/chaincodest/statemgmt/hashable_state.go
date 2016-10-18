@@ -17,8 +17,8 @@ limitations under the License.
 package statemgmt
 
 import (
-	"github.com/tecbot/gorocksdb"
 	"github.com/hyperledger/fabric/core/ledger/state"
+	"github.com/tecbot/gorocksdb"
 )
 
 // HashableState - Interface that is be implemented by state management
@@ -68,4 +68,3 @@ type HashableState interface {
 	// the performance of ComputeCryptoHash method (when gets called at a later time)
 	PerfHintKeyChanged(chaincodeID string, key string)
 }
-

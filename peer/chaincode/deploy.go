@@ -21,10 +21,10 @@ import (
 
 	"golang.org/x/net/context"
 
-	"github.com/hyperledger/fabric/peer/common"
-	"github.com/spf13/cobra"
-	"github.com/hyperledger/fabric/protos"
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/peer/common"
+	"github.com/hyperledger/fabric/protos"
+	"github.com/spf13/cobra"
 )
 
 // Cmd returns the cobra command for Chaincode Deploy

@@ -1,8 +1,8 @@
 package statemgmt
 
 import (
-	"github.com/tecbot/gorocksdb"
 	"github.com/hyperledger/fabric/core/ledger/state"
+	"github.com/tecbot/gorocksdb"
 
 	"github.com/hyperledger/fabric/protos"
 )

@@ -41,6 +41,7 @@ func DecodeCompositeKey(compositeKey []byte) (string, string) {
 func ConstructTxSetKey(txSetID string) []byte {
 	return []byte(txSetID)
 }
+
 // GetTxSetIDfromKey returns the txSetID that was used to create the key given as input.
 // i.e. the following is guaranteed GetTxSetIDfromKey(ConstructTxSetKey(txSetID)) == txSetID
 func DecomposeTxSetKey(txSetKey []byte) string {

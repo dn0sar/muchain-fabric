@@ -44,7 +44,7 @@ func (eng *EngineImpl) GetHandlerFactory() peer.HandlerFactory {
 }
 
 // ProcessTransactionMsg processes a Message in context of a Transaction
-func (eng *EngineImpl) ProcessTransactionMsg(msg *pb.Message,inBlockTx *pb.InBlockTransaction) (response *pb.Response) {
+func (eng *EngineImpl) ProcessTransactionMsg(msg *pb.Message, inBlockTx *pb.InBlockTransaction) (response *pb.Response) {
 	switch tx := inBlockTx.Transaction.(type) {
 	case *pb.InBlockTransaction_TransactionSet:
 		// Check if this is a query transaction. A TxSet is a query tx if it contains only one transaction and it is of type Query.

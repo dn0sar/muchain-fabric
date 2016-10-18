@@ -16,7 +16,7 @@ var mgmtLogger = logging.MustGetLogger("txset_statemgmt")
 // StateDelta holds the changes to existing state. This struct is used for holding the uncommitted changes during execution of a tx-batch
 // Also, to be used for transferring the state to another peer in chunks
 type TxSetStateDelta struct {
-	Deltas        map[string]*TxSetUpdatedValue
+	Deltas map[string]*TxSetUpdatedValue
 	// RollBackwards allows one to contol whether this delta will roll the state
 	// forwards or backwards.
 	RollBackwards bool
@@ -127,7 +127,9 @@ func (txStateDelta *TxSetStateDelta) ComputeCryptoHash() []byte {
 		updatedValue := txStateDelta.Deltas[txSetID]
 		if !updatedValue.IsDeleted() {
 			marshaledValue, err := updatedValue.GetValue().Bytes()
-			panic(fmt.Errorf("Unable to Marshal the TxSetValue for txSetID: %s, %s", txSetID, err))
+			if err != nil {
+				panic(fmt.Errorf("Unable to Marshal the TxSetValue for txSetID: %s, %s", txSetID, err))
+			}
 			buffer.Write(marshaledValue)
 		}
 	}

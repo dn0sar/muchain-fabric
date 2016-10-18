@@ -24,7 +24,6 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/hyperledger/fabric/core/ledger/state"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/protos"
 )

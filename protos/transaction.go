@@ -136,15 +136,15 @@ func (c *ChaincodeInput) UnmarshalJSON(b []byte) error {
 
 func EncapsulateTransactionToInBlock(tx *Transaction) *InBlockTransaction {
 	return &InBlockTransaction{
-		Transaction: &InBlockTransaction_TransactionSet{&TransactionSet{Transactions: []*Transaction{tx}, DefaultInx: 0}},
-		Metadata: tx.Metadata,
-		Txid: tx.Txid,
-		Timestamp: tx.Timestamp,
-		ConfidentialityLevel: tx.ConfidentialityLevel,
+		Transaction:                    &InBlockTransaction_TransactionSet{&TransactionSet{Transactions: []*Transaction{tx}, DefaultInx: 0}},
+		Metadata:                       tx.Metadata,
+		Txid:                           tx.Txid,
+		Timestamp:                      tx.Timestamp,
+		ConfidentialityLevel:           tx.ConfidentialityLevel,
 		ConfidentialityProtocolVersion: tx.ConfidentialityProtocolVersion,
-		Nonce: tx.Nonce,
+		Nonce:        tx.Nonce,
 		ToValidators: tx.ToValidators,
-		Cert: tx.Cert,
-		Signature: tx.Signature,
+		Cert:         tx.Cert,
+		Signature:    tx.Signature,
 	}
 }

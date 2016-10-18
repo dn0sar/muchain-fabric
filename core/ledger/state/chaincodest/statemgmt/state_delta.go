@@ -22,8 +22,8 @@ import (
 	"sort"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/op/go-logging"
 	"github.com/hyperledger/fabric/core/util"
+	"github.com/op/go-logging"
 )
 
 var logger = logging.MustGetLogger("statemgmt")

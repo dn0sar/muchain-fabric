@@ -23,7 +23,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/consensus/util/events"
-	"github.com/hyperledger/fabric/core/ledger/state"
+	chainstmgmt "github.com/hyperledger/fabric/core/ledger/state/chaincodest/statemgmt"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
 	pb "github.com/hyperledger/fabric/protos"
@@ -105,7 +105,7 @@ func createRunningPbftWithManager(id uint64, config *viper.Viper, stack innerSta
 
 func createTx(tag int64) (tx *pb.Transaction) {
 	txTime := &timestamp.Timestamp{Seconds: tag, Nanos: 0}
-	tx = &pb.Transaction{Type: pb.Transaction_CHAINCODE_DEPLOY,
+	tx = &pb.Transaction{Type: pb.ChaincodeAction_CHAINCODE_DEPLOY,
 		Timestamp: txTime,
 		Payload:   []byte(fmt.Sprint(tag)),
 	}
@@ -174,7 +174,7 @@ type omniProto struct {
 	HashBlockImpl              func(block *pb.Block) ([]byte, error)
 	VerifyBlockchainImpl       func(start, finish uint64) (uint64, error)
 	PutBlockImpl               func(blockNumber uint64, block *pb.Block) error
-	ApplyStateDeltaImpl        func(id interface{}, delta *state.StateDelta) error
+	ApplyStateDeltaImpl        func(id interface{}, delta *chainstmgmt.StateDelta) error
 	CommitStateDeltaImpl       func(id interface{}) error
 	RollbackStateDeltaImpl     func(id interface{}) error
 	EmptyStateImpl             func() error
@@ -325,7 +325,7 @@ func (op *omniProto) PutBlock(blockNumber uint64, block *pb.Block) error {
 
 	panic("Unimplemented")
 }
-func (op *omniProto) ApplyStateDelta(id interface{}, delta *state.StateDelta) error {
+func (op *omniProto) ApplyStateDelta(id interface{}, delta *chainstmgmt.StateDelta) error {
 	if nil != op.ApplyStateDeltaImpl {
 		return op.ApplyStateDeltaImpl(id, delta)
 	}

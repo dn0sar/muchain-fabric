@@ -83,7 +83,7 @@ type LegacyExecutor interface {
 type Executor interface {
 	Start()                                                                     // Bring up the resources needed to use this interface
 	Halt()                                                                      // Tear down the resources needed to use this interface
-	Execute(tag interface{}, txs []*pb.InBlockTransaction)                             // Executes a set of transactions, this may be called in succession
+	Execute(tag interface{}, txs []*pb.InBlockTransaction)                      // Executes a set of transactions, this may be called in succession
 	Commit(tag interface{}, metadata []byte)                                    // Commits whatever transactions have been executed
 	Rollback(tag interface{})                                                   // Rolls back whatever transactions have been executed
 	UpdateState(tag interface{}, target *pb.BlockchainInfo, peers []*pb.PeerID) // Attempts to synchronize state to a particular target, implicitly calls rollback if needed

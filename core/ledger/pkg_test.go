@@ -20,7 +20,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hyperledger/fabric/core/ledger/state"
 	"github.com/hyperledger/fabric/core/ledger/testutil"
 	"github.com/hyperledger/fabric/core/util"
 	"github.com/hyperledger/fabric/protos"

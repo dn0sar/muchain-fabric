@@ -58,7 +58,7 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, inBlockTx *pb.InBloc
 		txSetStValue, err := ledger.GetTxSetState(inBlockTx.Txid, true)
 		if err != nil {
 			ledger.TxFinished(inBlockTx.Txid, false)
-			return  nil, nil, fmt.Errorf("Failed to retrieve the txSet state, txID: %d, err: %s.", inBlockTx.Txid, err)
+			return nil, nil, fmt.Errorf("Failed to retrieve the txSet state, txID: %s, err: %s.", inBlockTx.Txid, err)
 		}
 		if txSetStValue == nil {
 			txSetExistedAlready = false
@@ -171,7 +171,7 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, inBlockTx *pb.InBloc
 		txSetStValue, err := ledger.GetTxSetState(tx.MutantTransaction.TxSetID, true)
 		if err != nil {
 			ledger.TxFinished(tx.MutantTransaction.TxSetID, false)
-			return  nil, nil, fmt.Errorf("Failed to retrieve the txSet state, txID: %d, err: %s.", inBlockTx.Txid, err)
+			return nil, nil, fmt.Errorf("Failed to retrieve the txSet state, txID: %s, err: %s.", inBlockTx.Txid, err)
 		}
 		if txSetStValue == nil {
 			ledger.TxFinished(tx.MutantTransaction.TxSetID, false)
@@ -181,7 +181,7 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, inBlockTx *pb.InBloc
 		txSetStValue.Index = tx.MutantTransaction.TxSetIndex
 		ledger.SetTxSetState(tx.MutantTransaction.TxSetID, txSetStValue)
 		ledger.TxFinished(tx.MutantTransaction.TxSetID, true)
-		return nil,nil, err
+		return nil, nil, err
 	}
 	return nil, nil, err
 }

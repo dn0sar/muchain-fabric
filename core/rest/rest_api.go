@@ -36,6 +36,7 @@ import (
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/hyperledger/fabric/core"
 	"github.com/hyperledger/fabric/core/chaincode"
@@ -43,7 +44,6 @@ import (
 	"github.com/hyperledger/fabric/core/crypto"
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 	pb "github.com/hyperledger/fabric/protos"
-	"github.com/golang/protobuf/proto"
 )
 
 var restLogger = logging.MustGetLogger("rest")

@@ -26,9 +26,9 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/hyperledger/fabric/core/ledger/state"
-	pb "github.com/hyperledger/fabric/protos"
 	chainstmgmt "github.com/hyperledger/fabric/core/ledger/state/chaincodest/statemgmt"
 	txsetstmgmt "github.com/hyperledger/fabric/core/ledger/state/txsetst/statemgmt"
+	pb "github.com/hyperledger/fabric/protos"
 )
 
 // Handler peer handler implementation.
@@ -544,7 +544,7 @@ func (d *Handler) sendStateSnapshot(syncStateSnapshotRequest *pb.SyncStateSnapsh
 			txID := stcomm.DecomposeTxSetKey(k)
 			txSetStateValue, err := pb.UnmarshalTxSetStateValue(v)
 			if err != nil {
-				peerLogger.Errorf("Error unmarshalling TxSetStateValue for BlockNum = %d and TxId = %d: %s", currBlockNumber, txID, err)
+				peerLogger.Errorf("Error unmarshalling TxSetStateValue for BlockNum = %d and TxId = %s: %s", currBlockNumber, txID, err)
 				break
 			}
 			txSetStateDelta.Set(txID, txSetStateValue, nil)

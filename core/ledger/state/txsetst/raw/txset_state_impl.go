@@ -4,8 +4,8 @@ import (
 	"github.com/hyperledger/fabric/core/db"
 	"github.com/hyperledger/fabric/core/ledger/state"
 	"github.com/hyperledger/fabric/core/ledger/state/txsetst/statemgmt"
-	"github.com/tecbot/gorocksdb"
 	pb "github.com/hyperledger/fabric/protos"
+	"github.com/tecbot/gorocksdb"
 )
 
 // TxSetStateImpl implements raw state management. This implementation does not support computation of crypto-hash of the state.

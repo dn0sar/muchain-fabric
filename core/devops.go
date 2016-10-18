@@ -126,7 +126,7 @@ func (*Devops) Build(context context.Context, spec *pb.ChaincodeSpec) (*pb.Respo
 	chaincodeDSBytes, err := proto.Marshal(chaincodeDeploymentSpec)
 	if err != nil {
 		resp.Msg = []byte(err.Error())
-		return  resp, fmt.Errorf("Unable to Marshal the Chaincode Deployment Specification (%s).", err)
+		return resp, fmt.Errorf("Unable to Marshal the Chaincode Deployment Specification (%s).", err)
 	}
 	resp.Status = pb.Response_SUCCESS
 	resp.Msg = chaincodeDSBytes
@@ -347,7 +347,7 @@ func (d *Devops) checkQueryConsistency(txSetSpec *pb.TxSetSpec) (bool, error) {
 		if len(txSetSpec.TxSpecs) > 1 {
 			// Cannot have a txSet with more than one query
 			return false, fmt.Errorf("When issuing a Query it should be the only transaction belonging to the tx set.")
-		} else  {
+		} else {
 			// good to go, tx set is of type query
 			return true, nil
 		}
@@ -435,8 +435,8 @@ func (d *Devops) IssueTxSet(ctx context.Context, txSetSpec *pb.TxSetSpec) (*pb.R
 
 	inBlockTx := &pb.InBlockTransaction{
 		Transaction: &pb.InBlockTransaction_TransactionSet{TransactionSet: txSet},
-		Txid: string(util.ComputeCryptoHash(txSetBytes)),
-		Timestamp: util.CreateUtcTimestamp(),
+		Txid:        string(util.ComputeCryptoHash(txSetBytes)),
+		Timestamp:   util.CreateUtcTimestamp(),
 	}
 	resp := d.coord.ExecuteTransaction(inBlockTx)
 	if resp.Status == pb.Response_FAILURE {
@@ -448,7 +448,7 @@ func (d *Devops) IssueTxSet(ctx context.Context, txSetSpec *pb.TxSetSpec) (*pb.R
 // Modifies the active transaction of a transactions set
 func (d *Devops) Mutate(ctx context.Context, mutantSpec *pb.MutantSpec) (*pb.Response, error) {
 	mutantTx := &pb.MutantTransaction{
-		TxSetID: mutantSpec.TxSetID,
+		TxSetID:    mutantSpec.TxSetID,
 		TxSetIndex: mutantSpec.Index,
 	}
 
@@ -459,8 +459,8 @@ func (d *Devops) Mutate(ctx context.Context, mutantSpec *pb.MutantSpec) (*pb.Res
 
 	inBlockTx := &pb.InBlockTransaction{
 		Transaction: &pb.InBlockTransaction_MutantTransaction{MutantTransaction: mutantTx},
-		Txid: string(util.ComputeCryptoHash(mutBytes)),
-		Timestamp: util.CreateUtcTimestamp(),
+		Txid:        string(util.ComputeCryptoHash(mutBytes)),
+		Timestamp:   util.CreateUtcTimestamp(),
 	}
 	resp := d.coord.ExecuteTransaction(inBlockTx)
 	if resp.Status == pb.Response_FAILURE {

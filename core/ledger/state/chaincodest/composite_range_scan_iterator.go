@@ -17,8 +17,8 @@ limitations under the License.
 package chaincodest
 
 import (
-	"github.com/hyperledger/fabric/core/ledger/state/chaincodest/statemgmt"
 	"github.com/hyperledger/fabric/core/ledger/state"
+	"github.com/hyperledger/fabric/core/ledger/state/chaincodest/statemgmt"
 )
 
 // CompositeRangeScanIterator - an implementation of interface 'statemgmt.RangeScanIterator'

@@ -20,13 +20,13 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/core/db"
-	"github.com/hyperledger/fabric/core/ledger/state/chaincodest/buckettree"
 	"github.com/hyperledger/fabric/core/ledger/state"
+	"github.com/hyperledger/fabric/core/ledger/state/chaincodest/buckettree"
 	"github.com/hyperledger/fabric/core/ledger/state/chaincodest/raw"
+	"github.com/hyperledger/fabric/core/ledger/state/chaincodest/statemgmt"
 	"github.com/hyperledger/fabric/core/ledger/state/chaincodest/trie"
 	"github.com/op/go-logging"
 	"github.com/tecbot/gorocksdb"
-	"github.com/hyperledger/fabric/core/ledger/state/chaincodest/statemgmt"
 )
 
 var logger = logging.MustGetLogger("state")

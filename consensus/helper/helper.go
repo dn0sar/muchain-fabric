@@ -40,8 +40,8 @@ type Helper struct {
 	secOn        bool
 	valid        bool // Whether we believe the state is up to date
 	secHelper    crypto.Peer
-	curBatch     []*pb.InBlockTransaction       // TODO, remove after issue 579
-	curBatchErrs []*pb.TransactionResult // TODO, remove after issue 579
+	curBatch     []*pb.InBlockTransaction // TODO, remove after issue 579
+	curBatchErrs []*pb.TransactionResult  // TODO, remove after issue 579
 	persist.Helper
 
 	executor consensus.Executor

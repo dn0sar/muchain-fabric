@@ -6,13 +6,12 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-
 // IsValidBlockExtension checks whether the other txSetStateValue is a valid extension of this txSetStateValue blockwise
 // meaning it only adds new blocks or nothing, and the txNumber is consistent with the total number of transactions
 // declared
 func (txSetStateValue *TxSetStateValue) IsValidBlockExtension(other *TxSetStateValue) error {
 	if txSetStateValue.TxNumber > other.TxNumber {
-		return  fmt.Errorf("The next state for this transactions set contains less transactions. " +
+		return fmt.Errorf("The next state for this transactions set contains less transactions. "+
 			"Number of transactions info at current state: %d; other state: %d", txSetStateValue.TxNumber, other.TxNumber)
 	}
 	for block, txs := range txSetStateValue.TxsInBlock {
@@ -21,7 +20,7 @@ func (txSetStateValue *TxSetStateValue) IsValidBlockExtension(other *TxSetStateV
 			return fmt.Errorf("The next state for this transactions set does not have transaction info for block %d.", block)
 		}
 		if otherTxs != txs {
-			return fmt.Errorf("The next state for this transactions set contains conflicting " +
+			return fmt.Errorf("The next state for this transactions set contains conflicting "+
 				"info about the transactions at block %d. Current: %d, Next: %d", block, txs, otherTxs)
 		}
 	}
@@ -66,4 +65,3 @@ func UnmarshalTxSetStateValue(marshalledState []byte) (*TxSetStateValue, error) 
 	}
 	return stateValue, nil
 }
-

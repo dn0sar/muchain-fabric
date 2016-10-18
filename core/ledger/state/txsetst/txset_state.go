@@ -9,9 +9,9 @@ import (
 	//	"github.com/hyperledger/fabric/core/ledger/state/txset_state/trie"
 	stcomm "github.com/hyperledger/fabric/core/ledger/state"
 	"github.com/hyperledger/fabric/core/ledger/state/txsetst/raw"
+	pb "github.com/hyperledger/fabric/protos"
 	"github.com/op/go-logging"
 	"github.com/tecbot/gorocksdb"
-	pb "github.com/hyperledger/fabric/protos"
 )
 
 var txSetStateImpl statemgmt.HashableTxSetState

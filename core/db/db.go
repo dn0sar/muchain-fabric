@@ -39,13 +39,13 @@ const indexesCF = "indexesCF"
 const persistCF = "persistCF"
 
 var columnfamilies = []string{
-	blockchainCF, 		// blocks of the block chain
-	stateCF,      		// world state
-	stateDeltaCF, 		// open transaction state
-	txSetStateCF,   	// transactions sets state
-	txSetStateDeltaCF,	// open transactions set state
-	indexesCF,    		// tx uuid -> blockno
-	persistCF,    		// persistent per-peer state (consensus)
+	blockchainCF,      // blocks of the block chain
+	stateCF,           // world state
+	stateDeltaCF,      // open transaction state
+	txSetStateCF,      // transactions sets state
+	txSetStateDeltaCF, // open transactions set state
+	indexesCF,         // tx uuid -> blockno
+	persistCF,         // persistent per-peer state (consensus)
 }
 
 // OpenchainDB encapsulates rocksdb's structures
@@ -111,7 +111,6 @@ func (openchainDB *OpenchainDB) GetFromTxSetStateCF(key []byte) ([]byte, error) 
 func (openchainDB *OpenchainDB) GetFromTxSetStateDeltaCF(key []byte) ([]byte, error) {
 	return openchainDB.Get(openchainDB.TxSetStateDeltaCF, key)
 }
-
 
 // GetFromIndexesCF get value for given key from column family - indexCF
 func (openchainDB *OpenchainDB) GetFromIndexesCF(key []byte) ([]byte, error) {

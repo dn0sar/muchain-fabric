@@ -20,10 +20,10 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric/core/db"
+	"github.com/hyperledger/fabric/core/ledger/state"
 	"github.com/hyperledger/fabric/core/ledger/state/chaincodest/statemgmt"
 	"github.com/op/go-logging"
 	"github.com/tecbot/gorocksdb"
-	"github.com/hyperledger/fabric/core/ledger/state"
 )
 
 var stateTrieLogger = logging.MustGetLogger("stateTrie")

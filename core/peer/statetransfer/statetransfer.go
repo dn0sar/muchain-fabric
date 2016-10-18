@@ -31,7 +31,6 @@ import (
 	pb "github.com/hyperledger/fabric/protos"
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
-
 )
 
 // =============================================================================

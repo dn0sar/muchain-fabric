@@ -32,9 +32,9 @@ import (
 	"github.com/op/go-logging"
 	"github.com/tecbot/gorocksdb"
 
+	"github.com/hyperledger/fabric/core/ledger/state/txsetst"
 	"github.com/hyperledger/fabric/protos"
 	"golang.org/x/net/context"
-	"github.com/hyperledger/fabric/core/ledger/state/txsetst"
 )
 
 var ledgerLogger = logging.MustGetLogger("ledger")
@@ -84,7 +84,7 @@ var (
 type Ledger struct {
 	blockchain     *blockchain
 	chaincodeState *chaincodest.State
-	txSetState	   *txsetst.TxSetState
+	txSetState     *txsetst.TxSetState
 	currentID      interface{}
 }
 
@@ -145,7 +145,7 @@ func (ledger *Ledger) GetTXBatchPreviewBlockInfo(id interface{},
 		return nil, err
 	}
 	block := ledger.blockchain.buildBlock(protos.NewBlock(transactions, metadata), chaincodeStHash, txSetStHash)
-	info := ledger.blockchain.getBlockchainInfoForBlock(ledger.blockchain.getSize() + 1, block)
+	info := ledger.blockchain.getBlockchainInfoForBlock(ledger.blockchain.getSize()+1, block)
 	return info, nil
 }
 
@@ -321,13 +321,13 @@ func (ledger *Ledger) SetTxSetState(txSetID string, txSetStateValue *protos.TxSe
 		return newLedgerError(ErrorTypeInvalidArgument,
 			fmt.Sprintf("An empty transaction set state value is not supported. Method invoked with stateValue='%#v'", txSetStateValue))
 	}
-	previousValue, err :=  ledger.GetTxSetState(txSetID, true)
+	previousValue, err := ledger.GetTxSetState(txSetID, true)
 	if err != nil {
 		return newLedgerError(ErrorTypeResourceNotFound,
 			fmt.Sprintf("Error while trying to retrieve the previous state for txSetID='%s', err='%#v'", txSetID, err))
 	}
-	if txSetStateValue.Nonce != previousValue.Nonce + 1 {
-		return  newLedgerError(ErrorTypeInvalidArgument,
+	if txSetStateValue.Nonce != previousValue.Nonce+1 {
+		return newLedgerError(ErrorTypeInvalidArgument,
 			fmt.Sprintf("Wrong nonce update. Previous nonce: %d, new nonce: %d", previousValue.Nonce, txSetStateValue.Nonce))
 	}
 	err = previousValue.IsValidBlockExtension(txSetStateValue)
@@ -383,7 +383,7 @@ func (ledger *Ledger) GetStateSnapshot() (*stcomm.StateSnapshot, *stcomm.StateSn
 	if err != nil {
 		return nil, nil, err
 	}
-	txSetSnap, err := ledger.txSetState.GetTxSetSnapshot(blockHeight -1, dbSnapshotForTxSet)
+	txSetSnap, err := ledger.txSetState.GetTxSetSnapshot(blockHeight-1, dbSnapshotForTxSet)
 	return chainSnap, txSetSnap, nil
 }
 
