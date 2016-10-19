@@ -32,6 +32,9 @@ func (impl *TxSetStateImpl) Get(txSetID string) (*pb.TxSetStateValue, error) {
 	if err != nil {
 		return nil, err
 	}
+	if len(stateValueBytes) == 0 {
+		return nil, nil
+	}
 	return pb.UnmarshalTxSetStateValue(stateValueBytes)
 }
 
