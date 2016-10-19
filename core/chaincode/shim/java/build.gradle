@@ -87,7 +87,6 @@ task copyProtos(type:Copy){
  from "${rootDir}/protos"
  include '**/chaincodeevent.proto'
  include '**/blockchainmessages.proto'
- include '**/state.proto'
 }
 
 tasks['build'].mustRunAfter tasks['copyProtos']

@@ -465,7 +465,10 @@ func (d *Devops) IssueTxSet(ctx context.Context, txSetSpec *pb.TxSetSpec) (*pb.R
 func (d *Devops) Mutate(ctx context.Context, mutantSpec *pb.MutantSpec) (*pb.Response, error) {
 	mutantTx := &pb.MutantTransaction{
 		TxSetID:    mutantSpec.TxSetID,
-		TxSetIndex: mutantSpec.Index,
+		TxSetIndex: &pb.TxSetIndex{
+			BlockNr: mutantSpec.BlockNum,
+			InBlockIndex: mutantSpec.Index,
+		},
 	}
 
 	mutBytes, err := proto.Marshal(mutantTx)

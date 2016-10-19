@@ -20,7 +20,6 @@ package protos;
 option java_package = "org.hyperledger.protos";
 option java_outer_classname = "BlockchainMessages";
 import "chaincodeevent.proto";
-import "state.proto";
 import "google/protobuf/timestamp.proto";
 
 
@@ -133,7 +132,8 @@ message TxSetSpec {
 // Carries the specification for a Mutant transaction.
 message MutantSpec {
     string txSetID = 1;
-    TxSetIndex index = 2;
+    uint64 blockNum = 2;
+    uint64 index = 3;
 }
 
 // Specify the deployment of a chaincode.
