@@ -55,6 +55,9 @@ service Devops {
     // The outer one contains a positive response if the history change did not cause conflicts in the chain.
     rpc Mutate(MutantSpec) returns (Response) {}
 
+    // Queries the state of a given Tx Set
+    rpc QueryTxSetState(TxSetSpec) returns (Response) {}
+
     // Retrieve a TCert.
     rpc EXP_GetApplicationTCert(Secret) returns (Response) {}
 

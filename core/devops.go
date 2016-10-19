@@ -485,6 +485,10 @@ func (d *Devops) Mutate(ctx context.Context, mutantSpec *pb.MutantSpec) (*pb.Res
 	return resp, err
 }
 
+func (d *Devops) QueryTxSetState(ctx context.Context, mutantSpec *pb.TxSetSpec) (*pb.Response, error) {
+	return nil, fmt.Errorf("Method not implemented")
+}
+
 // CheckSpec to see if chaincode resides within current package capture for language.
 func CheckSpec(spec *pb.ChaincodeSpec) error {
 	// Don't allow nil value
