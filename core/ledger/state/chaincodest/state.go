@@ -33,15 +33,21 @@ var logger = logging.MustGetLogger("state")
 
 var stateImpl statemgmt.HashableState
 
-type stateImplType string
+type stateImplType struct {
+	name string
+}
 
-const (
-	buckettreeType stateImplType = "buckettree"
-	trieType       stateImplType = "trie"
-	rawType        stateImplType = "raw"
+func (implInt *stateImplType) Name() string {
+	return implInt.name
+}
+
+var (
+	buckettreeType = &stateImplType{"buckettree"}
+	trieType       = &stateImplType{"trie"}
+	rawType        = &stateImplType{"raw"}
 )
 
-const defaultStateImpl = buckettreeType
+var defaultStateImpl = buckettreeType
 
 // State structure for maintaining world state.
 // This encapsulates a particular implementation for managing the state persistence
@@ -60,12 +66,12 @@ type State struct {
 func NewState() *State {
 	confData := stcomm.GetConfig("state", defaultStateImpl, buckettreeType, trieType, rawType)
 	logger.Infof("Initializing state implementation [%s]", confData.StateImplName)
-	switch stateImplType(confData.StateImplName) {
-	case buckettreeType:
+	switch confData.StateImplName {
+	case buckettreeType.Name():
 		stateImpl = buckettree.NewStateImpl()
-	case trieType:
+	case trieType.Name():
 		stateImpl = trie.NewStateImpl()
-	case rawType:
+	case rawType.Name():
 		stateImpl = raw.NewStateImpl()
 	default:
 		panic("Should not reach here. Configs should have checked for the stateImplName being a valid names ")

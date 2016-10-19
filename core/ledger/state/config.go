@@ -29,6 +29,10 @@ var confLogger = logging.MustGetLogger("state-conf")
 var configMap = make(map[string]*loadConfEl)
 var confMapLock = sync.Mutex{}
 
+type StateImplType interface {
+	Name() string
+}
+
 type ConfigurationData struct {
 	StateImplName    string
 	StateImplConfigs map[string]interface{}
@@ -40,7 +44,7 @@ type loadConfEl struct {
 	confData ConfigurationData
 }
 
-func GetConfig(stateKind string, defImpl interface{}, validValues ...interface{}) *ConfigurationData {
+func GetConfig(stateKind string, defImpl StateImplType, validValues ...StateImplType) *ConfigurationData {
 	checkMapSafe(stateKind)
 	configMap[stateKind].once.Do(func() { loadConfig(stateKind, defImpl, validValues...) })
 	return &configMap[stateKind].confData
@@ -54,7 +58,7 @@ func checkMapSafe(stateKind string) {
 	}
 }
 
-func loadConfig(stateSpec string, defImpl interface{}, validValues ...interface{}) {
+func loadConfig(stateSpec string, defImpl StateImplType, validValues ...StateImplType) {
 	confLogger.Info("Loading configurations...")
 
 	data := &configMap[stateSpec].confData
@@ -63,12 +67,12 @@ func loadConfig(stateSpec string, defImpl interface{}, validValues ...interface{
 	data.StateImplConfigs = viper.GetStringMap("ledger." + stateSpec + ".dataStructure.configs")
 	data.DeltaHistorySize = viper.GetInt("ledger." + stateSpec + ".deltaHistorySize")
 	if len(data.StateImplName) == 0 {
-		data.StateImplName = defImpl.(string)
+		data.StateImplName = defImpl.Name()
 		data.StateImplConfigs = nil
 	} else {
 		valid := false
 		for _, validName := range validValues {
-			if data.StateImplName == validName.(string) {
+			if data.StateImplName == validName.Name() {
 				valid = true
 			}
 		}

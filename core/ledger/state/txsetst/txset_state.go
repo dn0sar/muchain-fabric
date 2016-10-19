@@ -18,15 +18,21 @@ var txSetStateImpl statemgmt.HashableTxSetState
 
 var txSetStateLogger = logging.MustGetLogger("txset_statemgmt")
 
-type txSetStateImplType string
+type txSetStateImplType struct {
+	name string
+}
 
-const (
+func (implInt *txSetStateImplType) Name() string {
+	return implInt.name
+}
+
+var (
 	//	buckettreeType txSetStateImplType = "buckettree"
 	//	trieType 	   txSetStateImplType = "trie"
-	rawType txSetStateImplType = "raw"
+	rawType = &txSetStateImplType{"raw"}
 )
 
-const defaultTxSetStateImpl = rawType
+var defaultTxSetStateImpl = rawType
 
 // TxSetState structure for maintaining world state.
 // This encapsulates a particular implementation for managing the state persistence
@@ -45,12 +51,12 @@ type TxSetState struct {
 func NewTxSetState() *TxSetState {
 	confData := stcomm.GetConfig("txSetState", defaultTxSetStateImpl, rawType)
 	txSetStateLogger.Infof("Initializing tx set state implementation [%s]", confData.StateImplName)
-	switch txSetStateImplType(confData.StateImplName) {
+	switch confData.StateImplName {
 	/*	case buckettreeType:
 			txSetStateImpl = buckettree.NewTxSetStateImpl()
 		case trieType:
 			txSetStateImpl = trie.NewTxSetStateImpl()*/
-	case rawType:
+	case rawType.Name():
 		txSetStateImpl = raw.NewTxSetStateImpl()
 	default:
 		panic("Should not reach here. Configs should have checked for the txSetStateImplName being a valid names ")
