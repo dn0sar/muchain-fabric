@@ -478,7 +478,7 @@ func (d *Devops) Mutate(ctx context.Context, mutantSpec *pb.MutantSpec) (*pb.Res
 
 	inBlockTx := &pb.InBlockTransaction{
 		Transaction: &pb.InBlockTransaction_MutantTransaction{MutantTransaction: mutantTx},
-		Txid:        string(util.ComputeCryptoHash(mutBytes)), //TODO: Consider setting this differently, since for the same transaction set and same index it will be the same
+		Txid:        hex.EncodeToString(util.ComputeCryptoHash(mutBytes)), //TODO: Consider setting this differently, since for the same transaction set and same index it will be the same
 		Timestamp:   util.CreateUtcTimestamp(),
 	}
 	resp := d.coord.ExecuteTransaction(inBlockTx)

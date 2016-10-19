@@ -122,7 +122,7 @@ func (state *TxSetState) Get(txID string, committed bool) (*pb.TxSetStateValue, 
 
 // Set sets state to given index for the txSetID. Does not immediately writes to DB
 func (state *TxSetState) Set(txSetID string, stateValue *pb.TxSetStateValue) error {
-	txSetStateLogger.Debugf("set() txSetID=[%s], key=[%s], index=[%#v]", txSetID, stateValue)
+	txSetStateLogger.Debugf("set() txSetID=[%s], block=[%d], index=[%d]", txSetID, stateValue.Index.BlockNr, stateValue.Index.InBlockIndex)
 	// TODO: Do I need to start a transaction if this is primarily called for mutant transactions?
 	if !state.txInProgress() {
 		panic("State can be changed only in context of a tx.")
