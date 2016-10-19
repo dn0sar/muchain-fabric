@@ -352,7 +352,6 @@ func (ledger *Ledger) SetTxSetState(txSetID string, txSetStateValue *protos.TxSe
 	if err != nil {
 		return newLedgerError(ErrorTypeOutOfBounds, err.Error())
 	}
-	fmt.Println("Eurekaaaaa!!!!!!!!!!!!!!!!!!!!")
 	return ledger.txSetState.Set(txSetID, txSetStateValue)
 }
 

@@ -41,7 +41,7 @@ func (txSetStateValue *TxSetStateValue) IsIndexInRange() error {
 	if !ok {
 		return fmt.Errorf("Transaction indexed in a block that does not contain transactions for this set")
 	}
-	if txSetStateValue.Index.InBlockIndex < txs {
+	if txSetStateValue.Index.InBlockIndex >= txs {
 		return fmt.Errorf("Transaction indexed by the state is out of range.")
 	}
 	return nil

@@ -64,12 +64,17 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, inBlockTx *pb.InBloc
 			txSetExistedAlready = false
 			txSetStValue = &pb.TxSetStateValue{}
 			txSetStValue.Index = &pb.TxSetIndex{BlockNr: nextBlockNr, InBlockIndex: tx.TransactionSet.DefaultInx}
+			txSetStValue.TxsInBlock = make(map[uint64]uint64)
 		}
 		txSetStValue.Nonce++
 		txInSet := uint64(len(tx.TransactionSet.Transactions))
 		txSetStValue.TxNumber += txInSet
 		txSetStValue.TxsInBlock[nextBlockNr] = txInSet
-		ledger.SetTxSetState(inBlockTx.Txid, txSetStValue)
+		err = ledger.SetTxSetState(inBlockTx.Txid, txSetStValue)
+		if err != nil {
+			ledger.SetTxFinished(inBlockTx.Txid, false)
+			return nil, nil, fmt.Errorf("Unable to create the state for the new set. Error: %s", err)
+		}
 		ledger.SetTxFinished(inBlockTx.Txid, true)
 
 		if txSetExistedAlready {
