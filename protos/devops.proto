@@ -43,11 +43,16 @@ service Devops {
     rpc Query(ChaincodeInvocationSpec) returns (Response) {}
 
     // IssueTxSet deploys a transactions set or an extension of it in case the set that it refers to was already defined
+    // The response returned contains another response chained into it.
+    // The outmost response is related to the TxSet and contains the TxID assigned to the set
+    // The inner response contains the result of the execution of the dafault transaction of the issued set.
     rpc IssueTxSet(TxSetSpec) returns (Response) {}
 
     // TODO: Add method to allow the extension of a TxSet
 
-    // Modifies the active transaction of a transactions set
+    // Modifies the active transaction of a transactions set.
+    // Contains two responses. The inner one contains the response for the execution of the new default transaction.
+    // The outer one contains a positive response if the history change did not cause conflicts in the chain.
     rpc Mutate(MutantSpec) returns (Response) {}
 
     // Retrieve a TCert.

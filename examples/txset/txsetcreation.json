@@ -1,0 +1,28 @@
+{
+  "type": 0,
+  "defaultIndex" : 0,
+  "txSpecs" : [
+    {
+      "action": 1,
+      "lang": 1,
+      "chaincodeID": {
+        "path": "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02/",
+        "name": "mycc"
+      },
+      "inputArgs": {
+        "args": ["init", "a", "100", "b", "200"]
+      }
+    },
+    {
+      "action": 1,
+      "lang": 1,
+      "chaincodeID": {
+        "path": "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02/",
+        "name": "mycc"
+      },
+      "inputArgs": {
+        "args": ["init", "a", "110", "b", "220"]
+      }
+    }
+  ]
+}

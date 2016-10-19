@@ -363,44 +363,48 @@ func (d *Devops) checkQueryConsistency(txSetSpec *pb.TxSetSpec) (bool, error) {
 	return false, nil
 }
 
-func (d *Devops) createTxSet(txSetSpec *pb.TxSetSpec) (*pb.TransactionSet, error) {
+func (d *Devops) createTxSet(txSetSpec *pb.TxSetSpec) (*pb.TransactionSet, []byte, error) {
 	txSet := &pb.TransactionSet{}
 	txSet.DefaultInx = txSetSpec.DefaultInx
-	for _, txSpec := range txSetSpec.TxSpecs {
+	var deplBytes []byte
+	for i, txSpec := range txSetSpec.TxSpecs {
 		switch txSpec.Action {
 		case pb.ChaincodeAction_CHAINCODE_DEPLOY:
 			if txSpec.GetCodeSpec() == nil {
-				return nil, fmt.Errorf("Trying to add a Deploy transaction to the tx set without a valid Chaincode Specification.")
+				return nil, deplBytes, fmt.Errorf("Trying to add a Deploy transaction to the tx set without a valid Chaincode Specification.")
 			}
-			tx, _, sec, err := d.createDeployTransaction(txSpec.GetCodeSpec())
+			tx, deplBytesCurr, sec, err := d.createDeployTransaction(txSpec.GetCodeSpec())
 			if sec != nil {
 				crypto.CloseClient(sec)
 			}
 			if err != nil {
-				return nil, err
+				return nil, deplBytes, err
+			}
+			if uint64(i) == txSet.DefaultInx {
+				deplBytes = deplBytesCurr
 			}
 			txSet.Transactions = append(txSet.Transactions, tx)
 		case pb.ChaincodeAction_CHAINCODE_INVOKE:
 			if txSpec.GetInvocationSpec() == nil {
-				return nil, fmt.Errorf("Trying to add a Invoke transaction to the tx set without a valid Invocation Specification.")
+				return nil, deplBytes, fmt.Errorf("Trying to add a Invoke transaction to the tx set without a valid Invocation Specification.")
 			}
 			tx, sec, err := d.createExecTx(txSpec.GetInvocationSpec(), txSpec.GetInvocationSpec().ChaincodeSpec.Attributes, true)
 			if sec != nil {
 				crypto.CloseClient(sec)
 			}
 			if err != nil {
-				return nil, err
+				return nil, deplBytes, err
 			}
 			txSet.Transactions = append(txSet.Transactions, tx)
 		case pb.ChaincodeAction_CHAINCODE_QUERY:
 			// This should not happen, since checks to exclude query transactions
 			// should have been performed before calling this function
-			return nil, fmt.Errorf("Cannot to create a tx set containing a query transaction")
+			return nil, deplBytes, fmt.Errorf("Cannot to create a tx set containing a query transaction")
 		default:
-			return nil, fmt.Errorf("Transaction type not supported to be part of a transactins set. Type: %s", txSpec.Action)
+			return nil, deplBytes, fmt.Errorf("Transaction type not supported to be part of a transactins set. Type: %s", txSpec.Action)
 		}
 	}
-	return txSet, nil
+	return txSet, deplBytes, nil
 }
 
 // Invoke performs the supplied invocation on the specified chaincode through a transaction
@@ -424,7 +428,7 @@ func (d *Devops) IssueTxSet(ctx context.Context, txSetSpec *pb.TxSetSpec) (*pb.R
 		// TODO: consider sending a warning saying to call directly query instead of this
 		return d.Query(ctx, txSetSpec.TxSpecs[0].GetInvocationSpec())
 	}
-	txSet, err := d.createTxSet(txSetSpec)
+	txSet, deplBytes, err := d.createTxSet(txSetSpec)
 	if err != nil {
 		return nil, err
 	}
@@ -440,9 +444,20 @@ func (d *Devops) IssueTxSet(ctx context.Context, txSetSpec *pb.TxSetSpec) (*pb.R
 	}
 	resp := d.coord.ExecuteTransaction(inBlockTx)
 	if resp.Status == pb.Response_FAILURE {
+		// Right now if the the dafault transaction of the set is reject the set **should** be rejected as well..
+		// So returning this error should be fine
 		err = fmt.Errorf(string(resp.Msg))
 	}
-	return resp, err
+	// Default transaction was a deploy transaction, return the deploy specification
+	if deplBytes != nil {
+		resp.Msg = deplBytes
+	}
+	outerResponse := &pb.Response{
+		Status: resp.Status,
+		Msg: []byte(inBlockTx.Txid),
+		InnerResp: resp,
+	}
+	return outerResponse, err
 }
 
 // Modifies the active transaction of a transactions set

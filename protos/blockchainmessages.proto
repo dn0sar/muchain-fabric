@@ -65,6 +65,22 @@ message ChaincodeInput {
     repeated bytes args  = 1;
 }
 
+message TxSetInput {
+
+    message SimplifiedSpec {
+        ChaincodeAction action = 1;
+        ChaincodeSpec.Type lang = 2;
+        ChaincodeID chaincodeID = 3;
+        ChaincodeInput inputArgs = 4;
+        string customIDGen = 5;
+    }
+
+    TxSetSpec.Type type = 1;
+    uint64 defaultIndex = 2;
+    string setID = 3;
+    repeated SimplifiedSpec txSpecs = 4;
+}
+
 // Carries the chaincode specification. This is the actual metadata required for
 // defining a chaincode.
 message ChaincodeSpec {
@@ -107,6 +123,7 @@ message TxSetSpec {
     Type type = 1;
     repeated TxSpec txSpecs = 2;
     uint64 defaultInx = 3;
+
     string secureContext = 4;
     ConfidentialityLevel confidentialityLevel = 5;
     bytes metadata = 6;
