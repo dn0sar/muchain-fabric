@@ -1,4 +1,5 @@
 syntax = "proto3";
+option java_package = "org.hyperledger.protos";
 package protos;
 
 // The representation of the state of a transactions set

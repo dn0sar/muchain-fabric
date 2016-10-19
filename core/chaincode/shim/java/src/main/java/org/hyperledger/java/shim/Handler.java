@@ -30,15 +30,15 @@ import org.hyperledger.java.fsm.FSM;
 import org.hyperledger.java.fsm.exceptions.CancelledException;
 import org.hyperledger.java.fsm.exceptions.NoTransitionException;
 import org.hyperledger.java.helper.Channel;
-import org.hyperledger.protos.Chaincode.*;
-import org.hyperledger.protos.Chaincode.ChaincodeMessage.Builder;
+import org.hyperledger.protos.BlockchainMessages.*;
+import org.hyperledger.protos.BlockchainMessages.ChaincodeMessage.Builder;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import static org.hyperledger.java.fsm.CallbackType.*;
-import static org.hyperledger.protos.Chaincode.ChaincodeMessage.Type.*;
+import static org.hyperledger.protos.BlockchainMessages.ChaincodeMessage.Type.*;
 
 public class Handler {
 

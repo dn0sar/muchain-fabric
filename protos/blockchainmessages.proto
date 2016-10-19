@@ -18,6 +18,7 @@ syntax = "proto3";
 
 package protos;
 option java_package = "org.hyperledger.protos";
+option java_outer_classname = "BlockchainMessages";
 import "chaincodeevent.proto";
 import "state.proto";
 import "google/protobuf/timestamp.proto";

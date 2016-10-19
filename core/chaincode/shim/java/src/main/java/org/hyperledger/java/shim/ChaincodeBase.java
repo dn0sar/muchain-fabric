@@ -35,9 +35,9 @@ import io.grpc.netty.NegotiationType;
 import io.grpc.netty.NettyChannelBuilder;
 import io.grpc.stub.StreamObserver;
 import io.netty.handler.ssl.SslContext;
-import org.hyperledger.protos.Chaincode.ChaincodeID;
-import org.hyperledger.protos.Chaincode.ChaincodeMessage;
-import org.hyperledger.protos.Chaincode.ChaincodeMessage.Type;
+import org.hyperledger.protos.BlockchainMessages.ChaincodeID;
+import org.hyperledger.protos.BlockchainMessages.ChaincodeMessage;
+import org.hyperledger.protos.BlockchainMessages.ChaincodeMessage.Type;
 import org.hyperledger.protos.ChaincodeSupportGrpc;
 import org.hyperledger.protos.ChaincodeSupportGrpc.ChaincodeSupportStub;
 

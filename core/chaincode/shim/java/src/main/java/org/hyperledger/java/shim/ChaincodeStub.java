@@ -17,7 +17,7 @@ limitations under the License.
 package org.hyperledger.java.shim;
 
 import com.google.protobuf.ByteString;
-import org.hyperledger.protos.Chaincode;
+import org.hyperledger.protos.BlockchainMessages;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -91,7 +91,7 @@ public class ChaincodeStub {
      */
 	public Map<String, ByteString> rangeQueryRawState(String startKey, String endKey) {
 		Map<String, ByteString> map = new HashMap<>();
-		for (Chaincode.RangeQueryStateKeyValue mapping : handler.handleRangeQueryState(
+		for (BlockchainMessages.RangeQueryStateKeyValue mapping : handler.handleRangeQueryState(
 				startKey, endKey, uuid).getKeysAndValuesList()) {
 			map.put(mapping.getKey(), mapping.getValue());
 		}
