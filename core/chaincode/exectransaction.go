@@ -54,10 +54,10 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, inBlockTx *pb.InBloc
 	case *pb.InBlockTransaction_TransactionSet:
 		// Extend the set here and terminate the inBlockTransaction
 		var txSetExistedAlready = true
-		ledger.TxBegin(inBlockTx.Txid)
+		ledger.SetTxBegin(inBlockTx.Txid)
 		txSetStValue, err := ledger.GetTxSetState(inBlockTx.Txid, true)
 		if err != nil {
-			ledger.TxFinished(inBlockTx.Txid, false)
+			ledger.SetTxFinished(inBlockTx.Txid, false)
 			return nil, nil, fmt.Errorf("Failed to retrieve the txSet state, txID: %s, err: %s.", inBlockTx.Txid, err)
 		}
 		if txSetStValue == nil {
@@ -70,7 +70,7 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, inBlockTx *pb.InBloc
 		txSetStValue.TxNumber += txInSet
 		txSetStValue.TxsInBlock[nextBlockNr] = txInSet
 		ledger.SetTxSetState(inBlockTx.Txid, txSetStValue)
-		ledger.TxFinished(inBlockTx.Txid, true)
+		ledger.SetTxFinished(inBlockTx.Txid, true)
 
 		if txSetExistedAlready {
 			// The default transaction did not change, hence there is no need to execute the default transaction
@@ -167,20 +167,20 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, inBlockTx *pb.InBloc
 		return nil, nil, err
 	case *pb.InBlockTransaction_MutantTransaction:
 		// TODO: Trigger chaincode state re-computation here.
-		ledger.TxBegin(tx.MutantTransaction.TxSetID)
+		ledger.SetTxBegin(tx.MutantTransaction.TxSetID)
 		txSetStValue, err := ledger.GetTxSetState(tx.MutantTransaction.TxSetID, true)
 		if err != nil {
-			ledger.TxFinished(tx.MutantTransaction.TxSetID, false)
+			ledger.SetTxFinished(tx.MutantTransaction.TxSetID, false)
 			return nil, nil, fmt.Errorf("Failed to retrieve the txSet state, txID: %s, err: %s.", inBlockTx.Txid, err)
 		}
 		if txSetStValue == nil {
-			ledger.TxFinished(tx.MutantTransaction.TxSetID, false)
+			ledger.SetTxFinished(tx.MutantTransaction.TxSetID, false)
 			return nil, nil, fmt.Errorf("Issuing a mutant transaction for an inexisted tx set id.")
 		}
 		txSetStValue.Nonce++
 		txSetStValue.Index = tx.MutantTransaction.TxSetIndex
 		ledger.SetTxSetState(tx.MutantTransaction.TxSetID, txSetStValue)
-		ledger.TxFinished(tx.MutantTransaction.TxSetID, true)
+		ledger.SetTxFinished(tx.MutantTransaction.TxSetID, true)
 		return nil, nil, err
 	}
 	return nil, nil, err
@@ -260,14 +260,14 @@ func markTxBegin(ledger *ledger.Ledger, t *pb.Transaction) {
 	if t.Type == pb.ChaincodeAction_CHAINCODE_QUERY {
 		return
 	}
-	ledger.TxBegin(t.Txid)
+	ledger.ChainTxBegin(t.Txid)
 }
 
 func markTxFinish(ledger *ledger.Ledger, t *pb.Transaction, successful bool) {
 	if t.Type == pb.ChaincodeAction_CHAINCODE_QUERY {
 		return
 	}
-	ledger.TxFinished(t.Txid, successful)
+	ledger.ChainTxFinished(t.Txid, successful)
 }
 
 func sendTxRejectedEvent(tx *pb.InBlockTransaction, errorMsg string) {

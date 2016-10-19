@@ -241,16 +241,25 @@ func (ledger *Ledger) RollbackTxBatch(id interface{}) error {
 	return nil
 }
 
-// TxBegin - Marks the begin of a new transaction in the ongoing batch
-func (ledger *Ledger) TxBegin(txID string) {
+// ChainTxBegin - Marks the begin of a new transaction in the ongoing batch
+func (ledger *Ledger) ChainTxBegin(txID string) {
 	ledger.chaincodeState.TxBegin(txID)
+}
+
+// SetTxBegin - Marks the begin of a new tx set transaction in the ongoing batch
+func (ledger *Ledger) SetTxBegin(txID string) {
 	ledger.txSetState.TxBegin(txID)
 }
 
-// TxFinished - Marks the finish of the on-going transaction.
+// ChainTxFinished - Marks the finish of the on-going transaction.
 // If txSuccessful is false, the state changes made by the transaction are discarded
-func (ledger *Ledger) TxFinished(txID string, txSuccessful bool) {
+func (ledger *Ledger) ChainTxFinished(txID string, txSuccessful bool) {
 	ledger.chaincodeState.TxFinish(txID, txSuccessful)
+}
+
+// SetTxFinished - Marks the finish of the on-going tx set transaction.
+// If txSuccessful is false, the state changes made by the transaction are discarded
+func (ledger *Ledger) SetTxFinished(txID string, txSuccessful bool) {
 	ledger.txSetState.TxFinish(txID, txSuccessful)
 }
 

@@ -37,6 +37,7 @@ import (
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/util"
 	pb "github.com/hyperledger/fabric/protos"
+	"encoding/hex"
 )
 
 var devopsLogger = logging.MustGetLogger("devops")
@@ -439,7 +440,7 @@ func (d *Devops) IssueTxSet(ctx context.Context, txSetSpec *pb.TxSetSpec) (*pb.R
 
 	inBlockTx := &pb.InBlockTransaction{
 		Transaction: &pb.InBlockTransaction_TransactionSet{TransactionSet: txSet},
-		Txid:        string(util.ComputeCryptoHash(txSetBytes)),
+		Txid:        hex.EncodeToString(util.ComputeCryptoHash(txSetBytes)),
 		Timestamp:   util.CreateUtcTimestamp(),
 	}
 	resp := d.coord.ExecuteTransaction(inBlockTx)
