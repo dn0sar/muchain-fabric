@@ -16,7 +16,7 @@ import (
 
 var txSetStateImpl statemgmt.HashableTxSetState
 
-var txSetStateLogger = logging.MustGetLogger("txset_statemgmt")
+var txSetStateLogger = logging.MustGetLogger("txsetst")
 
 type txSetStateImplType struct {
 	name string
@@ -245,7 +245,7 @@ func (state *TxSetState) AddChangesForPersistence(blockNumber uint64, writeBatch
 	state.txSetStateImpl.AddChangesForPersistence(writeBatch)
 
 	serializedStateDelta := state.txSetStateDelta.Marshal()
-	cf := db.GetDBHandle().StateDeltaCF
+	cf := db.GetDBHandle().TxSetStateDeltaCF
 	txSetStateLogger.Debugf("Adding state-delta corresponding to block number[%d]", blockNumber)
 	writeBatch.PutCF(cf, stcomm.EncodeStateDeltaKey(blockNumber), serializedStateDelta)
 	if blockNumber >= state.historyStateDeltaSize {
@@ -256,7 +256,7 @@ func (state *TxSetState) AddChangesForPersistence(blockNumber uint64, writeBatch
 		txSetStateLogger.Debugf("Not deleting previous state-delta. Block number [%d] is smaller than historyStateDeltaSize [%d]",
 			blockNumber, state.historyStateDeltaSize)
 	}
-	txSetStateLogger.Debug("state.addChangesForPersistence()...finished")
+	txSetStateLogger.Debug("txsetstate.addChangesForPersistence()...finished")
 }
 
 // ApplyStateDelta applies already prepared stateDelta to the existing state.

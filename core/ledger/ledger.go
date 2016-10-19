@@ -206,6 +206,7 @@ func (ledger *Ledger) CommitTxBatch(id interface{}, transactions []*protos.InBlo
 		return err
 	}
 	ledger.chaincodeState.AddChangesForPersistence(newBlockNumber, writeBatch)
+	ledger.txSetState.AddChangesForPersistence(newBlockNumber, writeBatch)
 	opt := gorocksdb.NewDefaultWriteOptions()
 	defer opt.Destroy()
 	dbErr := db.GetDBHandle().DB.Write(opt, writeBatch)
@@ -335,6 +336,10 @@ func (ledger *Ledger) SetTxSetState(txSetID string, txSetStateValue *protos.TxSe
 		return newLedgerError(ErrorTypeResourceNotFound,
 			fmt.Sprintf("Error while trying to retrieve the previous state for txSetID='%s', err='%#v'", txSetID, err))
 	}
+	if previousValue == nil {
+		previousValue = &protos.TxSetStateValue{}
+		previousValue.TxsInBlock = make(map[uint64]uint64)
+	}
 	if txSetStateValue.Nonce != previousValue.Nonce+1 {
 		return newLedgerError(ErrorTypeInvalidArgument,
 			fmt.Sprintf("Wrong nonce update. Previous nonce: %d, new nonce: %d", previousValue.Nonce, txSetStateValue.Nonce))
@@ -347,6 +352,7 @@ func (ledger *Ledger) SetTxSetState(txSetID string, txSetStateValue *protos.TxSe
 	if err != nil {
 		return newLedgerError(ErrorTypeOutOfBounds, err.Error())
 	}
+	fmt.Println("Eurekaaaaa!!!!!!!!!!!!!!!!!!!!")
 	return ledger.txSetState.Set(txSetID, txSetStateValue)
 }
 
