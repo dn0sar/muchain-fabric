@@ -35,13 +35,12 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, inBlockTx *pb.InBloc
 	var err error
 	//TODO: Check if the same transaction set was already part of the block
 	// get a handle to ledger to mark the begin/finish of a tx
-	ledger, ledgerErr := ledger.GetLedger()
-	if ledgerErr != nil {
-		return nil, nil, fmt.Errorf("Failed to get handle to ledger (%s)", ledgerErr)
+	ledger, err := ledger.GetLedger()
+	if err != nil {
+		return nil, nil, fmt.Errorf("Failed to get handle to ledger (%s)", err)
 	}
 
 	if secHelper := chain.getSecHelper(); nil != secHelper {
-		var err error
 		inBlockTx, err = secHelper.TransactionPreExecution(inBlockTx)
 		// Note that inBlockTx is now decrypted and is a deep clone of the original input inBlockTx
 		if nil != err {
@@ -201,8 +200,13 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, inBlockTx *pb.InBloc
 		}
 		txSetStValue.Nonce++
 		txSetStValue.Index = tx.MutantTransaction.TxSetIndex
-		ledger.SetTxSetState(tx.MutantTransaction.TxSetID, txSetStValue)
+		err = ledger.SetTxSetState(tx.MutantTransaction.TxSetID, txSetStValue)
+		if err != nil {
+			ledger.SetTxFinished(inBlockTx.Txid, false)
+			return nil, nil, fmt.Errorf("Unable to set the new state for the Tx Set with ID: %s, err = %s", tx.MutantTransaction.TxSetID, err)
+		}
 		ledger.SetTxFinished(inBlockTx.Txid, true)
+
 		return nil, nil, err
 	}
 	return nil, nil, err
