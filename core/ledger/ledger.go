@@ -35,6 +35,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/state/txsetst"
 	"github.com/hyperledger/fabric/protos"
 	"golang.org/x/net/context"
+	"errors"
 )
 
 var ledgerLogger = logging.MustGetLogger("ledger")
@@ -391,7 +392,7 @@ func (ledger *Ledger) GetStateSnapshot() (*stcomm.StateSnapshot, *stcomm.StateSn
 	}
 	if 0 == blockHeight {
 		dbSnapshot.Release()
-		return nil, nil, fmt.Errorf("Blockchain has no blocks, cannot determine block number")
+		return nil, nil, errors.New("Blockchain has no blocks, cannot determine block number")
 	}
 	chainSnap, err := ledger.chaincodeState.GetSnapshot(blockHeight-1, dbSnapshot)
 	if err != nil {
