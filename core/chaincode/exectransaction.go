@@ -27,6 +27,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/events/producer"
 	pb "github.com/hyperledger/fabric/protos"
+	"reflect"
 )
 
 //Execute - execute the default transaction of a transaction set (which might also be a query transaction) or a mutable transaction
@@ -57,7 +58,7 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, inBlockTx *pb.InBloc
 			return nil, nil, fmt.Errorf("At least a transaction to execute should be provided.")
 		}
 
-		// Assume the set is a sigle transaction and take the first one of the set
+		// Assume the set is a single transaction and take the first one of the set
 		defTx := tx.TransactionSet.Transactions[0]
 
 		txSetStValue, err := ledger.GetTxSetState(inBlockTx.Txid, true)
@@ -192,7 +193,11 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, inBlockTx *pb.InBloc
 		}
 		if txSetStValue == nil {
 			ledger.SetTxFinished(tx.MutantTransaction.TxSetID, false)
-			return nil, nil, fmt.Errorf("Issuing a mutant transaction for an inexisted tx set id.")
+			return nil, nil, fmt.Errorf("Issuing a mutant transaction for a non-existing tx set id.")
+		}
+		if reflect.DeepEqual(txSetStValue.Index, tx.MutantTransaction.TxSetIndex) {
+			ledger.SetTxFinished(tx.MutantTransaction.TxSetID, false)
+			return nil, nil, fmt.Errorf("Nothing to mutate, the default index of the transactions set did not change.")
 		}
 		txSetStValue.Nonce++
 		txSetStValue.Index = tx.MutantTransaction.TxSetIndex

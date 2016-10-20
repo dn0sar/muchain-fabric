@@ -82,7 +82,7 @@ peer:
     # The privateKey to be used by this peer
     # privateKey: 794ef087680e2494fa4918fd8fb80fb284b50b57d321a31423fe42b9ccf6216047cea0b66fe8365a8e3f2a8140c6866cc45852e63124668bee1daa9c97da0c2a
 
-    # The networkId allows for logical seperation of networks
+    # The networkId allows for logical separation of networks
     # networkId: dev
     # networkId: test
     networkId: dev
@@ -90,7 +90,7 @@ peer:
     # The Address this Peer will listen on
     listenAddress: 0.0.0.0:7051
     # The Address this Peer will bind to for providing services
-    address: 0.0.0.0:7051
+    address: 172.17.0.2:7051
     # Whether the Peer should programmatically determine the address to bind to.
     # This case is useful for docker containers.
     addressAutoDetect: false
@@ -103,20 +103,20 @@ peer:
     sync:
         blocks:
             # Channel size for readonly SyncBlocks messages channel for receiving
-            # blocks from oppositie Peer Endpoints.
+            # blocks from opposite Peer Endpoints.
             # NOTE: currently messages are not stored and forwarded, but rather
             # lost if the channel write blocks.
             channelSize: 10
         state:
             snapshot:
                 # Channel size for readonly syncStateSnapshot messages channel
-                # for receiving state deltas for snapshot from oppositie Peer Endpoints.
+                # for receiving state deltas for snapshot from opposite Peer Endpoints.
                 # NOTE: currently messages are not stored and forwarded, but
                 # rather lost if the channel write blocks.
                 channelSize: 50
             deltas:
                 # Channel size for readonly syncStateDeltas messages channel for
-                # receiving state deltas for a syncBlockRange from oppositie
+                # receiving state deltas for a syncBlockRange from opposite
                 # Peer Endpoints.
                 # NOTE: currently messages are not stored and forwarded,
                 # but rather lost if the channel write blocks.
@@ -276,7 +276,7 @@ chaincode:
     golang:
 
         # This is the basis for the Golang Dockerfile.  Additional commands will
-        # be appended depedendent upon the chaincode specification.
+        # be appended dependent upon the chaincode specification.
         Dockerfile:  |
             from hyperledger/fabric-baseimage
             #from utxo:0.1.0
@@ -286,7 +286,7 @@ chaincode:
     car:
 
         # This is the basis for the CAR Dockerfile.  Additional commands will
-        # be appended depedendent upon the chaincode specification.
+        # be appended dependent upon the chaincode specification.
         Dockerfile:  |
             FROM hyperledger/fabric-ccenv:$(ARCH)-$(PROJECT_VERSION)
 
@@ -298,7 +298,7 @@ chaincode:
         Dockerfile:  |
             from hyperledger/fabric-javaenv:$(ARCH)-$(PROJECT_VERSION)
 
-    # timeout in millisecs for starting up a container and waiting for Register
+    # timeout in milliseconds for starting up a container and waiting for Register
     # to come through. 1sec should be plenty for chaincode unit tests
     startuptimeout: 300000
 
@@ -312,11 +312,11 @@ chaincode:
 
     mode: net
     # typically installpath should not be modified. Otherwise, user must ensure
-    # the chaincode executable is placed in the path specifed by installpath in
+    # the chaincode executable is placed in the path specified by installpath in
     # the image
     installpath: /opt/gopath/bin/
 
-    # keepalive in seconds. In situations where the communiction goes through a
+    # keepalive in seconds. In situations where the communication goes through a
     # proxy that does not support keep-alive, this parameter will maintain connection
     # between peer and chaincode.
     # A value <= 0 turns keepalive off
@@ -326,7 +326,7 @@ chaincode:
 #
 ###############################################################################
 #
-#    Ledger section - ledger configuration encompases both the blockchain
+#    Ledger section - ledger configuration encompasses both the blockchain
 #    and the state
 #
 ###############################################################################

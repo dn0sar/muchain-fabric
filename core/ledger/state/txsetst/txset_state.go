@@ -237,7 +237,7 @@ func (state *TxSetState) FetchStateDeltaFromDB(blockNumber uint64) (*statemgmt.T
 
 // AddChangesForPersistence adds key-value pairs to writeBatch
 func (state *TxSetState) AddChangesForPersistence(blockNumber uint64, writeBatch *gorocksdb.WriteBatch) {
-	txSetStateLogger.Debug("state.addChangesForPersistence()...start")
+	txSetStateLogger.Debug("txsetstate.addChangesForPersistence()...start")
 	if state.updateStateImpl {
 		state.txSetStateImpl.PrepareWorkingSet(state.txSetStateDelta)
 		state.updateStateImpl = false
