@@ -67,6 +67,6 @@ func muchainIssueMutantTx(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("No error returned while issuing the mutant transaction, but the mutation was not successful.")
 	}
 
-	logger.Infof("Successfully mutated state. Response message %s", string(resp.Msg))
+	logger.Infof("Successfully mutated state. Tx id of the mutant transaction: %s", string(resp.Msg))
  	return nil
 }
