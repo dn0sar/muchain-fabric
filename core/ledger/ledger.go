@@ -178,6 +178,7 @@ func (ledger *Ledger) CommitTxBatch(id interface{}, transactions []*protos.InBlo
 
 	ccEvents := []*protos.ChaincodeEvent{}
 
+	var numErroneusTxs = 0
 	if transactionResults != nil {
 		ccEvents = make([]*protos.ChaincodeEvent, len(transactionResults))
 		for i := 0; i < len(transactionResults); i++ {
@@ -194,6 +195,9 @@ func (ledger *Ledger) CommitTxBatch(id interface{}, transactions []*protos.InBlo
 				//We should discard empty events without chaincode
 				//ID when sending out events.
 				ccEvents[i] = &protos.ChaincodeEvent{}
+			}
+			if transactionResults[i].ErrorCode != 0 {
+				numErroneusTxs++
 			}
 		}
 	}
@@ -225,7 +229,7 @@ func (ledger *Ledger) CommitTxBatch(id interface{}, transactions []*protos.InBlo
 	//send chaincode events from transaction results
 	sendChaincodeEvents(transactionResults)
 
-	if len(transactionResults) != 0 {
+	if numErroneusTxs != 0 {
 		ledgerLogger.Debug("There were some erroneous transactions. We need to send a 'TX rejected' message here.")
 	}
 	return nil
