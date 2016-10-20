@@ -64,7 +64,7 @@ func muchainIssueMutantTx(cmd *cobra.Command, args []string) error {
 	}
 
 	if resp.Msg != nil {
-		logger.Info("Tx id of the mutant transaction: %s", string(resp.Msg))
+		logger.Info("Tx id of the mutant transaction:", string(resp.Msg))
 	}
 
 	if resp.Status != pb.Response_SUCCESS {

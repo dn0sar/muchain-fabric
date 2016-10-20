@@ -80,7 +80,7 @@ func muchainIssueTxSet(cmd *cobra.Command, args []string) error {
 	}
 
 	if resp.Msg != nil {
-		logger.Infof("Assigned txSetID: %s", string(resp.Msg))
+		logger.Info("Assigned txSetID:", string(resp.Msg))
 	}
 
 	if resp.Status != pb.Response_SUCCESS {

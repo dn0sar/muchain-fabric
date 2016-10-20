@@ -53,7 +53,15 @@ func muchainQueryTxSetState(cmd *cobra.Command, args []string) error {
 		return errors.New("Query successfull, but unable to unmarshal the response.")
 	}
 
-	logger.Infof("Successfully queried state. Result: %#v", txSetState)
+	logger.Infof("Successfully queried state. Result:")
+	fmt.Println("Nonce:", txSetState.Nonce)
+	fmt.Print("Active transaction index: {Block: ",  txSetState.Index.BlockNr, " - Index in block: ", txSetState.Index.InBlockIndex, "}\n")
+	fmt.Println("Number of transactions in the set:", txSetState.TxNumber)
+	fmt.Println("Map of the transactions belonging to this set at a given block:")
+	fmt.Println("Block\t\t\tTransactions")
+	for k, v := range txSetState.TxsInBlock {
+		fmt.Print(k, "\t\t\t", v, "\n")
+	}
 
 	return nil
 }
