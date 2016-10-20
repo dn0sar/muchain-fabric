@@ -197,6 +197,7 @@ func (ledger *Ledger) CommitTxBatch(id interface{}, transactions []*protos.InBlo
 				ccEvents[i] = &protos.ChaincodeEvent{}
 			}
 			if transactionResults[i].ErrorCode != 0 {
+				ledgerLogger.Infof("Transaction with id %s contained errors: %s", transactionResults[i].Txid, transactionResults[i].Error)
 				numErroneusTxs++
 			}
 		}
