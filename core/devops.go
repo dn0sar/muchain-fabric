@@ -488,8 +488,50 @@ func (d *Devops) Mutate(ctx context.Context, mutantSpec *pb.MutantSpec) (*pb.Res
 	return resp, err
 }
 
-func (d *Devops) QueryTxSetState(ctx context.Context, mutantSpec *pb.TxSetSpec) (*pb.Response, error) {
-	return nil, fmt.Errorf("Method not implemented")
+func (d *Devops) createTxSetQueryTx(txSetID string) (*pb.InBlockTransaction, error) {
+
+	queryTx := &pb.TxSetStateQuery{
+		TxSetID: txSetID,
+		Timestamp: util.CreateUtcTimestamp(),
+	}
+
+	queryBytes, err := proto.Marshal(queryTx)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to marshal created query tx (%s).", err)
+	}
+
+	inBlockTx := &pb.InBlockTransaction{
+		Transaction: &pb.InBlockTransaction_SetStQueryTransaction{SetStQueryTransaction: queryTx},
+		Txid: hex.EncodeToString(util.ComputeCryptoHash(queryBytes)),
+		Timestamp: util.CreateUtcTimestamp(),
+	}
+	return inBlockTx, nil
+}
+
+func (d *Devops) QueryTxSetState(ctx context.Context, querySpec *pb.MutantSpec) (*pb.Response, error) {
+	var err error
+
+	if querySpec.TxSetID == "" {
+		return nil, fmt.Errorf("tx set id not given for query tx set state tx")
+	}
+
+	// Now create the Transactions message and send to Peer.
+	transaction, err := d.createTxSetQueryTx(querySpec.TxSetID)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to create tx set state query transaction for tx id: %s, err: %s", querySpec.TxSetID, err)
+	}
+
+	if devopsLogger.IsEnabledFor(logging.DEBUG) {
+		devopsLogger.Debugf("Sending tx set state query transaction (%s) to validator", transaction.Txid)
+	}
+	resp := d.coord.ExecuteTransaction(transaction)
+	if resp.Status == pb.Response_FAILURE {
+		err = fmt.Errorf(string(resp.Msg))
+	}
+
+	// TODO provide encryption for txSetState transactions
+
+	return resp, err
 }
 
 // CheckSpec to see if chaincode resides within current package capture for language.

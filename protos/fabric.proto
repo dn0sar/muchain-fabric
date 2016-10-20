@@ -58,10 +58,16 @@ message TransactionSet {
     uint64 defaultInx = 2;
 }
 
+message TxSetStateQuery {
+    string TxSetID = 1;
+    google.protobuf.Timestamp timestamp = 2;
+}
+
 message InBlockTransaction {
     oneof transaction {
         TransactionSet transactionSet = 1;
         MutantTransaction mutantTransaction = 2;
+        TxSetStateQuery setStQueryTransaction = 3;
     }
 
     bytes metadata = 4;

@@ -46,31 +46,38 @@ func (eng *EngineImpl) GetHandlerFactory() peer.HandlerFactory {
 // ProcessTransactionMsg processes a Message in context of a Transaction
 func (eng *EngineImpl) ProcessTransactionMsg(msg *pb.Message, inBlockTx *pb.InBlockTransaction) (response *pb.Response) {
 	switch tx := inBlockTx.Transaction.(type) {
-	case *pb.InBlockTransaction_TransactionSet:
+	case *pb.InBlockTransaction_TransactionSet, *pb.InBlockTransaction_SetStQueryTransaction:
+
+		// Make sure that if this is a Transactions Set it is encapsulating a query.
+		if txSet, ok := tx.(*pb.InBlockTransaction_TransactionSet); ok {
+			if len(txSet.TransactionSet.Transactions) != 1 || txSet.TransactionSet.Transactions[0].Type != pb.ChaincodeAction_CHAINCODE_QUERY {
+				break
+			}
+		}
+
 		// Check if this is a query transaction. A TxSet is a query tx if it contains only one transaction and it is of type Query.
 		//TODO: Do we always verify security, or can we supply a flag on the invoke ot this functions so to bypass check for locally generated transactions?
-		if len(tx.TransactionSet.Transactions) == 1 && tx.TransactionSet.Transactions[0].Type == pb.ChaincodeAction_CHAINCODE_QUERY {
-			if !engine.helper.valid {
-				logger.Warning("Rejecting query because state is currently not valid")
-				return &pb.Response{Status: pb.Response_FAILURE,
-					Msg: []byte("Error: state may be inconsistent, cannot query")}
-			}
-
-			// The secHelper is set during creat ChaincodeSupport, so we don't need this step
-			// cxt := context.WithValue(context.Background(), "security", secHelper)
-			cxt := context.Background()
-			//query will ignore events as these are not stored on ledger (and query can report
-			//"event" data synchronously anyway)
-			result, _, err := chaincode.Execute(cxt, chaincode.GetChain(chaincode.DefaultChain), inBlockTx)
-			if err != nil {
-				response = &pb.Response{Status: pb.Response_FAILURE,
-					Msg: []byte(fmt.Sprintf("Error:%s", err))}
-			} else {
-				response = &pb.Response{Status: pb.Response_SUCCESS, Msg: result}
-			}
-			return response
+		if !engine.helper.valid {
+			logger.Warning("Rejecting query because state is currently not valid")
+			return &pb.Response{Status: pb.Response_FAILURE,
+				Msg: []byte("Error: state may be inconsistent, cannot query")}
 		}
+
+		// The secHelper is set during creat ChaincodeSupport, so we don't need this step
+		// cxt := context.WithValue(context.Background(), "security", secHelper)
+		cxt := context.Background()
+		//query will ignore events as these are not stored on ledger (and query can report
+		//"event" data synchronously anyway)
+		result, _, err := chaincode.Execute(cxt, chaincode.GetChain(chaincode.DefaultChain), inBlockTx)
+		if err != nil {
+			response = &pb.Response{Status: pb.Response_FAILURE,
+				Msg: []byte(fmt.Sprintf("Error:%s", err))}
+		} else {
+			response = &pb.Response{Status: pb.Response_SUCCESS, Msg: result}
+		}
+		return response
 	}
+
 	// Chaincode Transaction
 	response = &pb.Response{Status: pb.Response_SUCCESS, Msg: []byte(inBlockTx.Txid)}
 

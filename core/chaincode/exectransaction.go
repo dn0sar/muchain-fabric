@@ -208,6 +208,19 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, inBlockTx *pb.InBloc
 		ledger.SetTxFinished(inBlockTx.Txid, true)
 
 		return nil, nil, err
+	case *pb.InBlockTransaction_SetStQueryTransaction:
+		txSetState, err := ledger.GetTxSetState(tx.SetStQueryTransaction.TxSetID, true)
+		if err != nil {
+			return nil, nil, fmt.Errorf("Unable to retrieve the state for the tx set from the db. Tx Set Id: %s. Err: %s", tx.SetStQueryTransaction.TxSetID, err)
+		}
+		if txSetState == nil {
+			return nil, nil, fmt.Errorf("The state queried does not exists. Tx set id: %s", tx.SetStQueryTransaction.TxSetID)
+		}
+		stateBytes, err := proto.Marshal(txSetState)
+		if err != nil {
+			return nil, nil, fmt.Errorf("Unable to marshal the retrieved txSetState for txID: %s. Retrieved state: %#v", tx.SetStQueryTransaction.TxSetID, txSetState)
+		}
+		return stateBytes, nil, err
 	}
 	return nil, nil, err
 }

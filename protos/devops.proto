@@ -56,7 +56,7 @@ service Devops {
     rpc Mutate(MutantSpec) returns (Response) {}
 
     // Queries the state of a given Tx Set
-    rpc QueryTxSetState(TxSetSpec) returns (Response) {}
+    rpc QueryTxSetState(MutantSpec) returns (Response) {}
 
     // Retrieve a TCert.
     rpc EXP_GetApplicationTCert(Secret) returns (Response) {}
