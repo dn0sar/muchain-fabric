@@ -78,18 +78,22 @@ func muchainIssueTxSet(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("Error issuing tx set: %s\n", err)
 	}
+
+	if resp.Msg != nil {
+		logger.Infof("Assigned txSetID: %s", string(resp.Msg))
+	}
+
 	if resp.Status != pb.Response_SUCCESS {
 		return errors.New("No error returned, but the response was not successfull.")
 	}
 
-	txSetID := string(resp.Msg)
-	logger.Infof("Successfully created transactions set. Assigned txSetID: %s", txSetID)
+	logger.Info("Successfully created transactions set.")
 
 	innerResp := resp.InnerResp
 	if txSetSpec.TxSpecs[txSetSpec.DefaultInx].Action == pb.ChaincodeAction_CHAINCODE_DEPLOY {
 		//Default transaction was a deploy transaction, return the deploy specification
 		if innerResp.Status != pb.Response_SUCCESS {
-			return errors.New("No error returned, but the deployment of the chaincode was not successfull.")
+			return fmt.Errorf("No error returned, but the deployment of the chaincode was not successfull. Status: %#v", resp.Status)
 		}
 		chaincodeDeploymentSpec := &pb.ChaincodeDeploymentSpec{}
 		err = proto.Unmarshal(innerResp.Msg, chaincodeDeploymentSpec)
@@ -100,7 +104,7 @@ func muchainIssueTxSet(cmd *cobra.Command, args []string) error {
 	} else {
 		// The default transaction was either a invoke or a query transaction
 		if innerResp.Status != pb.Response_SUCCESS {
-			return errors.New("No error returned, but the execution of the default transaction was not successfull.")
+			return fmt.Errorf("No error returned, but the execution of the default transaction was not successfull. Status: %#v", resp.Status)
 		}
 		if txSetSpec.TxSpecs[txSetSpec.DefaultInx].Action == pb.ChaincodeAction_CHAINCODE_INVOKE {
 			transactionID := string(innerResp.Msg)
