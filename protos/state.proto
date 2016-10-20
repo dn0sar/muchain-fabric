@@ -6,13 +6,15 @@ package protos;
 message TxSetStateValue {
     // Nonce incremented every time the state of this Tx Set is changed
     uint64 nonce = 1;
+    // The block at which the transactions set referenced by this state was introduced
+    uint64 introBlock = 2;
     // Index of the current default transaction
-    TxSetIndex index = 2;
+    TxSetIndex index = 3;
     // The number of transactions that belong to this Transactions Set
-    uint64 txNumber = 3;
+    uint64 txNumber = 4;
     // txsInBlock[nlockNr] gives the number of transactions belonging to'
     // this TxSet defined at block blockNr
-    map<uint64, uint64> txsInBlock = 4;
+    map<uint64, uint64> txsInBlock = 5;
 }
 
 // The TxSetIndex identifies a transaction among the ones

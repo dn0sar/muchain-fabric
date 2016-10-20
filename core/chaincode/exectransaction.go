@@ -72,6 +72,7 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, inBlockTx *pb.InBloc
 			if txSetStValue == nil {
 				txSetExistedAlready = false
 				txSetStValue = &pb.TxSetStateValue{}
+				txSetStValue.IntroBlock = nextBlockNr
 				txSetStValue.Index = &pb.TxSetIndex{BlockNr: nextBlockNr, InBlockIndex: tx.TransactionSet.DefaultInx}
 				txSetStValue.TxsInBlock = make(map[uint64]uint64)
 			}
