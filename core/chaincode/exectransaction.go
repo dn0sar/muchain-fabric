@@ -185,24 +185,24 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, inBlockTx *pb.InBloc
 		return nil, nil, err
 	case *pb.InBlockTransaction_MutantTransaction:
 		// TODO: Trigger chaincode state re-computation here.
-		ledger.SetTxBegin(tx.MutantTransaction.TxSetID)
+		ledger.SetTxBegin(inBlockTx.Txid)
 		txSetStValue, err := ledger.GetTxSetState(tx.MutantTransaction.TxSetID, true)
 		if err != nil {
-			ledger.SetTxFinished(tx.MutantTransaction.TxSetID, false)
+			ledger.SetTxFinished(inBlockTx.Txid, false)
 			return nil, nil, fmt.Errorf("Failed to retrieve the txSet state, txID: %s, err: %s.", inBlockTx.Txid, err)
 		}
 		if txSetStValue == nil {
-			ledger.SetTxFinished(tx.MutantTransaction.TxSetID, false)
+			ledger.SetTxFinished(inBlockTx.Txid, false)
 			return nil, nil, fmt.Errorf("Issuing a mutant transaction for a non-existing tx set id.")
 		}
 		if reflect.DeepEqual(txSetStValue.Index, tx.MutantTransaction.TxSetIndex) {
-			ledger.SetTxFinished(tx.MutantTransaction.TxSetID, false)
+			ledger.SetTxFinished(inBlockTx.Txid, false)
 			return nil, nil, fmt.Errorf("Nothing to mutate, the default index of the transactions set did not change.")
 		}
 		txSetStValue.Nonce++
 		txSetStValue.Index = tx.MutantTransaction.TxSetIndex
 		ledger.SetTxSetState(tx.MutantTransaction.TxSetID, txSetStValue)
-		ledger.SetTxFinished(tx.MutantTransaction.TxSetID, true)
+		ledger.SetTxFinished(inBlockTx.Txid, true)
 		return nil, nil, err
 	}
 	return nil, nil, err
