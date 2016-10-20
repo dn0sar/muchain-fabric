@@ -508,6 +508,8 @@ func (p *Impl) sendTransactionsToLocalEngine(transaction *pb.InBlockTransaction)
 		peerLogger.Debugf("Marshalling transaction set to send to local engine")
 	} else if transaction.GetMutantTransaction() != nil {
 		peerLogger.Debugf("Marshalling mutant transaction to send to local engine")
+	} else if transaction.GetSetStQueryTransaction() != nil {
+		peerLogger.Debugf("Marshalling tx set state request to send to local engine")
 	} else {
 		peerLogger.Errorf("What is this transaction type?! %s", transaction.GetTransaction())
 	}
