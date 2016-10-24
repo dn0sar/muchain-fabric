@@ -407,6 +407,20 @@ func (ledger *Ledger) GetStateSnapshot() (*stcomm.StateSnapshot, *stcomm.StateSn
 	return chainSnap, txSetSnap, nil
 }
 
+func (ledger *Ledger) GetDeltaFromGenesis(blockNum uint64) (*chstatemgmt.StateDelta, error) {
+	deltaBytes, err := ledger.chaincodeState.CreateDeltaFromGenesis(blockNum)
+	if err != nil {
+		return nil, err
+	}
+
+	delta := chstatemgmt.NewStateDelta()
+	err = delta.Unmarshal(deltaBytes)
+	if err != nil {
+		return nil, err
+	}
+	return delta
+}
+
 // GetStateDelta will return the state delta for the specified block if
 // available.  If not available because it has been discarded, returns nil,nil.
 func (ledger *Ledger) GetStateDelta(blockNumber uint64) (*chstatemgmt.StateDelta, *txsetstmgmt.TxSetStateDelta, error) {
