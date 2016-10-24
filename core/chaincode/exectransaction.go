@@ -245,17 +245,17 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, inBlockTx *pb.InBloc
 	return nil, nil, err
 }
 
-func ApplyMutations(ctxt context.Context, cname ChainName) (bool, error) {
+func ApplyMutations(ctxt context.Context, cname ChainName) error {
 	chaincodeLogger.Debug("Starting a state mutation.")
 	ledger, err := ledger.GetLedger()
 	if err != nil {
-		return false, fmt.Errorf("Failed to get handle to ledger (%s)", err)
+		return fmt.Errorf("Failed to get handle to ledger (%s)", err)
 	}
 	lastBlockToReExec := ledger.GetBlockchainSize()
 	restartBlockNum, toReset := ledger.GetOlderTBModBlock()
 	if !toReset {
 		chaincodeLogger.Debug("Nothing to reset.")
-		return toReset, nil
+		return nil
 	}
 	err = ledger.ResetToBlock(restartBlockNum - 1)
 	defer ledger.ConcludeReset()
@@ -265,25 +265,42 @@ func ApplyMutations(ctxt context.Context, cname ChainName) (bool, error) {
 		// Try to recover to last computed state here
 		errRec := ledger.ResetToBlock(ledger.GetBlockchainSize())
 		if errRec != nil {
-			return toReset, fmt.Errorf("Error while recovering the state from an error in the state mutation process. Last error: (%s)\nInitial error: (%s)", err, errRec)
+			return fmt.Errorf("Error while recovering the state from an error in the state mutation process. Last error: (%s)\nInitial error: (%s)", err, errRec)
 		}
 		errRec = ledger.ConcludeReset()
 		if errRec != nil {
-			return toReset, fmt.Errorf("Error while recovering the state from an error in the state mutation process. Last error: (%s)\nInitial error: (%s)", err, errRec)
+			return fmt.Errorf("Error while recovering the state from an error in the state mutation process. Last error: (%s)\nInitial error: (%s)", err, errRec)
 		}
-		return toReset, fmt.Errorf("Unable to apply the mutant transactions changes. (%s)", err)
+		return fmt.Errorf("Unable to apply the mutant transactions changes. (%s)", err)
 	}
 	var chain = GetChain(cname)
 	chaincodeLogger.Debugf("Starting the re-execution of the transactions. From block: %d to block %d", restartBlockNum, lastBlockToReExec)
 	for i := restartBlockNum; i < lastBlockToReExec; i++ {
 		block, err := ledger.GetBlockByNumber(i)
 		if err != nil {
-			return toReset, fmt.Errorf("Unable to retrieve the block %d while applying the mutant changes (%s)", err)
+			return fmt.Errorf("Unable to retrieve the block %d while applying the mutant changes (%s)", err)
 		}
 		txs := block.GetTransactions()
 
 		for _, t := range txs {
 			if t.GetMutantTransaction() == nil {
+				// Check if the previous default was a deploy transaction and if so terminate it
+				prevDefault, err := prevDefault(t.Txid)
+				if err != nil {
+					return fmt.Errorf("Unable to verify the previous default transaction for the set with ID: %s. (%s)", t.Txid, err)
+				}
+				if prevDefault.Type == pb.ChaincodeAction_CHAINCODE_DEPLOY {
+					depSpec := &pb.ChaincodeDeploymentSpec{}
+					errUnm := proto.Unmarshal(prevDefault.Payload, depSpec)
+					if errUnm != nil {
+						chaincodeLogger.Errorf("Unable to retrieve specification for previous deploy transaction. %s", errUnm)
+					} else {
+						errStop := chain.Stop(ctxt, depSpec)
+						if errStop != nil {
+							chaincodeLogger.Errorf("Unable to stop previous default transaction vm. (%s)")
+						}
+					}
+				}
 				_, _, txerr := Execute(ctxt, chain, t)
 				if txerr != nil {
 					// TODO process this better and don't ignore the errors!!
@@ -294,11 +311,31 @@ func ApplyMutations(ctxt context.Context, cname ChainName) (bool, error) {
 
 		if err := ledger.CommitResetTxBatch(); err != nil {
 			//TODO try to recover to the last state before returning
-			return toReset, fmt.Errorf("Failed to commit transaction to the ledger: %v", err)
+			return fmt.Errorf("Failed to commit transaction to the ledger: %v", err)
 		}
 		chaincodeLogger.Info("Block %d reexecuted.", i)
 	}
-	return toReset, nil
+	return nil
+}
+
+func prevDefault(txSetID string) (*pb.Transaction, error) {
+	ledger, err := ledger.GetLedger()
+	if err != nil {
+		return nil, err
+	}
+	prevState, err := ledger.GetTxSetState(txSetID, true)
+	if err != nil {
+		return nil, err
+	}
+	txSet, err := ledger.GetTransactionByID(txSetID)
+	if err != nil {
+		return nil, err
+	}
+	if txSet.GetTransactionSet() != nil {
+		return txSet.GetTransactionSet().Transactions[prevState.Index.InBlockIndex], nil
+	} else {
+		return nil, errors.New("The queried transaction is not a set, cannot contain a deploy tx.")
+	}
 }
 
 //ExecuteTransactions - will execute transactions on the array one by one
@@ -331,7 +368,7 @@ func ExecuteTransactions(ctxt context.Context, cname ChainName, xacts []*pb.InBl
 		}
 	}
 
-	_, err = ApplyMutations(ctxt, cname)
+	err = ApplyMutations(ctxt, cname)
 
 
 	// Now execute only the non mutant transactions

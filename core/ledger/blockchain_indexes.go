@@ -103,7 +103,8 @@ func addIndexDataForPersistence(block *protos.Block, blockNumber uint64, blockHa
 				}
 			}
 		case *protos.InBlockTransaction_MutantTransaction:
-			//TODO: Add persistency for mutant transactions, i.e. change the default transaction of the relevant transactionSet
+			//Skipping this, there is really no need in indexing the mutant transactions since all the relevant info can be retrieved
+			// from the Tx Set State
 		}
 	}
 	for address, txsIndexes := range addressToTxIndexesMap {
@@ -135,6 +136,11 @@ func fetchTransactionIndexByIDFromDB(txID string) (uint64, uint64, error) {
 		return 0, 0, ErrResourceNotFound
 	}
 	return decodeBlockNumTxIndex(blockNumTxIndexBytes)
+}
+
+func deleteTransactionIndex(txID string) error {
+	dbHandle := db.GetDBHandle()
+	return dbHandle.Delete(dbHandle.IndexesCF, encodeTxIDKey(txID))
 }
 
 func getTxExecutingAddress(tx *protos.InBlockTransaction) string {

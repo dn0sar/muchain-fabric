@@ -409,6 +409,8 @@ func (chaincodeSupport *ChaincodeSupport) Stop(context context.Context, cds *pb.
 	return err
 }
 
+
+
 // Launch will launch the chaincode if not running (if running return nil) and will wait for handler of the chaincode to get into FSM ready state.
 func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, t *pb.Transaction) (*pb.ChaincodeID, *pb.ChaincodeInput, error) {
 	//build the chaincode
@@ -505,10 +507,15 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, t *pb.
 				return cID, cMsg, fmt.Errorf("failed tx preexecution%s - %s", chaincode, err)
 			}
 		}
+
+		txSetSt, err := ledger.GetTxSetState(transSet.Txid, false)
+		if err != nil {
+			return cID, cMsg, fmt.Errorf("Failed to retrieve the transactions set state value. (%s)", err)
+		}
 		// TODO: get the current default transaction here instead and *check* if it is still a deploy transaction
-		depTx = transSet.GetTransactionSet().Transactions[transSet.GetTransactionSet().DefaultInx]
+		depTx = transSet.GetTransactionSet().Transactions[txSetSt.Index.InBlockIndex]
 		//Get lang from original deployment
-		err := proto.Unmarshal(depTx.Payload, cds)
+		err = proto.Unmarshal(depTx.Payload, cds)
 		if err != nil {
 			return cID, cMsg, fmt.Errorf("failed to unmarshal deployment transactions for %s - %s", chaincode, err)
 		}
