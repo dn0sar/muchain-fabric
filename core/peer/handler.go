@@ -531,7 +531,7 @@ func (d *Handler) sendStateSnapshot(syncStateSnapshotRequest *pb.SyncStateSnapsh
 	currBlockNumber := chainSnapshot.GetBlockNumber()
 	var sequence uint64
 	// Loop through and send the Deltas
-	for i := 0; chainSnapshot.Valid() || txSetSnapshot.Valid(); i, _, _ = i + 1, chainSnapshot.Next(), txSetSnapshot.Next() {
+	for i := 0; (chainSnapshot.Valid() && chainSnapshot.Next()) || (txSetSnapshot.Valid() && txSetSnapshot.Next()); i++ {
 		delta := chainstmgmt.NewStateDelta()
 		if chainSnapshot.Valid() {
 			k, v := chainSnapshot.GetRawKeyValue()

@@ -305,7 +305,7 @@ func (state *State) CreateDeltaFromGenesis(blockNumber uint64) (*statemgmt.State
 		return nil, fmt.Errorf("Unable to retrieve DB snapshot to create delta from genesis, (%s)", err)
 	}
 	delta := statemgmt.NewStateDelta()
-	for ; chainSnapshot.Valid(); chainSnapshot.Next() {
+	for ; chainSnapshot.Next(); chainSnapshot.Next() {
 		k, v := chainSnapshot.GetRawKeyValue()
 		cID, keyID := stcomm.DecodeCompositeKey(k)
 		delta.Set(cID, keyID, v, nil)
