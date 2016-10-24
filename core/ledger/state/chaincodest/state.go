@@ -297,6 +297,22 @@ func (state *State) FetchStateDeltaFromDB(blockNumber uint64) (*statemgmt.StateD
 	return stateDelta, nil
 }
 
+// CreateDeltaFromGenesis creates a state delta that if applied to the genesis block
+// produces the current state. This state delta is created only from the last committed state.
+func (state *State) CreateDeltaFromGenesis(blockNumber uint64) (*statemgmt.StateDelta, error) {
+	chainSnapshot, err := state.GetSnapshot(blockNumber, db.GetDBHandle().GetSnapshot())
+	if err != nil {
+		return nil, fmt.Errorf("Unable to retrieve DB snapshot to create delta from genesis, (%s)", err)
+	}
+	delta := statemgmt.NewStateDelta()
+	for ; chainSnapshot.Valid(); chainSnapshot.Next() {
+		k, v := chainSnapshot.GetRawKeyValue()
+		cID, keyID := stcomm.DecodeCompositeKey(k)
+		delta.Set(cID, keyID, v, nil)
+	}
+	return delta, nil
+}
+
 // AddChangesForPersistence adds key-value pairs to writeBatch
 func (state *State) AddChangesForPersistence(blockNumber uint64, writeBatch *gorocksdb.WriteBatch) {
 	logger.Debug("state.addChangesForPersistence()...start")
@@ -318,6 +334,13 @@ func (state *State) AddChangesForPersistence(blockNumber uint64, writeBatch *gor
 		logger.Debugf("Not deleting previous state-delta. Block number [%d] is smaller than historyStateDeltaSize [%d]",
 			blockNumber, state.historyStateDeltaSize)
 	}
+
+	serializedGenesisStateDelta, err := state.CreateDeltaFromGenesis(blockNumber)
+	if err != nil {
+		panic("Unable to create delta from genesis")
+	}
+	logger.Debugf("Adding state-delta from genesis to block number[%d]", blockNumber)
+	writeBatch.PutCF(db.GetDBHandle().BlockStateCF, stcomm.EncodeStateDeltaKey(blockNumber), serializedGenesisStateDelta.Marshal())
 	logger.Debug("state.addChangesForPersistence()...finished")
 }
 
