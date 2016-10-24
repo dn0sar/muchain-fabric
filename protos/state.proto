@@ -30,3 +30,9 @@ message TxSetIndex {
     // to the transactions set at blockNr
     uint64 inBlockIndex = 2;
 }
+
+// Used to index a transactions set in the db
+message TxSetToBlock {
+    // The index from the transactions of a given block at which this txSet was registered
+    map<uint64, uint64> indexInBlock = 1;
+}

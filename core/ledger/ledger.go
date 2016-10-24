@@ -528,6 +528,11 @@ func (ledger *Ledger) GetBlockchainSize() uint64 {
 	return ledger.blockchain.getSize()
 }
 
+// GetCurrentBlockEx returns the block number at which the transactions would be applied
+func (ledger *Ledger) GetCurrentBlockEx() uint64 {
+	return ledger.blockchain.getSize()
+}
+
 // GetTransactionByID return transaction by it's txId
 //REVIEW: check whether the txId referred to here is the one of the txSet or the default transaction
 func (ledger *Ledger) GetTransactionByID(txID string) (*protos.InBlockTransaction, error) {

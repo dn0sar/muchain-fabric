@@ -48,7 +48,8 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, inBlockTx *pb.InBloc
 		}
 	}
 
-	nextBlockNr := ledger.GetBlockchainSize()
+	nextBlockNr := ledger.GetCurrentBlockEx()
+	isInThePast := nextBlockNr < ledger.GetBlockchainSize()
 
 	switch tx := inBlockTx.Transaction.(type) {
 	case *pb.InBlockTransaction_TransactionSet:
@@ -64,7 +65,7 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, inBlockTx *pb.InBloc
 		if err != nil {
 			return nil, nil, fmt.Errorf("Failed to retrieve the txSet state, txID: %s, err: %s.", inBlockTx.Txid, err)
 		}
-		if txSetStValue != nil || len(inBlockTx.GetTransactionSet().Transactions) > 1 {
+		if !isInThePast && (txSetStValue != nil || len(inBlockTx.GetTransactionSet().Transactions) > 1) {
 			// Update the tx set state. This is done only for transactions set with more than one transaction,
 			// or if the current tx is an extension of an already existing set).
 			var txSetExistedAlready = true
@@ -80,6 +81,7 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, inBlockTx *pb.InBloc
 			txInSet := uint64(len(tx.TransactionSet.Transactions))
 			txSetStValue.TxNumber += txInSet
 			txSetStValue.TxsInBlock[nextBlockNr] = txInSet
+			txSetStValue.LastModifiedAtBlock = nextBlockNr
 			err = ledger.SetTxSetState(inBlockTx.Txid, txSetStValue)
 			if err != nil {
 				ledger.SetTxFinished(inBlockTx.Txid, false)
@@ -91,15 +93,28 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, inBlockTx *pb.InBloc
 				// The default transaction cannot be changed with a set extension, hence there is no need to re-execute the default transaction here
 				return nil, nil, err
 			}
-
-			if txSetStValue.Index.BlockNr != nextBlockNr {
-				// The default transaction is not the one of this block
+			if txSetStValue.IntroBlock != nextBlockNr {
+				// The transaction should be executed only in the block where it was introduced and not for extensions.
 				// do not execute it
 				return nil, nil, err
 			}
-			// Use this as default transaction since this was a transactions set
-			defTx = tx.TransactionSet.Transactions[txSetStValue.Index.InBlockIndex]
 		}
+
+		if txSetStValue != nil {
+			if isInThePast && txSetStValue.Index.BlockNr != nextBlockNr {
+				panic("Extensions set not fully implemented yet.")
+				// The transaction might be defined in another block
+				//block, err := ledger.GetBlockByNumber(txSetStValue.Index.BlockNr)
+				if err != nil {
+					return nil, nil, fmt.Errorf("Unable to retrieve the block that defined the default transaction for this set.")
+				}
+			} else {
+				// Use this as default transaction since this was a transactions set
+				defTx = tx.TransactionSet.Transactions[txSetStValue.Index.InBlockIndex]
+			}
+		}
+
+
 
 		if defTx.Type == pb.ChaincodeAction_CHAINCODE_DEPLOY {
 			_, err := chain.Deploy(ctxt, defTx)
