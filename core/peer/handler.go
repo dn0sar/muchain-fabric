@@ -519,19 +519,19 @@ func (d *Handler) beforeSyncStateSnapshot(e *fsm.Event) {
 func (d *Handler) sendStateSnapshot(syncStateSnapshotRequest *pb.SyncStateSnapshotRequest) {
 	peerLogger.Debugf("Sending state snapshot with correlationId = %d", syncStateSnapshotRequest.CorrelationId)
 
-	chainSnapshot, txSetSnaphot, err := d.Coordinator.GetStateSnapshot()
+	chainSnapshot, txSetSnapshot, err := d.Coordinator.GetStateSnapshot()
 	if err != nil {
 		peerLogger.Errorf("Error getting snapshot: %s", err)
 		return
 	}
 	defer chainSnapshot.Release()
-	defer txSetSnaphot.Release()
+	defer txSetSnapshot.Release()
 
 	// Iterate over the state deltas and send to requestor
 	currBlockNumber := chainSnapshot.GetBlockNumber()
 	var sequence uint64
 	// Loop through and send the Deltas
-	for i := 0; (chainSnapshot.Valid() && chainSnapshot.Next()) || (txSetSnaphot.Valid() && txSetSnaphot.Next()); i++ {
+	for i := 0; (chainSnapshot.Valid() && chainSnapshot.Next()) || (txSetSnapshot.Valid() && txSetSnapshot.Next()); i++ {
 		delta := chainstmgmt.NewStateDelta()
 		if chainSnapshot.Valid() {
 			k, v := chainSnapshot.GetRawKeyValue()
@@ -539,8 +539,8 @@ func (d *Handler) sendStateSnapshot(syncStateSnapshotRequest *pb.SyncStateSnapsh
 			delta.Set(cID, keyID, v, nil)
 		}
 		txSetStateDelta := txsetstmgmt.NewTxSetStateDelta()
-		if txSetSnaphot.Valid() {
-			k, v := txSetSnaphot.GetRawKeyValue()
+		if txSetSnapshot.Valid() {
+			k, v := txSetSnapshot.GetRawKeyValue()
 			txID := stcomm.DecomposeTxSetKey(k)
 			txSetStateValue, err := pb.UnmarshalTxSetStateValue(v)
 			if err != nil {

@@ -64,7 +64,7 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, inBlockTx *pb.InBloc
 		if err != nil {
 			return nil, nil, fmt.Errorf("Failed to retrieve the txSet state, txID: %s, err: %s.", inBlockTx.Txid, err)
 		}
-		if len(inBlockTx.GetTransactionSet().Transactions) > 1 || txSetStValue != nil {
+		if txSetStValue != nil || len(inBlockTx.GetTransactionSet().Transactions) > 1 {
 			// Update the tx set state. This is done only for transactions set with more than one transaction,
 			// or if the current tx is an extension of an already existing set).
 			var txSetExistedAlready = true
