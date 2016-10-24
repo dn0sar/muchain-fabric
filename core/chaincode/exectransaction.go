@@ -289,7 +289,7 @@ func ApplyMutations(ctxt context.Context, cname ChainName) error {
 				if err != nil {
 					return fmt.Errorf("Unable to verify the previous default transaction for the set with ID: %s. (%s)", t.Txid, err)
 				}
-				if prevDefault.Type == pb.ChaincodeAction_CHAINCODE_DEPLOY {
+				if prevDefault != nil && prevDefault.Type == pb.ChaincodeAction_CHAINCODE_DEPLOY {
 					depSpec := &pb.ChaincodeDeploymentSpec{}
 					errUnm := proto.Unmarshal(prevDefault.Payload, depSpec)
 					if errUnm != nil {
@@ -326,6 +326,10 @@ func prevDefault(txSetID string) (*pb.Transaction, error) {
 	prevState, err := ledger.GetTxSetState(txSetID, true)
 	if err != nil {
 		return nil, err
+	}
+	if prevState == nil {
+		// The previous transaction is not a txSet
+		return nil, nil
 	}
 	txSet, err := ledger.GetTransactionByID(txSetID)
 	if err != nil {
