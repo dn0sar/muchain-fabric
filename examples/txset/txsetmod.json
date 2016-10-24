@@ -1,0 +1,39 @@
+{
+  "type": 0,
+  "defaultIndex" : 1,
+  "txSpecs" : [
+    {
+      "action": 2,
+      "lang": 1,
+      "chaincodeID": {
+        "path": "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02/",
+        "name": "2aad2962be34c20b29016a62e28a0ef3b458b70deef9124e90996ef33f823f63b58540f827e34b47ba7027f0868d0b60556bea904c7a2bb3998dd8e00d9cb270"
+      },
+      "inputArgs": {
+        "args": ["invoke", "a", "b", "20"]
+      }
+    },
+    {
+      "action": 2,
+      "lang": 1,
+      "chaincodeID": {
+        "path": "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02/",
+        "name": "2aad2962be34c20b29016a62e28a0ef3b458b70deef9124e90996ef33f823f63b58540f827e34b47ba7027f0868d0b60556bea904c7a2bb3998dd8e00d9cb270"
+      },
+      "inputArgs": {
+        "args": ["invoke", "a", "b", "30"]
+      }
+    },
+    {
+      "action": 2,
+      "lang": 1,
+      "chaincodeID": {
+        "path": "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02/",
+        "name": "2aad2962be34c20b29016a62e28a0ef3b458b70deef9124e90996ef33f823f63b58540f827e34b47ba7027f0868d0b60556bea904c7a2bb3998dd8e00d9cb270"
+      },
+      "inputArgs": {
+        "args": ["invoke", "a", "b", "40"]
+      }
+    }
+  ]
+}
