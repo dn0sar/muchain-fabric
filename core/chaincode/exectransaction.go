@@ -216,6 +216,7 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, inBlockTx *pb.InBloc
 		}
 		txSetStValue.Nonce++
 		txSetStValue.Index = tx.MutantTransaction.TxSetIndex
+		txSetStValue.LastModifiedAtBlock = nextBlockNr
 		err = ledger.SetTxSetState(tx.MutantTransaction.TxSetID, txSetStValue)
 		if err != nil {
 			ledger.SetTxFinished(inBlockTx.Txid, false)
