@@ -408,17 +408,7 @@ func (ledger *Ledger) GetStateSnapshot() (*stcomm.StateSnapshot, *stcomm.StateSn
 }
 
 func (ledger *Ledger) GetDeltaFromGenesis(blockNum uint64) (*chstatemgmt.StateDelta, error) {
-	deltaBytes, err := ledger.chaincodeState.CreateDeltaFromGenesis(blockNum)
-	if err != nil {
-		return nil, err
-	}
-
-	delta := chstatemgmt.NewStateDelta()
-	err = delta.Unmarshal(deltaBytes)
-	if err != nil {
-		return nil, err
-	}
-	return delta
+	return ledger.chaincodeState.FetchBlockStateDeltaFromDB(blockNum)
 }
 
 // GetStateDelta will return the state delta for the specified block if

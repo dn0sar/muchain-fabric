@@ -313,6 +313,21 @@ func (state *State) CreateDeltaFromGenesis(blockNumber uint64) (*statemgmt.State
 	return delta, nil
 }
 
+// FetchBlockStateDeltaFromDB returns a delta from the genesis block to the given block
+func (state *State) FetchBlockStateDeltaFromDB(blockNumber uint64) (*statemgmt.StateDelta, error) {
+	deltaBytes, err := db.GetDBHandle().GetFromBlockStateCF(stcomm.EncodeStateDeltaKey(blockNumber))
+	if err != nil {
+		return nil, err
+	}
+
+	delta := statemgmt.NewStateDelta()
+	err = delta.Unmarshal(deltaBytes)
+	if err != nil {
+		return nil, err
+	}
+	return delta, nil
+}
+
 // AddChangesForPersistence adds key-value pairs to writeBatch
 func (state *State) AddChangesForPersistence(blockNumber uint64, writeBatch *gorocksdb.WriteBatch) {
 	logger.Debug("state.addChangesForPersistence()...start")
@@ -335,12 +350,12 @@ func (state *State) AddChangesForPersistence(blockNumber uint64, writeBatch *gor
 			blockNumber, state.historyStateDeltaSize)
 	}
 
-	serializedGenesisStateDelta, err := state.CreateDeltaFromGenesis(blockNumber)
+	fromGenesisStateDelta, err := state.CreateDeltaFromGenesis(blockNumber)
 	if err != nil {
 		panic("Unable to create delta from genesis")
 	}
 	logger.Debugf("Adding state-delta from genesis to block number[%d]", blockNumber)
-	writeBatch.PutCF(db.GetDBHandle().BlockStateCF, stcomm.EncodeStateDeltaKey(blockNumber), serializedGenesisStateDelta.Marshal())
+	writeBatch.PutCF(db.GetDBHandle().BlockStateCF, stcomm.EncodeStateDeltaKey(blockNumber), fromGenesisStateDelta.Marshal())
 	logger.Debug("state.addChangesForPersistence()...finished")
 }
 
