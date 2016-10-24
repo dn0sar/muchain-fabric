@@ -8,13 +8,15 @@ message TxSetStateValue {
     uint64 nonce = 1;
     // The block at which the transactions set referenced by this state was introduced
     uint64 introBlock = 2;
+    // The last block in which this state was modified
+    uint64 lastModifiedAtBlock = 3;
     // Index of the current default transaction
-    TxSetIndex index = 3;
+    TxSetIndex index = 4;
     // The number of transactions that belong to this Transactions Set
-    uint64 txNumber = 4;
+    uint64 txNumber = 5;
     // txsInBlock[nlockNr] gives the number of transactions belonging to'
     // this TxSet defined at block blockNr
-    map<uint64, uint64> txsInBlock = 5;
+    map<uint64, uint64> txsInBlock = 6;
 }
 
 // The TxSetIndex identifies a transaction among the ones

@@ -61,6 +61,7 @@ func (txSetStVal *TxSetStateValue) ToString() string {
 	var buffer bytes.Buffer
 	buffer.WriteString(fmt.Sprintln("Nonce:", txSetStVal.Nonce))
 	buffer.WriteString(fmt.Sprintln("Introduced at block number:", txSetStVal.IntroBlock))
+	buffer.WriteString(fmt.Sprintln("Last modified at block number:", txSetStVal.LastModifiedAtBlock))
 	buffer.WriteString(fmt.Sprint("Active transaction index: {Block: ",  txSetStVal.Index.BlockNr, " - Index in block: ", txSetStVal.Index.InBlockIndex, "}\n"))
 	buffer.WriteString(fmt.Sprintln("Number of transactions in the set:", txSetStVal.TxNumber))
 	buffer.WriteString(fmt.Sprintln("Number of transactions belonging to this set at a given block:"))
