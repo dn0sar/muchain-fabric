@@ -199,6 +199,11 @@ func (h *Helper) ExecTxs(id interface{}, txs []*pb.InBlockTransaction) ([]byte, 
 	}
 	h.curBatchErrs = append(h.curBatchErrs, txresults...) // TODO, remove after issue 579
 
+	if err != nil {
+		return res, err
+	}
+
+
 	return res, err
 }
 

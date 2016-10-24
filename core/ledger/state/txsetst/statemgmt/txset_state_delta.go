@@ -13,7 +13,7 @@ import (
 
 var mgmtLogger = logging.MustGetLogger("txset_statemgmt")
 
-// StateDelta holds the changes to existing state. This struct is used for holding the uncommitted changes during execution of a tx-batch
+// TxSetStateDelta holds the changes to existing state. This struct is used for holding the uncommitted changes during execution of a tx-batch
 // Also, to be used for transferring the state to another peer in chunks
 type TxSetStateDelta struct {
 	Deltas map[string]*TxSetUpdatedValue
@@ -22,7 +22,7 @@ type TxSetStateDelta struct {
 	RollBackwards bool
 }
 
-// NewStateDelta constructs an empty StateDelta struct
+// NewTxSetStateDelta constructs an empty StateDelta struct
 func NewTxSetStateDelta() *TxSetStateDelta {
 	return &TxSetStateDelta{make(map[string]*TxSetUpdatedValue), false}
 }
@@ -138,7 +138,7 @@ func (txStateDelta *TxSetStateDelta) ComputeCryptoHash() []byte {
 	return util.ComputeCryptoHash(hashingContent)
 }
 
-// UpdatedValue holds the value for a key
+// TxSetUpdatedValue holds the value for a key
 type TxSetUpdatedValue struct {
 	Value         *pb.TxSetStateValue
 	PreviousValue *pb.TxSetStateValue

@@ -177,6 +177,21 @@ func (state *TxSetState) CopyState(sourceTxSetID string, destTxSetID string) err
 	return nil
 }
 
+func (state *TxSetState) GetOlderBlockMod() (uint64, bool) {
+	var older uint64
+	var isSet = false
+	for _, stID := range state.txSetStateDelta.GetUpdatedTxSetIDs(false) {
+		if !isSet {
+			isSet = true
+			older = state.txSetStateDelta.GetUpdates(stID).Value.IntroBlock
+		}
+		if state.txSetStateDelta.GetUpdates(stID).Value.IntroBlock < older {
+			older = state.txSetStateDelta.GetUpdates(stID).Value.IntroBlock
+		}
+	}
+	return older, isSet
+}
+
 // GetHash computes new state hash if the stateDelta is to be applied.
 // Recomputes only if stateDelta has changed after most recent call to this function
 func (state *TxSetState) GetHash() ([]byte, error) {
@@ -211,7 +226,7 @@ func (state *TxSetState) getStateDelta() *statemgmt.TxSetStateDelta {
 	return state.txSetStateDelta
 }
 
-// GetSnapshot returns a snapshot of the global state for the current block. stateSnapshot.Release()
+// GetTxSetSnapshot returns a snapshot of the global state for the current block. stateSnapshot.Release()
 // must be called once you are done.
 func (state *TxSetState) GetTxSetSnapshot(blockNumber uint64, dbSnapshot *gorocksdb.Snapshot) (*stcomm.StateSnapshot, error) {
 	itr, err := txSetStateImpl.GetTxSetStateSnapshotIterator(dbSnapshot)

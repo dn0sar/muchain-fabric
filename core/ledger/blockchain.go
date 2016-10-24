@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"strconv"
+	"errors"
 
 	"github.com/hyperledger/fabric/core/db"
 	"github.com/hyperledger/fabric/core/util"
@@ -32,6 +33,8 @@ import (
 // TODO synchronize access to in-memory variables
 type blockchain struct {
 	size               uint64
+	sizeReset		   uint64
+	isResetting		   bool
 	previousBlockHash  []byte
 	indexer            blockchainIndexer
 	lastProcessedBlock *lastProcessedBlock
@@ -50,7 +53,7 @@ func newBlockchain() (*blockchain, error) {
 	if err != nil {
 		return nil, err
 	}
-	blockchain := &blockchain{0, nil, nil, nil}
+	blockchain := &blockchain{0, 0, false, nil, nil, nil}
 	blockchain.size = size
 	if size > 0 {
 		previousBlock, err := fetchBlockFromDB(size - 1)
@@ -92,6 +95,11 @@ func (blockchain *blockchain) getLastBlock() (*protos.Block, error) {
 // getSize number of blocks in blockchain
 func (blockchain *blockchain) getSize() uint64 {
 	return blockchain.size
+}
+
+// getSizeReset number of blocks re-executed during this reset
+func (blockchain *blockchain) getSizeReset() uint64 {
+	return blockchain.sizeReset
 }
 
 // getBlock get block at arbitrary height in block chain
@@ -147,6 +155,35 @@ func (blockchain *blockchain) getTransaction(blockNumber uint64, txIndex uint64)
 		return nil, err
 	}
 	return block.GetTransactions()[txIndex], nil
+}
+
+func (blockchain *blockchain) startResetFromBlock(blockNum uint64) error {
+	if blockchain.isResetting {
+		return errors.New("Already resetting, nuable to start another reset.")
+	}
+	blockchain.sizeReset = blockNum
+	blockchain.isResetting = true
+	return nil
+}
+
+func (blockchain *blockchain) advanceResetBlock() error {
+	if !blockchain.isResetting {
+		return errors.New("Unable to advance, not in resetting mode.")
+	}
+	blockchain.sizeReset++
+	if blockchain.sizeReset > blockchain.size {
+		return errors.New("Unable to advance, the blockchain should not grow past the end while resetting.")
+	}
+	return nil
+
+}
+
+func (blockchain *blockchain) endReset() error {
+	blockchain.isResetting = false
+	if blockchain.sizeReset != blockchain.size {
+		return errors.New("The reset ended but it was not complete.")
+	}
+	return nil
 }
 
 // getTransactionByBlockHash get a transaction identified by block hash and index within the block

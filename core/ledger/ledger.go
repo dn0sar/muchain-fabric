@@ -236,6 +236,30 @@ func (ledger *Ledger) CommitTxBatch(id interface{}, transactions []*protos.InBlo
 	return nil
 }
 
+// CommitResetTxBatch - gets invoked when the current transaction-batch needs to be committed
+// This function returns successfully iff the transactions details and state changes (that
+// may have happened during execution of this transaction-batch) have been committed to permanent storage
+func (ledger *Ledger) CommitResetTxBatch() error {
+	if !ledger.blockchain.isResetting {
+		return fmt.Errorf("Cannot commit a reset tx batch bacause the blockchain is not in a reset status.")
+	}
+
+	writeBatch := gorocksdb.NewWriteBatch()
+	defer writeBatch.Destroy()
+	ledger.chaincodeState.AddChangesForPersistence(ledger.GetCurrentBlockEx(), writeBatch)
+	opt := gorocksdb.NewDefaultWriteOptions()
+	defer opt.Destroy()
+	dbErr := db.GetDBHandle().DB.Write(opt, writeBatch)
+	if dbErr != nil {
+		ledger.resetForNextTxGroup(false)
+		ledger.blockchain.blockPersistenceStatus(false)
+		return dbErr
+	}
+
+	return ledger.blockchain.advanceResetBlock()
+}
+
+
 // RollbackTxBatch - Discards all the state changes that may have taken place during the execution of
 // current transaction-batch
 func (ledger *Ledger) RollbackTxBatch(id interface{}) error {
@@ -313,6 +337,12 @@ func (ledger *Ledger) GetTxSetState(txSetID string, committed bool) (*protos.TxS
 	return ledger.txSetState.Get(txSetID, committed)
 }
 
+// GetOlderTBModBlock - returns the older block to be modified by a mutant transaction at the next commit
+// if not block is to be modified it returns false in the second argument
+func (ledger *Ledger) GetOlderTBModBlock() (uint64, bool) {
+	return ledger.txSetState.GetOlderBlockMod()
+}
+
 // GetStateRangeScanIterator returns an iterator to get all the keys (and values) between startKey and endKey
 // (assuming lexical order of the keys) for a chaincodeID.
 // If committed is true, the key-values are retrieved only from the db. If committed is false, the results from db
@@ -359,6 +389,25 @@ func (ledger *Ledger) SetTxSetState(txSetID string, txSetStateValue *protos.TxSe
 		return newLedgerError(ErrorTypeOutOfBounds, err.Error())
 	}
 	return ledger.txSetState.Set(txSetID, txSetStateValue)
+}
+
+// ResetToBlock resets the chaincode state to the state at the end of the given block (i.e. beginning of the next),
+// keeping the rest of the data intact
+func (ledger *Ledger) ResetToBlock(blockNum uint64) error {
+	stateAtBlock, err := ledger.chaincodeState.FetchBlockStateDeltaFromDB(blockNum)
+	if err != nil {
+		return fmt.Errorf("Unable to reset the state to block %d, the state at that block could not be retrieved.", blockNum, err)
+	}
+	ledger.chaincodeState.ApplyStateDelta(stateAtBlock)
+	err = ledger.chaincodeState.CommitStateDelta()
+	if err != nil {
+		return err
+	}
+	return ledger.blockchain.startResetFromBlock(blockNum + 1)
+}
+
+func (ledger *Ledger) ConcludeReset() error {
+	return ledger.blockchain.endReset()
 }
 
 // DeleteState tracks the deletion of state for chaincodeID and key. Does not immediately writes to DB
@@ -491,7 +540,6 @@ func (ledger *Ledger) DeleteALLStateKeysAndValues() error {
 	if err != nil {
 		return err
 	}
-	// REVIEW: Probably not needed, since deleting from the chaincode state should clear all values in the db
 	return ledger.txSetState.DeleteState()
 }
 
@@ -520,7 +568,16 @@ func (ledger *Ledger) GetBlockchainSize() uint64 {
 
 // GetCurrentBlockEx returns the block number at which the transactions would be applied
 func (ledger *Ledger) GetCurrentBlockEx() uint64 {
-	return ledger.blockchain.getSize()
+	if ledger.blockchain.isResetting {
+		return ledger.blockchain.getSizeReset()
+	} else {
+		return ledger.blockchain.getSize()
+	}
+}
+
+// IsResetting returns true if a reset is currently occurring
+func (ledger *Ledger) IsResetting() bool {
+	return ledger.blockchain.isResetting
 }
 
 // GetTransactionByID return transaction by it's txId
