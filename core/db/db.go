@@ -264,21 +264,6 @@ func (openchainDB *OpenchainDB) DeleteState() error {
 		dbLogger.Errorf("Error dropping state delta CF: %s", err)
 		return err
 	}
-	err = openchainDB.DB.DropColumnFamily(openchainDB.BlockStateCF)
-	if err != nil {
-		dbLogger.Errorf("Error dropping block state CF: %s", err)
-		return err
-	}
-	err = openchainDB.DB.DropColumnFamily(openchainDB.TxSetStateCF)
-	if err != nil {
-		dbLogger.Errorf("Error dropping transactions set state CF: %s", err)
-		return err
-	}
-	err = openchainDB.DB.DropColumnFamily(openchainDB.TxSetStateDeltaCF)
-	if err != nil {
-		dbLogger.Errorf("Error dropping transactions set state delta CF: %s", err)
-		return err
-	}
 	opts := gorocksdb.NewDefaultOptions()
 	defer opts.Destroy()
 	openchainDB.StateCF, err = openchainDB.DB.CreateColumnFamily(opts, stateCF)
@@ -289,21 +274,6 @@ func (openchainDB *OpenchainDB) DeleteState() error {
 	openchainDB.StateDeltaCF, err = openchainDB.DB.CreateColumnFamily(opts, stateDeltaCF)
 	if err != nil {
 		dbLogger.Errorf("Error creating state delta CF: %s", err)
-		return err
-	}
-	openchainDB.BlockStateCF, err = openchainDB.DB.CreateColumnFamily(opts, blockStateCF)
-	if err != nil {
-		dbLogger.Errorf("Error creating block state CF: %s", err)
-		return err
-	}
-	openchainDB.TxSetStateCF, err = openchainDB.DB.CreateColumnFamily(opts, txSetStateCF)
-	if err != nil {
-		dbLogger.Errorf("Error creating transactions set state CF: %s", err)
-		return err
-	}
-	openchainDB.TxSetStateDeltaCF, err = openchainDB.DB.CreateColumnFamily(opts, txSetStateDeltaCF)
-	if err != nil {
-		dbLogger.Errorf("Error creating transactions set state delta CF: %s", err)
 		return err
 	}
 	return nil

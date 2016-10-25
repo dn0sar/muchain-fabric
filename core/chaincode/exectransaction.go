@@ -291,10 +291,10 @@ func ApplyMutations(ctxt context.Context, cname ChainName) error {
 		return nil
 	}
 	err = ledger.ResetToBlock(restartBlockNum - 1)
-	defer ledger.ConcludeReset()
 
 	if err != nil {
-		chaincodeLogger.Debugf("Unable to reset to base block. Err =  %s", err)
+		chaincodeLogger.Errorf("Unable to reset to base block. Err =  %s", err)
+		ledger.ConcludeReset()
 		// Try to recover to last computed state here
 		errRec := ledger.ResetToBlock(ledger.GetBlockchainSize())
 		if errRec != nil {
@@ -306,6 +306,7 @@ func ApplyMutations(ctxt context.Context, cname ChainName) error {
 		}
 		return fmt.Errorf("Unable to apply the mutant transactions changes. (%s)", err)
 	}
+	defer ledger.ConcludeReset()
 	var chain = GetChain(cname)
 	chaincodeLogger.Debugf("Starting the re-execution of the transactions. From block: %d to block %d", restartBlockNum, lastBlockToReExec)
 	for i := restartBlockNum; i < lastBlockToReExec; i++ {
@@ -406,7 +407,9 @@ func ExecuteTransactions(ctxt context.Context, cname ChainName, xacts []*pb.InBl
 	}
 
 	err = ApplyMutations(ctxt, cname)
-
+	if err != nil {
+		chaincodeLogger.Errorf("Unable to apply state mutations, error: (%s)", err)
+	}
 
 	// Now execute only the non mutant transactions
 	for _, i := range setIndexes {

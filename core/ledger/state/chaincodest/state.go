@@ -301,13 +301,17 @@ func (state *State) FetchStateDeltaFromDB(blockNumber uint64) (*statemgmt.StateD
 // produces the current state. This state delta is created only from the last committed state.
 func (state *State) CreateDeltaFromGenesis(blockNumber uint64) (*statemgmt.StateDelta, error) {
 	chainSnapshot, err := state.GetSnapshot(blockNumber, db.GetDBHandle().GetSnapshot())
+	defer chainSnapshot.Release()
 	if err != nil {
 		return nil, fmt.Errorf("Unable to retrieve DB snapshot to create delta from genesis, (%s)", err)
 	}
+	logger.Debug("Creating genesis delta")
 	delta := statemgmt.NewStateDelta()
+	delta.ApplyChanges(state.stateDelta)
 	for ; chainSnapshot.Next(); chainSnapshot.Next() {
 		k, v := chainSnapshot.GetRawKeyValue()
 		cID, keyID := stcomm.DecodeCompositeKey(k)
+		logger.Infof("Putting key for chaincode ID: %s, key: %s, value: %v", cID, keyID, v)
 		delta.Set(cID, keyID, v, nil)
 	}
 	return delta, nil

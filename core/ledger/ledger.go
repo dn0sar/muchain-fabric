@@ -398,6 +398,10 @@ func (ledger *Ledger) ResetToBlock(blockNum uint64) error {
 	if err != nil {
 		return fmt.Errorf("Unable to reset the state to block %d, the state at that block could not be retrieved.", blockNum, err)
 	}
+	err = ledger.chaincodeState.DeleteState()
+	if err != nil {
+		return fmt.Errorf("Unable to reset the state to block %d, the state could not be erased.", blockNum, err)
+	}
 	ledger.chaincodeState.ApplyStateDelta(stateAtBlock)
 	err = ledger.chaincodeState.CommitStateDelta()
 	if err != nil {

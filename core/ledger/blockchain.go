@@ -159,7 +159,7 @@ func (blockchain *blockchain) getTransaction(blockNumber uint64, txIndex uint64)
 
 func (blockchain *blockchain) startResetFromBlock(blockNum uint64) error {
 	if blockchain.isResetting {
-		return errors.New("Already resetting, nuable to start another reset.")
+		return errors.New("Already resetting, unable to start another reset.")
 	}
 	blockchain.sizeReset = blockNum
 	blockchain.isResetting = true
