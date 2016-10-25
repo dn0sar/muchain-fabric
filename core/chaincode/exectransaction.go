@@ -297,7 +297,7 @@ func ApplyMutations(ctxt context.Context, cname ChainName) error {
 					} else {
 						errStop := chain.Stop(ctxt, depSpec)
 						if errStop != nil {
-							chaincodeLogger.Errorf("Unable to stop previous default transaction vm. (%s)")
+							chaincodeLogger.Errorf("Unable to stop previous default transaction vm. (%s)", errStop)
 						}
 					}
 				}
@@ -313,7 +313,7 @@ func ApplyMutations(ctxt context.Context, cname ChainName) error {
 			//TODO try to recover to the last state before returning
 			return fmt.Errorf("Failed to commit transaction to the ledger: %v", err)
 		}
-		chaincodeLogger.Info("Block %d reexecuted.", i)
+		chaincodeLogger.Infof("Block %d reexecuted.", i)
 	}
 	return nil
 }
