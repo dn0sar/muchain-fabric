@@ -7,7 +7,7 @@
       "lang": 1,
       "chaincodeID": {
         "path": "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02/",
-        "name": "2aad2962be34c20b29016a62e28a0ef3b458b70deef9124e90996ef33f823f63b58540f827e34b47ba7027f0868d0b60556bea904c7a2bb3998dd8e00d9cb270"
+        "name": "9772465cf3e81c3e5e4266b51e1528ffd7d040d7b5122963af10f8eaa657e35303534aceb53cd1c942e4f995ecdc60a794479a405455a700d3b6547d5374492a"
       },
       "inputArgs": {
         "args": ["invoke", "a", "b", "20"]
@@ -18,7 +18,7 @@
       "lang": 1,
       "chaincodeID": {
         "path": "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02/",
-        "name": "2aad2962be34c20b29016a62e28a0ef3b458b70deef9124e90996ef33f823f63b58540f827e34b47ba7027f0868d0b60556bea904c7a2bb3998dd8e00d9cb270"
+        "name": "9772465cf3e81c3e5e4266b51e1528ffd7d040d7b5122963af10f8eaa657e35303534aceb53cd1c942e4f995ecdc60a794479a405455a700d3b6547d5374492a"
       },
       "inputArgs": {
         "args": ["invoke", "a", "b", "30"]
@@ -29,7 +29,7 @@
       "lang": 1,
       "chaincodeID": {
         "path": "github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02/",
-        "name": "2aad2962be34c20b29016a62e28a0ef3b458b70deef9124e90996ef33f823f63b58540f827e34b47ba7027f0868d0b60556bea904c7a2bb3998dd8e00d9cb270"
+        "name": "9772465cf3e81c3e5e4266b51e1528ffd7d040d7b5122963af10f8eaa657e35303534aceb53cd1c942e4f995ecdc60a794479a405455a700d3b6547d5374492a"
       },
       "inputArgs": {
         "args": ["invoke", "a", "b", "40"]
