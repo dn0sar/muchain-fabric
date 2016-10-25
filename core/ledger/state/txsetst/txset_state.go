@@ -303,7 +303,7 @@ func (state *TxSetState) CommitStateDelta() error {
 // a snapshot.
 func (state *TxSetState) DeleteState() error {
 	state.ClearInMemoryChanges(false)
-	err := db.GetDBHandle().DeleteState()
+	err := db.GetDBHandle().DeleteTxSetState()
 	if err != nil {
 		txSetStateLogger.Errorf("Error deleting state: %s", err)
 	}

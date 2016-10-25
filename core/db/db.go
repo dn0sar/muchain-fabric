@@ -279,6 +279,54 @@ func (openchainDB *OpenchainDB) DeleteState() error {
 	return nil
 }
 
+// DeleteTxSetState delets ALL tx set state keys/values from the DB. This is generally
+// only used during state synchronization when creating a new state from
+// a snapshot.
+func (openchainDB *OpenchainDB) DeleteTxSetState() error {
+	err := openchainDB.DB.DropColumnFamily(openchainDB.TxSetStateCF)
+	if err != nil {
+		dbLogger.Errorf("Error dropping tx set state CF: %s", err)
+		return err
+	}
+	err = openchainDB.DB.DropColumnFamily(openchainDB.TxSetStateDeltaCF)
+	if err != nil {
+		dbLogger.Errorf("Error dropping state delta CF: %s", err)
+		return err
+	}
+	opts := gorocksdb.NewDefaultOptions()
+	defer opts.Destroy()
+	openchainDB.TxSetStateCF, err = openchainDB.DB.CreateColumnFamily(opts, txSetStateCF)
+	if err != nil {
+		dbLogger.Errorf("Error creating tx set state CF: %s", err)
+		return err
+	}
+	openchainDB.TxSetStateDeltaCF, err = openchainDB.DB.CreateColumnFamily(opts, txSetStateDeltaCF)
+	if err != nil {
+		dbLogger.Errorf("Error creating tx set state delta CF: %s", err)
+		return err
+	}
+	return nil
+}
+
+// DeleteBlockState delets ALL deltas from the genesis block stored in the db.
+// This is generally only used during state synchronization when creating a new state from
+// a snapshot.
+func (openchainDB *OpenchainDB) DeleteBlockState() error {
+	err := openchainDB.DB.DropColumnFamily(openchainDB.BlockStateCF)
+	if err != nil {
+		dbLogger.Errorf("Error dropping block state CF: %s", err)
+		return err
+	}
+	opts := gorocksdb.NewDefaultOptions()
+	defer opts.Destroy()
+	openchainDB.BlockStateCF, err = openchainDB.DB.CreateColumnFamily(opts, blockStateCF)
+	if err != nil {
+		dbLogger.Errorf("Error creating block state CF: %s", err)
+		return err
+	}
+	return nil
+}
+
 // Get returns the valud for the given column family and key
 func (openchainDB *OpenchainDB) Get(cfHandler *gorocksdb.ColumnFamilyHandle, key []byte) ([]byte, error) {
 	opt := gorocksdb.NewDefaultReadOptions()
