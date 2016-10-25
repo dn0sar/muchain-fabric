@@ -429,7 +429,7 @@ func (d *Devops) IssueTxSet(ctx context.Context, txSetSpec *pb.TxSetSpec) (*pb.R
 		// TODO: consider sending a warning saying to call directly query instead of this
 		return d.Query(ctx, txSetSpec.TxSpecs[0].GetInvocationSpec())
 	}
-	txSet, deplBytes, err := d.createTxSet(txSetSpec)
+	txSet, _, err := d.createTxSet(txSetSpec)
 	if err != nil {
 		return nil, err
 	}
@@ -448,10 +448,6 @@ func (d *Devops) IssueTxSet(ctx context.Context, txSetSpec *pb.TxSetSpec) (*pb.R
 		// Right now if the the dafault transaction of the set is reject the set **should** be rejected as well..
 		// So returning this error should be fine
 		err = fmt.Errorf(string(resp.Msg))
-	}
-	// Default transaction was a deploy transaction, return the deploy specification
-	if deplBytes != nil {
-		resp.Msg = deplBytes
 	}
 	outerResponse := &pb.Response{
 		Status: resp.Status,

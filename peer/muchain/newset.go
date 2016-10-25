@@ -12,6 +12,7 @@ import (
 	"golang.org/x/net/context"
 	"github.com/golang/protobuf/proto"
 	"os"
+	"reflect"
 )
 
 func newSetCmd() *cobra.Command {
@@ -94,6 +95,10 @@ func muchainIssueTxSet(cmd *cobra.Command, args []string) error {
 		//Default transaction was a deploy transaction, return the deploy specification
 		if innerResp.Status != pb.Response_SUCCESS {
 			return fmt.Errorf("No error returned, but the deployment of the chaincode was not successfull. Status: %#v", resp.Status)
+		}
+		if reflect.DeepEqual(innerResp.Msg, resp.Msg) {
+			logger.Info("Chaincode successfully deployed.")
+			return nil
 		}
 		chaincodeDeploymentSpec := &pb.ChaincodeDeploymentSpec{}
 		err = proto.Unmarshal(innerResp.Msg, chaincodeDeploymentSpec)
