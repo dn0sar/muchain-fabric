@@ -496,7 +496,7 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, t *pb.
 		if transSet == nil {
 			return cID, cMsg, fmt.Errorf("deployment transaction does not exist for %s", chaincode)
 		}
-		if transSet.GetTransactionSet() == nil {
+		if transSet.GetTransactionSet() == nil || len(transSet.GetTransactionSet().Transactions) == 0 {
 			return cID, cMsg, fmt.Errorf("deployment transaction does not exist for %s", chaincode)
 		}
 		if nil != chaincodeSupport.secHelper {
@@ -512,8 +512,16 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, t *pb.
 		if err != nil {
 			return cID, cMsg, fmt.Errorf("Failed to retrieve the transactions set state value. (%s)", err)
 		}
-		// TODO: get the current default transaction here instead and *check* if it is still a deploy transaction
-		depTx = transSet.GetTransactionSet().Transactions[txSetSt.Index.InBlockIndex]
+		if txSetSt == nil {
+			// Not set state hence it was a immutable transaction
+			depTx = transSet.GetTransactionSet().Transactions[0]
+		} else {
+			// TODO: get the current default transaction here instead and *check* if it is still a deploy transaction
+			depTx = transSet.GetTransactionSet().Transactions[txSetSt.Index.InBlockIndex]
+		}
+		if  depTx.Type != pb.ChaincodeAction_CHAINCODE_DEPLOY {
+			return cID, cMsg, fmt.Errorf("The referenced id does not correspond to a deploy transaction. (%s)", err)
+		}
 		//Get lang from original deployment
 		err = proto.Unmarshal(depTx.Payload, cds)
 		if err != nil {
