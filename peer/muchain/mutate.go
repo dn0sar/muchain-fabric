@@ -10,7 +10,7 @@ import (
 )
 
 func mutateCmd() *cobra.Command {
-	muchainIssueMutantTxCmd.Flags().StringVarP(&txSetID, "txsetid", "d", "",
+	muchainIssueMutantTxCmd.Flags().StringVarP(&txSetID, "name", "n", "",
 		"The ID of the transactions set that should be mutated.")
 	muchainIssueMutantTxCmd.Flags().Uint64VarP(&blockNum, "blocknum", "b", 0,
 		"The block (as a positive number) where the new transaction of the set is stored.")
@@ -37,7 +37,7 @@ var muchainIssueMutantTxCmd = &cobra.Command{
 }
 
 func muchainIssueMutantTx(cmd *cobra.Command, args []string) error {
-	if !cmd.Flag("txsetid").Changed {
+	if !cmd.Flag("name").Changed {
 		return fmt.Errorf("A valid transactions set id must be provided")
 	}
 	if !cmd.Flag("blocknum").Changed {
