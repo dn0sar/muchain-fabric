@@ -307,13 +307,13 @@ func (state *State) CreateDeltaFromGenesis(blockNumber uint64) (*statemgmt.State
 	}
 	logger.Debug("Creating genesis delta")
 	delta := statemgmt.NewStateDelta()
-	delta.ApplyChanges(state.stateDelta)
-	for ; chainSnapshot.Next(); chainSnapshot.Next() {
+	for chainSnapshot.Next() {
 		k, v := chainSnapshot.GetRawKeyValue()
 		cID, keyID := stcomm.DecodeCompositeKey(k)
-		logger.Infof("Putting key for chaincode ID: %s, key: %s, value: %v", cID, keyID, v)
+		logger.Debugf("Putting key for chaincode ID: %s, key: %s, value: %v", cID, keyID, v)
 		delta.Set(cID, keyID, v, nil)
 	}
+	delta.ApplyChanges(state.stateDelta)
 	return delta, nil
 }
 
