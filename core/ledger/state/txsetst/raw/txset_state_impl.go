@@ -85,5 +85,6 @@ func (impl *TxSetStateImpl) PerfHintKeyChanged(txSetID string) {
 
 // GetTxSetStateSnapshotIterator - method implementation for interface 'statemgmt.HashableTxSetState'
 func (impl *TxSetStateImpl) GetTxSetStateSnapshotIterator(snapshot *gorocksdb.Snapshot) (stcomm.StateSnapshotIterator, error) {
-	panic("Not a full-fledged state implementation. Implemented only for measuring best-case performance benchmark")
+	return newTxSetStateSnapshotIterator(snapshot)
+	//panic("Not a full-fledged state implementation. Implemented only for measuring best-case performance benchmark")
 }
