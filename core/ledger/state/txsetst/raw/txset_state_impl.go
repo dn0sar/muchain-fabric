@@ -7,6 +7,8 @@ import (
 	pb "github.com/hyperledger/fabric/protos"
 	"github.com/tecbot/gorocksdb"
 	"github.com/op/go-logging"
+	"bytes"
+	"github.com/hyperledger/fabric/core/util"
 )
 
 var loggerRaw = logging.MustGetLogger("txsetst_raw")
@@ -15,6 +17,8 @@ var loggerRaw = logging.MustGetLogger("txsetst_raw")
 // It simply stores the compositeKey and value in the db
 type TxSetStateImpl struct {
 	txSetStateDelta *statemgmt.TxSetStateDelta
+	prevHash []byte
+	recomputeHash bool
 }
 
 // NewTxSetStateImpl constructs new instance of raw state
@@ -30,8 +34,8 @@ func (impl *TxSetStateImpl) Initialize(configs map[string]interface{}) error {
 // Get - method implementation for interface 'statemgmt.HashableTxSetState'
 func (impl *TxSetStateImpl) Get(txSetID string) (*pb.TxSetStateValue, error) {
 	txSetKey := stcomm.ConstructTxSetKey(txSetID)
-	openchainDB := db.GetDBHandle()
-	stateValueBytes, err := openchainDB.GetFromTxSetStateCF(txSetKey)
+	hyperDB := db.GetDBHandle()
+	stateValueBytes, err := hyperDB.GetFromTxSetStateCF(txSetKey)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +58,22 @@ func (impl *TxSetStateImpl) ClearWorkingSet(changesPersisted bool) {
 
 // ComputeCryptoHash - method implementation for interface 'statemgmt.HashableTxSetState'
 func (impl *TxSetStateImpl) ComputeCryptoHash() ([]byte, error) {
-	return nil, nil
+	if !impl.recomputeHash {
+		return impl.prevHash, nil
+	}
+	hyperDB := db.GetDBHandle()
+	var resBuffer bytes.Buffer
+	stateIterator := hyperDB.GetTxSetStateCFIterator()
+	defer stateIterator.Close()
+	for stateIterator.SeekToFirst(); stateIterator.Valid(); stateIterator.Next() {
+		k := stcomm.Copy(stateIterator.Key().Data())
+		resBuffer.Write(k)
+		v := stcomm.Copy(stateIterator.Value().Data())
+		resBuffer.Write(v)
+	}
+	impl.prevHash = util.ComputeCryptoHash(resBuffer.Bytes())
+	impl.recomputeHash = false
+	return impl.prevHash, nil
 }
 
 // AddChangesForPersistence - method implementation for interface 'statemgmt.HashableTxSetState'
@@ -77,6 +96,7 @@ func (impl *TxSetStateImpl) AddChangesForPersistence(writeBatch *gorocksdb.Write
 				return err
 			}
 			writeBatch.PutCF(openchainDB.TxSetStateCF, key, marshalledTxSetValue)
+			impl.recomputeHash = true
 		}
 	}
 	return nil
