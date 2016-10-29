@@ -6,7 +6,10 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/state/txsetst/statemgmt"
 	pb "github.com/hyperledger/fabric/protos"
 	"github.com/tecbot/gorocksdb"
+	"github.com/op/go-logging"
 )
+
+var loggerRaw = logging.MustGetLogger("txsetst_raw")
 
 // TxSetStateImpl implements raw state management. This implementation does not support computation of crypto-hash of the state.
 // It simply stores the compositeKey and value in the db
@@ -85,6 +88,6 @@ func (impl *TxSetStateImpl) PerfHintKeyChanged(txSetID string) {
 
 // GetTxSetStateSnapshotIterator - method implementation for interface 'statemgmt.HashableTxSetState'
 func (impl *TxSetStateImpl) GetTxSetStateSnapshotIterator(snapshot *gorocksdb.Snapshot) (stcomm.StateSnapshotIterator, error) {
+	loggerRaw.Warningf("Not a full-fledged state implementation. Implemented only for measuring best-case performance benchmark")
 	return newTxSetStateSnapshotIterator(snapshot)
-	//panic("Not a full-fledged state implementation. Implemented only for measuring best-case performance benchmark")
 }

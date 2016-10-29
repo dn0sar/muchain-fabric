@@ -10,7 +10,7 @@
         "name": "mycc"
       },
       "inputArgs": {
-        "args": ["init", "a", "101", "b", "201"]
+        "args": ["init", "a", "1000", "b", "2000"]
       }
     },
     {
@@ -21,7 +21,7 @@
         "name": "mycc"
       },
       "inputArgs": {
-        "args": ["init", "a", "101", "b", "201"]
+        "args": ["init", "a", "1000", "b", "2000"]
       }
     }
   ]
