@@ -53,7 +53,8 @@ message MutantTransaction {
 
 message TransactionSet {
     // transactions: the transactions in this set
-    repeated Transaction transactions = 1;
+    // the bytes represent information to reconstruct to a Transaction type
+    repeated bytes transactions = 1;
     // defaultInx: the index of the default transaction in this set
     uint64 defaultInx = 2;
 }

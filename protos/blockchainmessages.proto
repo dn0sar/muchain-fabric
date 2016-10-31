@@ -78,7 +78,8 @@ message TxSetInput {
     TxSetSpec.Type type = 1;
     uint64 defaultIndex = 2;
     string setID = 3;
-    repeated SimplifiedSpec txSpecs = 4;
+    // The bytes represent a simplified spec message
+    repeated bytes txSpecs = 4;
 }
 
 // Carries the chaincode specification. This is the actual metadata required for
