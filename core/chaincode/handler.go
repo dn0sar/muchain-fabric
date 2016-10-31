@@ -208,11 +208,19 @@ func (handler *Handler) encryptOrDecrypt(encrypt bool, txid string, payload []by
 	var enc crypto.StateEncryptor
 	var err error
 	if txctx.transactionSecContext.Type == pb.ChaincodeAction_CHAINCODE_DEPLOY {
-		if enc, err = secHelper.GetStateEncryptor(handler.deployTXSecContext, pb.EncapsulateTransactionToInBlock(handler.deployTXSecContext)); err != nil {
+		encapsTx, err := pb.EncapsulateTransactionToInBlock(handler.deployTXSecContext)
+		if err != nil {
+			return nil, err
+		}
+		if enc, err = secHelper.GetStateEncryptor(handler.deployTXSecContext, encapsTx); err != nil {
 			return nil, fmt.Errorf("error getting crypto encryptor for deploy tx :%s", err)
 		}
 	} else if txctx.transactionSecContext.Type == pb.ChaincodeAction_CHAINCODE_INVOKE || txctx.transactionSecContext.Type == pb.ChaincodeAction_CHAINCODE_QUERY {
-		if enc, err = secHelper.GetStateEncryptor(handler.deployTXSecContext, pb.EncapsulateTransactionToInBlock(txctx.transactionSecContext)); err != nil {
+		encapsTx, err := pb.EncapsulateTransactionToInBlock(txctx.transactionSecContext)
+		if err != nil {
+			return nil, err
+		}
+		if enc, err = secHelper.GetStateEncryptor(handler.deployTXSecContext, encapsTx); err != nil {
 			return nil, fmt.Errorf("error getting crypto encryptor %s", err)
 		}
 	} else {
@@ -1228,7 +1236,11 @@ func (handler *Handler) setChaincodeSecurityContext(tx *pb.Transaction, msg *pb.
 
 		msg.SecurityContext.CallerCert = tx.Cert
 		msg.SecurityContext.CallerSign = tx.Signature
-		binding, err := handler.getSecurityBinding(pb.EncapsulateTransactionToInBlock(tx))
+		encapsTx, err := pb.EncapsulateTransactionToInBlock(tx)
+		if err != nil {
+			return err
+		}
+		binding, err := handler.getSecurityBinding(encapsTx)
 		if err != nil {
 			chaincodeLogger.Errorf("Failed getting binding [%s]", err)
 			return err

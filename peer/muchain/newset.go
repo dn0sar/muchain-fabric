@@ -59,7 +59,7 @@ func muchainIssueTxSet(cmd *cobra.Command, args []string) error {
 		return errors.New("Given an extension of a tx set as input, but no tx set id was provided.")
 	}
 
-	txSpecs, err := createTxSpecArray(txSetInputSpec.TxSpecs)
+	txSpecs, defSpec, err := createTxSpecArray(txSetInputSpec.TxSpecs, txSetInputSpec.DefaultIndex)
 	if err != nil {
 		return err
 	}
@@ -91,7 +91,7 @@ func muchainIssueTxSet(cmd *cobra.Command, args []string) error {
 	logger.Info("Successfully created transactions set.")
 
 	innerResp := resp.InnerResp
-	if txSetSpec.TxSpecs[txSetSpec.DefaultInx].Action == pb.ChaincodeAction_CHAINCODE_DEPLOY {
+	if defSpec.Action == pb.ChaincodeAction_CHAINCODE_DEPLOY {
 		//Default transaction was a deploy transaction, return the deploy specification
 		if innerResp.Status != pb.Response_SUCCESS {
 			return fmt.Errorf("No error returned, but the deployment of the chaincode was not successfull. Status: %#v", resp.Status)
@@ -111,11 +111,11 @@ func muchainIssueTxSet(cmd *cobra.Command, args []string) error {
 		if innerResp.Status != pb.Response_SUCCESS {
 			return fmt.Errorf("No error returned, but the execution of the default transaction was not successfull. Status: %#v", resp.Status)
 		}
-		if txSetSpec.TxSpecs[txSetSpec.DefaultInx].Action == pb.ChaincodeAction_CHAINCODE_INVOKE {
+		if defSpec.Action == pb.ChaincodeAction_CHAINCODE_INVOKE {
 			transactionID := string(innerResp.Msg)
-			logger.Infof("Successfully invoked transaction: %s(%s)", txSetSpec.TxSpecs[txSetSpec.DefaultInx].GetInvocationSpec(), transactionID)
+			logger.Infof("Successfully invoked transaction: %s(%s)", defSpec.GetInvocationSpec(), transactionID)
 		} else {
-			logger.Infof("Successfully queried transaction: %s", txSetSpec.TxSpecs[txSetSpec.DefaultInx].GetInvocationSpec())
+			logger.Infof("Successfully queried transaction: %s", defSpec.GetInvocationSpec())
 			if innerResp != nil {
 				if muchainQueryRaw {
 					if muchainQueryHex {
@@ -152,8 +152,9 @@ func parseFile(path string) (*pb.TxSetInput, error) {
 	return txSetInput, nil
 }
 
-func createTxSpecArray(simpSpecArr []*pb.TxSetInput_SimplifiedSpec) ([]*pb.TxSpec, error) {
-	var txSetSpecArr = make([]*pb.TxSpec, len(simpSpecArr))
+func createTxSpecArray(simpSpecArr []*pb.TxSetInput_SimplifiedSpec, defIndex uint64) ([][]byte, *pb.TxSpec, error) {
+	var defSpec *pb.TxSpec
+	var txSetSpecArr = make([][]byte, len(simpSpecArr))
 	for i, simpSpec := range simpSpecArr {
 		var txSpec = &pb.TxSpec{}
 		txSpec.Action = simpSpec.Action
@@ -171,7 +172,14 @@ func createTxSpecArray(simpSpecArr []*pb.TxSetInput_SimplifiedSpec) ([]*pb.TxSpe
 			}
 			txSpec.Spec = &pb.TxSpec_InvocationSpec{InvocationSpec: invocationSpec}
 		}
-		txSetSpecArr[i] = txSpec
+		if uint64(i) == defIndex {
+			defSpec = txSpec
+		}
+		marshaledSpec, err := proto.Marshal(txSpec)
+		if err != nil {
+			return txSetSpecArr, defSpec, fmt.Errorf("Unable to marshal generated txSetSpecification: %s", err)
+		}
+		txSetSpecArr[i] = marshaledSpec
 	}
-	return txSetSpecArr, nil
+	return txSetSpecArr, defSpec, nil
 }

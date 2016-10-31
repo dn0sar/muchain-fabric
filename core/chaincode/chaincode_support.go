@@ -493,10 +493,7 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, t *pb.
 		if ledgerErr != nil {
 			return cID, cMsg, fmt.Errorf("Could not get deployment transaction for %s - %s", chaincode, ledgerErr)
 		}
-		if transSet == nil {
-			return cID, cMsg, fmt.Errorf("deployment transaction does not exist for %s", chaincode)
-		}
-		if transSet.GetTransactionSet() == nil || len(transSet.GetTransactionSet().Transactions) == 0 {
+		if transSet == nil || transSet.GetTransactionSet() == nil || len(transSet.GetTransactionSet().Transactions) == 0{
 			return cID, cMsg, fmt.Errorf("deployment transaction does not exist for %s", chaincode)
 		}
 		if nil != chaincodeSupport.secHelper {
@@ -508,16 +505,9 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, t *pb.
 			}
 		}
 
-		txSetSt, err := ledger.GetTxSetState(transSet.Txid, false)
+		depTx, err := ledger.GetCurrentDefault(transSet, false)
 		if err != nil {
-			return cID, cMsg, fmt.Errorf("Failed to retrieve the transactions set state value. (%s)", err)
-		}
-		if txSetSt == nil {
-			// Not set state hence it was a immutable transaction
-			depTx = transSet.GetTransactionSet().Transactions[0]
-		} else {
-			// TODO: get the current default transaction here instead and *check* if it is still a deploy transaction
-			depTx = transSet.GetTransactionSet().Transactions[txSetSt.Index.InBlockIndex]
+			return cID, cMsg, fmt.Errorf("Failed to retrieve the deploy transaction for the transaction with id: %s. Err: (%s)", transSet.Txid, err)
 		}
 		if  depTx.Type != pb.ChaincodeAction_CHAINCODE_DEPLOY {
 			return cID, cMsg, fmt.Errorf("The referenced id does not correspond to a deploy transaction. (%s)", err)

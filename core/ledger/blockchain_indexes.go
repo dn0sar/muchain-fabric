@@ -37,6 +37,7 @@ type blockchainIndexer interface {
 	createIndexes(block *protos.Block, blockNumber uint64, blockHash []byte, writeBatch *gorocksdb.WriteBatch) error
 	fetchBlockNumberByBlockHash(blockHash []byte) (uint64, error)
 	fetchTransactionIndexByID(txID string) (uint64, uint64, error)
+	fetchTransactionIndexMap(txID string) (map[uint64]uint64, error)
 	stop()
 }
 
@@ -66,17 +67,46 @@ func (indexer *blockchainIndexerSync) fetchBlockNumberByBlockHash(blockHash []by
 }
 
 func (indexer *blockchainIndexerSync) fetchTransactionIndexByID(txID string) (uint64, uint64, error) {
-	return fetchTransactionIndexByIDFromDB(txID)
+	mapping, err := fetchTransactionIndexByIDFromDB(txID)
+	if err != nil {
+		return 0, 0, err
+	}
+	// Return any mapping from the map (usually there is only one mapping, except for sets, but this method should not be called for sets.)
+	for block, index := range mapping.IndexInBlock {
+		return block, index, nil
+	}
+	return 0, 0, ErrorTypeOutOfBounds
 }
+
+func (indexer *blockchainIndexerSync) fetchTransactionIndexMap(txID string) (map[uint64]uint64, error) {
+	mapping, err := fetchTransactionIndexByIDFromDB(txID)
+	if err != nil {
+		return nil, ErrorTypeResourceNotFound
+	}
+	return mapping.IndexInBlock, nil
+}
+
 
 func (indexer *blockchainIndexerSync) stop() {
 	return
+}
+
+// Try to retrieve a map for a given txID
+func getTransactionBlockIndexMap(txID string) (*protos.TxSetToBlock, error) {
+	blockNumTxIndexBytes, err := db.GetDBHandle().GetFromIndexesCF(encodeTxIDKey(txID))
+	if err != nil {
+		return nil, err
+	}
+	blockMap := &protos.TxSetToBlock{}
+	err = proto.Unmarshal(blockNumTxIndexBytes, blockMap)
+	return blockMap, err
 }
 
 // Functions for persisting and retrieving index data
 func addIndexDataForPersistence(block *protos.Block, blockNumber uint64, blockHash []byte, writeBatch *gorocksdb.WriteBatch) error {
 	openchainDB := db.GetDBHandle()
 	cf := openchainDB.IndexesCF
+	var err error
 
 	// add blockhash -> blockNumber
 	indexLogger.Debugf("Indexing block number [%d] by hash = [%x]", blockNumber, blockHash)
@@ -87,14 +117,26 @@ func addIndexDataForPersistence(block *protos.Block, blockNumber uint64, blockHa
 
 	transactions := block.GetTransactions()
 	for txIndex, inBlockTx := range transactions {
-		writeBatch.PutCF(cf, encodeTxIDKey(inBlockTx.Txid), encodeBlockNumTxIndex(blockNumber, uint64(txIndex)))
+		txBlockIndex, err := getTransactionBlockIndexMap(inBlockTx.Txid)
+		if err != nil {
+			ledgerLogger.Errorf("Unable to get previous info for block allocation of TxID: %s. Err = %s", inBlockTx.Txid, err)
+			// Continue and ignore this error.
+		}
+		txBlockIndex.IndexInBlock[blockNumber] = txIndex
+		bytes, err := proto.Marshal(txBlockIndex)
+		if err == nil {
+			writeBatch.PutCF(cf, encodeTxIDKey(inBlockTx.Txid), bytes)
+		} else {
+			ledgerLogger.Errorf("Unable to marshal new mapping to blocks for txID: %s. Err = %s", inBlockTx.Txid, err)
+		}
 
 		txExecutingAddress := getTxExecutingAddress(inBlockTx)
 		addressToTxIndexesMap[txExecutingAddress] = append(addressToTxIndexesMap[txExecutingAddress], uint64(txIndex))
 		//REVIEW: this should be executed when I'm creating a block, hence I should take the first default transaction
-		switch tx := inBlockTx.Transaction.(type) {
+		switch inBlockTx.Transaction.(type) {
 		case *protos.InBlockTransaction_TransactionSet:
-			defaultTx := tx.TransactionSet.GetTransactions()[tx.TransactionSet.DefaultInx]
+			defaultTx, errInt := ledger.GetCurrentDefault(inBlockTx, false)
+			err = errInt
 			switch defaultTx.Type {
 			case protos.ChaincodeAction_CHAINCODE_DEPLOY, protos.ChaincodeAction_CHAINCODE_INVOKE:
 				authroizedAddresses, chaincodeID := getAuthorisedAddresses(defaultTx)
@@ -110,7 +152,7 @@ func addIndexDataForPersistence(block *protos.Block, blockNumber uint64, blockHa
 	for address, txsIndexes := range addressToTxIndexesMap {
 		writeBatch.PutCF(cf, encodeAddressBlockNumCompositeKey(address, blockNumber), encodeListTxIndexes(txsIndexes))
 	}
-	return nil
+	return err
 }
 
 func fetchBlockNumberByBlockHashFromDB(blockHash []byte) (uint64, error) {
@@ -127,15 +169,20 @@ func fetchBlockNumberByBlockHashFromDB(blockHash []byte) (uint64, error) {
 	return blockNumber, nil
 }
 
-func fetchTransactionIndexByIDFromDB(txID string) (uint64, uint64, error) {
+func fetchTransactionIndexByIDFromDB(txID string) (*protos.TxSetToBlock, error) {
 	blockNumTxIndexBytes, err := db.GetDBHandle().GetFromIndexesCF(encodeTxIDKey(txID))
 	if err != nil {
 		return 0, 0, err
 	}
 	if blockNumTxIndexBytes == nil {
-		return 0, 0, ErrResourceNotFound
+		return nil, ErrResourceNotFound
 	}
-	return decodeBlockNumTxIndex(blockNumTxIndexBytes)
+	decodedVal := &protos.TxSetToBlock{}
+	err = proto.Unmarshal(blockNumTxIndexBytes, decodedVal)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to unmarshal block mapping. (%s)", err)
+	}
+	return decodedVal, nil
 }
 
 func deleteTransactionIndex(txID string) error {

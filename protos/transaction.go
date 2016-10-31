@@ -22,7 +22,14 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/util"
+	"github.com/op/go-logging"
+	"github.com/hyperledger/fabric/core/container"
+	"strings"
+	"encoding/asn1"
+	"errors"
 )
+
+var protosLogger = logging.MustGetLogger("protos_logger")
 
 // Bytes returns this transaction as an array of bytes.
 func (transaction *Transaction) Bytes() ([]byte, error) {
@@ -134,9 +141,106 @@ func (c *ChaincodeInput) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func EncapsulateTransactionToInBlock(tx *Transaction) *InBlockTransaction {
+func NewDeployTransaction(spec *ChaincodeSpec) (*Transaction, error) {
+	// get the deployment spec
+	packageBytes, err := container.GetChaincodePackageBytes(spec)
+	if err != nil {
+		err = fmt.Errorf("Error getting chaincode package bytes: %s", err)
+		protosLogger.Error(fmt.Sprintf("%s", err))
+		return nil, err
+	}
+	chaincodeDeploymentSpec := &ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: packageBytes}
+
+	chaincodeDSBytes, err := proto.Marshal(chaincodeDeploymentSpec)
+	if err != nil {
+		protosLogger.Errorf("chaincode deployment spec successfully generated, but unable to serialize it (%s)", err)
+		return nil, fmt.Errorf("chaincode deployment spec successfully generated, but unable to serialize it (%s)", err)
+	}
+
+	// Now create the Transaction
+	transID := chaincodeDeploymentSpec.ChaincodeSpec.ChaincodeID.Name
+
+	var tx *Transaction
+	protosLogger.Debugf("Creating deployment transaction (%s)", transID)
+	tx, err = NewChaincodeDeployTransaction(chaincodeDeploymentSpec, transID)
+	if err != nil {
+		return nil, chaincodeDSBytes, fmt.Errorf("Error deploying chaincode: %s ", err)
+	}
+
+	return tx, nil
+}
+
+func NewExecTransaction(spec *ChaincodeInvocationSpec, invokeTx bool) (*Transaction, error) {
+	var uuid string
+	var customIDgenAlg = strings.ToLower(spec.IdGenerationAlg)
+	if invokeTx {
+		if customIDgenAlg != "" {
+			ctorbytes, err := asn1.Marshal(*spec.ChaincodeSpec.CtorMsg)
+			if err != nil {
+				return nil, fmt.Errorf("Error marshalling constructor: %s", err)
+			}
+			uuid, err = util.GenerateIDWithAlg(customIDgenAlg, ctorbytes)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			uuid = util.GenerateUUID()
+		}
+	} else {
+		uuid = util.GenerateUUID()
+	}
+
+	if protosLogger.IsEnabledFor(logging.DEBUG) {
+		protosLogger.Debugf("Creating invocation transaction (%s)", uuid)
+	}
+	var t ChaincodeAction
+	if invokeTx {
+		t = ChaincodeAction_CHAINCODE_INVOKE
+	} else {
+		t = ChaincodeAction_CHAINCODE_QUERY
+	}
+	tx, err := NewChaincodeExecute(spec, uuid, t)
+	if nil != err {
+		return nil, err
+	}
+	return tx, err
+}
+
+func TransactionFromTxSpec(txSpec *TxSpec) (tx *Transaction, err error) {
+	switch txSpec.Action {
+	case ChaincodeAction_CHAINCODE_DEPLOY:
+		if txSpec.GetCodeSpec() == nil {
+			return nil, errors.New("Trying to reconstruct a Deploy transaction without a valid Chaincode Specification.")
+		}
+		tx, err = NewDeployTransaction(txSpec.GetCodeSpec())
+		if err != nil {
+			return nil, err
+		}
+	case ChaincodeAction_CHAINCODE_INVOKE:
+		if txSpec.GetInvocationSpec() == nil {
+			return nil, fmt.Errorf("Trying to add a Invoke transaction to the tx set without a valid Invocation Specification.")
+		}
+		tx, err = NewExecTransaction(txSpec.GetInvocationSpec(), true)
+		if err != nil {
+			return nil, err
+		}
+	case ChaincodeAction_CHAINCODE_QUERY:
+		// This should not happen, since checks to exclude query transactions
+		// should have been performed before calling this function
+		return nil, fmt.Errorf("Cannot to create a tx set containing a query transaction")
+	default:
+		return nil, fmt.Errorf("Transaction type not supported to be part of a transactins set. Type: %s", txSpec.Action)
+	}
+	return
+}
+
+func EncapsulateTransactionToInBlock(tx *Transaction) (*InBlockTransaction, error) {
+	marshalledTx, err := proto.Marshal(tx)
+	if  err != nil {
+		return nil, fmt.Errorf("Unable to marshal the given transaction %#v, err; %s", tx, err)
+	}
 	return &InBlockTransaction{
-		Transaction:                    &InBlockTransaction_TransactionSet{&TransactionSet{Transactions: []*Transaction{tx}, DefaultInx: 0}},
+		Transaction:                    &InBlockTransaction_TransactionSet{&TransactionSet{Transactions: [][]byte{marshalledTx}, DefaultInx: 0}},
 		Metadata:                       tx.Metadata,
 		Txid:                           tx.Txid,
 		Timestamp:                      tx.Timestamp,

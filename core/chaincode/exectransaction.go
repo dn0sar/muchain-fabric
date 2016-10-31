@@ -57,9 +57,7 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, inBlockTx *pb.InBloc
 			return nil, nil, fmt.Errorf("At least a transaction to execute should be provided.")
 		}
 
-		// Assume the set is a single transaction and take the first one of the set
-		defTx := tx.TransactionSet.Transactions[0]
-
+		// Update the Tx Set State
 		txSetStValue, err := ledger.GetTxSetState(inBlockTx.Txid, false)
 		if err != nil {
 			return nil, nil, fmt.Errorf("Failed to retrieve the txSet state, txID: %s, err: %s.", inBlockTx.Txid, err)
@@ -99,21 +97,10 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, inBlockTx *pb.InBloc
 			}
 		}
 
-		if txSetStValue != nil {
-			if !ledger.IsResetting() && txSetStValue.Index.BlockNr != nextBlockNr {
-				panic("Extensions set not fully implemented yet.")
-				// The transaction might be defined in another block
-				//block, err := ledger.GetBlockByNumber(txSetStValue.Index.BlockNr)
-				if err != nil {
-					return nil, nil, fmt.Errorf("Unable to retrieve the block that defined the default transaction for this set.")
-				}
-			} else {
-				// Use this as default transaction since this was a transactions set
-				defTx = tx.TransactionSet.Transactions[txSetStValue.Index.InBlockIndex]
-			}
+		defTx, err := ledger.GetCurrentDefault(inBlockTx, false)
+		if err != nil {
+			return nil, nil, err
 		}
-
-
 
 		if defTx.Type == pb.ChaincodeAction_CHAINCODE_DEPLOY {
 			_, err := chain.Deploy(ctxt, defTx)
@@ -149,7 +136,7 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, inBlockTx *pb.InBloc
 				if err != nil || depSet.GetTransactionSet() == nil {
 					return nil, nil, fmt.Errorf("The referenced txSet (%s) is not a txSet. Originating txID: %s", depSetID, inBlockTx.Txid)
 				}
-				currDepTx := depSet.GetTransactionSet().Transactions[refSetStVal.Index.InBlockIndex]
+				currDepTx, err := ledger.GetCurrentDefault(depSet, false)
 				ci.ChaincodeSpec.ChaincodeID.Name = currDepTx.Txid
 
 				marshalledCI, err := proto.Marshal(ci)
@@ -369,11 +356,7 @@ func prevDefault(txSetID string) (*pb.Transaction, error) {
 	if err != nil {
 		return nil, err
 	}
-	if txSet.GetTransactionSet() != nil {
-		return txSet.GetTransactionSet().Transactions[prevState.Index.InBlockIndex], nil
-	} else {
-		return nil, errors.New("The queried transaction is not a set, cannot contain a deploy tx.")
-	}
+	return ledger.GetCurrentDefault(txSet, true)
 }
 
 //ExecuteTransactions - will execute transactions on the array one by one
@@ -455,8 +438,10 @@ func getTimeout(cID *pb.ChaincodeID) (time.Duration, error) {
 		if err == nil {
 			transSet, err := ledger.GetTransactionByID(string(txID))
 			if err == nil && transSet != nil && transSet.GetTransactionSet() != nil {
-				// TODO: get the current default transaction here instead
-				tx := transSet.GetTransactionSet().Transactions[transSet.GetTransactionSet().DefaultInx]
+				tx, err := ledger.GetCurrentDefault(transSet, false)
+				if err != nil {
+					return nil, err
+				}
 				chaincodeDeploymentSpec := &pb.ChaincodeDeploymentSpec{}
 				proto.Unmarshal(tx.Payload, chaincodeDeploymentSpec)
 				chaincodeSpec := chaincodeDeploymentSpec.GetChaincodeSpec()

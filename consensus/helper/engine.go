@@ -28,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode"
 	pb "github.com/hyperledger/fabric/protos"
 	"golang.org/x/net/context"
+	"github.com/golang/protobuf/proto"
 )
 
 // EngineImpl implements a struct to hold consensus.Consenter, PeerEndpoint and MessageFan
@@ -50,7 +51,12 @@ func (eng *EngineImpl) ProcessTransactionMsg(msg *pb.Message, inBlockTx *pb.InBl
 
 		// Make sure that if this is a Transactions Set it is encapsulating a query.
 		if txSet, ok := tx.(*pb.InBlockTransaction_TransactionSet); ok {
-			if len(txSet.TransactionSet.Transactions) != 1 || txSet.TransactionSet.Transactions[0].Type != pb.ChaincodeAction_CHAINCODE_QUERY {
+			if len(txSet.TransactionSet.Transactions) != 1 {
+				break
+			}
+			transaction := &pb.Transaction{}
+			err := proto.Unmarshal(txSet.TransactionSet.Transactions[0], transaction)
+			if err || transaction.Type != pb.ChaincodeAction_CHAINCODE_QUERY {
 				break
 			}
 		}

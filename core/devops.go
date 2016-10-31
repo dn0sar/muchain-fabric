@@ -112,7 +112,7 @@ func (*Devops) Build(context context.Context, spec *pb.ChaincodeSpec) (*pb.Respo
 		vm, err := container.NewVM()
 		if err != nil {
 			resp.Msg = []byte(err.Error())
-			return resp, fmt.Errorf("Error getting vm")
+			return resp, fmt.Errorf("Error getting vm: %s", err)
 		}
 
 		codePackageBytes, err = vm.BuildChaincodeContainer(spec)
@@ -171,7 +171,11 @@ func (d *Devops) Deploy(ctx context.Context, spec *pb.ChaincodeSpec) (*pb.Respon
 		devopsLogger.Debugf("Sending deploy transaction (%s) to validator", tx.Txid)
 	}
 
-	resp := d.coord.ExecuteTransaction(pb.EncapsulateTransactionToInBlock(tx))
+	encapsTx, err := pb.EncapsulateTransactionToInBlock(tx)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to Encapsulate the transaction: %s", err)
+	}
+	resp := d.coord.ExecuteTransaction(encapsTx)
 	if resp.Status == pb.Response_FAILURE {
 		err = fmt.Errorf(string(resp.Msg))
 	}
@@ -238,7 +242,7 @@ func (d *Devops) createDeployTransaction(spec *pb.ChaincodeSpec) (*pb.Transactio
 func (d *Devops) invokeOrQuery(ctx context.Context, chaincodeInvocationSpec *pb.ChaincodeInvocationSpec, attributes []string, invoke bool) (*pb.Response, error) {
 
 	if chaincodeInvocationSpec.ChaincodeSpec.ChaincodeID.Name == "" {
-		return nil, fmt.Errorf("name not given for invoke/query")
+		return nil, errors.New("name not given for invoke/query")
 	}
 
 	// Now create the Transactions message and send to Peer.
@@ -252,7 +256,11 @@ func (d *Devops) invokeOrQuery(ctx context.Context, chaincodeInvocationSpec *pb.
 	if devopsLogger.IsEnabledFor(logging.DEBUG) {
 		devopsLogger.Debugf("Sending invocation transaction (%s) to validator", transaction.Txid)
 	}
-	resp := d.coord.ExecuteTransaction(pb.EncapsulateTransactionToInBlock(transaction))
+	encapsTx, err := pb.EncapsulateTransactionToInBlock(transaction)
+	if err != nil {
+		return nil, fmt.Errorf("unable to encapsulate transaction: %s", err)
+	}
+	resp := d.coord.ExecuteTransaction(encapsTx)
 	if resp.Status == pb.Response_FAILURE {
 		err = fmt.Errorf(string(resp.Msg))
 	} else {
@@ -341,72 +349,66 @@ func (d *Devops) createExecTx(spec *pb.ChaincodeInvocationSpec, attributes []str
 func (d *Devops) checkQueryConsistency(txSetSpec *pb.TxSetSpec) (bool, error) {
 	numTxInSet := len(txSetSpec.TxSpecs)
 	if numTxInSet == 0 {
-		return false, fmt.Errorf("A transactions set must contain at least one transaction.")
+		return false, errors.New("A transactions set must contain at least one transaction.")
 	}
-	isQuery := txSetSpec.TxSpecs[0].Action == pb.ChaincodeAction_CHAINCODE_QUERY
-	if isQuery {
-		if len(txSetSpec.TxSpecs) > 1 {
-			// Cannot have a txSet with more than one query
-			return false, fmt.Errorf("When issuing a Query it should be the only transaction belonging to the tx set.")
-		} else {
-			// good to go, tx set is of type query
-			return true, nil
-		}
+	if len(txSetSpec.TxSpecs) > 1 {
+		// Cannot have a txSet with more than one query
+		return false, nil
 	}
-	// The transaction set is not encapsulating a Query transaction
-	for _, spec := range txSetSpec.TxSpecs {
-		if spec.Action == pb.ChaincodeAction_CHAINCODE_QUERY {
-			// cannot have mixed types query and non-query
-			return false, fmt.Errorf("A tx set cannot contain Invoke/Deploy transactions mixed with Query transactions.")
-		}
+	// Try to unmarshal to a query transaction:
+	trans := &pb.TxSpec{}
+	err := proto.Unmarshal(txSetSpec.TxSpecs[0], trans)
+	if err != nil {
+		return false, err
 	}
-	// good, the tx set contains only invoke or deploy transactions
-	return false, nil
+	isQuery := trans.Action == pb.ChaincodeAction_CHAINCODE_QUERY
+	return isQuery, nil
 }
 
-func (d *Devops) createTxSet(txSetSpec *pb.TxSetSpec) (*pb.TransactionSet, []byte, error) {
-	txSet := &pb.TransactionSet{}
-	txSet.DefaultInx = txSetSpec.DefaultInx
-	var deplBytes []byte
-	for i, txSpec := range txSetSpec.TxSpecs {
-		switch txSpec.Action {
-		case pb.ChaincodeAction_CHAINCODE_DEPLOY:
-			if txSpec.GetCodeSpec() == nil {
-				return nil, deplBytes, fmt.Errorf("Trying to add a Deploy transaction to the tx set without a valid Chaincode Specification.")
-			}
-			tx, deplBytesCurr, sec, err := d.createDeployTransaction(txSpec.GetCodeSpec())
-			if sec != nil {
-				crypto.CloseClient(sec)
-			}
-			if err != nil {
-				return nil, deplBytes, err
-			}
-			if uint64(i) == txSet.DefaultInx {
-				deplBytes = deplBytesCurr
-			}
-			txSet.Transactions = append(txSet.Transactions, tx)
-		case pb.ChaincodeAction_CHAINCODE_INVOKE:
-			if txSpec.GetInvocationSpec() == nil {
-				return nil, deplBytes, fmt.Errorf("Trying to add a Invoke transaction to the tx set without a valid Invocation Specification.")
-			}
-			tx, sec, err := d.createExecTx(txSpec.GetInvocationSpec(), txSpec.GetInvocationSpec().ChaincodeSpec.Attributes, true)
-			if sec != nil {
-				crypto.CloseClient(sec)
-			}
-			if err != nil {
-				return nil, deplBytes, err
-			}
-			txSet.Transactions = append(txSet.Transactions, tx)
-		case pb.ChaincodeAction_CHAINCODE_QUERY:
-			// This should not happen, since checks to exclude query transactions
-			// should have been performed before calling this function
-			return nil, deplBytes, fmt.Errorf("Cannot to create a tx set containing a query transaction")
-		default:
-			return nil, deplBytes, fmt.Errorf("Transaction type not supported to be part of a transactins set. Type: %s", txSpec.Action)
-		}
-	}
-	return txSet, deplBytes, nil
-}
+// Don't need this function anymore, keep it for reference atm
+//func (d *Devops) createTxSet(txSetSpec *pb.TxSetSpec) (*pb.TransactionSet, []byte, error) {
+//	txSet := &pb.TransactionSet{}
+//	txSet.DefaultInx = txSetSpec.DefaultInx
+//	var deplBytes []byte
+//	for i, txSpec := range txSetSpec.TxSpecs {
+//		switch txSpec.Action {
+//		case pb.ChaincodeAction_CHAINCODE_DEPLOY:
+//			if txSpec.GetCodeSpec() == nil {
+//				return nil, deplBytes, fmt.Errorf("Trying to add a Deploy transaction to the tx set without a valid Chaincode Specification.")
+//			}
+//			tx, deplBytesCurr, sec, err := d.createDeployTransaction(txSpec.GetCodeSpec())
+//			if sec != nil {
+//				crypto.CloseClient(sec)
+//			}
+//			if err != nil {
+//				return nil, deplBytes, err
+//			}
+//			if uint64(i) == txSet.DefaultInx {
+//				deplBytes = deplBytesCurr
+//			}
+//			txSet.Transactions = append(txSet.Transactions, tx)
+//		case pb.ChaincodeAction_CHAINCODE_INVOKE:
+//			if txSpec.GetInvocationSpec() == nil {
+//				return nil, deplBytes, fmt.Errorf("Trying to add a Invoke transaction to the tx set without a valid Invocation Specification.")
+//			}
+//			tx, sec, err := d.createExecTx(txSpec.GetInvocationSpec(), txSpec.GetInvocationSpec().ChaincodeSpec.Attributes, true)
+//			if sec != nil {
+//				crypto.CloseClient(sec)
+//			}
+//			if err != nil {
+//				return nil, deplBytes, err
+//			}
+//			txSet.Transactions = append(txSet.Transactions, tx)
+//		case pb.ChaincodeAction_CHAINCODE_QUERY:
+//			// This should not happen, since checks to exclude query transactions
+//			// should have been performed before calling this function
+//			return nil, deplBytes, fmt.Errorf("Cannot to create a tx set containing a query transaction")
+//		default:
+//			return nil, deplBytes, fmt.Errorf("Transaction type not supported to be part of a transactins set. Type: %s", txSpec.Action)
+//		}
+//	}
+//	return txSet, deplBytes, nil
+//}
 
 // Invoke performs the supplied invocation on the specified chaincode through a transaction
 func (d *Devops) Invoke(ctx context.Context, chaincodeInvocationSpec *pb.ChaincodeInvocationSpec) (*pb.Response, error) {
@@ -427,20 +429,28 @@ func (d *Devops) IssueTxSet(ctx context.Context, txSetSpec *pb.TxSetSpec) (*pb.R
 	if isQuery {
 		// This transactions set is a Query
 		// TODO: consider sending a warning saying to call directly query instead of this
-		return d.Query(ctx, txSetSpec.TxSpecs[0].GetInvocationSpec())
+		trans := &pb.TxSpec{}
+		err := proto.Unmarshal(txSetSpec.TxSpecs[0], trans)
+		if err != nil {
+			return nil, fmt.Errorf("Set previously verified to be a query transaction, but unable to unmarshal later. %s", err)
+		}
+		return d.Query(ctx, trans.GetInvocationSpec())
 	}
-	txSet, _, err := d.createTxSet(txSetSpec)
+	transSet := &pb.TransactionSet{Transactions: txSetSpec.TxSpecs, DefaultInx: txSetSpec.DefaultInx}
+
+	transSetBytes, err := proto.Marshal(transSet)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Unable to marshal the created txSet. Err: %s", err)
 	}
-	txSetBytes, err := proto.Marshal(txSet)
+	marshaledTimestamp, err := proto.Marshal(util.CreateUtcTimestamp())
 	if err != nil {
-		return nil, fmt.Errorf("Unable to Marshal the TxSet (%s)", err)
+		return nil, fmt.Errorf("Unable to marshal current timestamp. Err: %s", err)
 	}
+	transSetBytes = append(transSetBytes, marshaledTimestamp)
 
 	inBlockTx := &pb.InBlockTransaction{
-		Transaction: &pb.InBlockTransaction_TransactionSet{TransactionSet: txSet},
-		Txid:        hex.EncodeToString(util.ComputeCryptoHash(txSetBytes)),
+		Transaction: &pb.InBlockTransaction_TransactionSet{TransactionSet: transSet},
+		Txid:        hex.EncodeToString(util.ComputeCryptoHash(transSetBytes)),
 		Timestamp:   util.CreateUtcTimestamp(),
 	}
 	resp := d.coord.ExecuteTransaction(inBlockTx)
@@ -457,7 +467,7 @@ func (d *Devops) IssueTxSet(ctx context.Context, txSetSpec *pb.TxSetSpec) (*pb.R
 	return outerResponse, err
 }
 
-// Modifies the active transaction of a transactions set
+// Mutate - Modifies the active transaction of a transactions set
 func (d *Devops) Mutate(ctx context.Context, mutantSpec *pb.MutantSpec) (*pb.Response, error) {
 	mutantTx := &pb.MutantTransaction{
 		TxSetID:    mutantSpec.TxSetID,
@@ -508,7 +518,7 @@ func (d *Devops) QueryTxSetState(ctx context.Context, querySpec *pb.MutantSpec) 
 	var err error
 
 	if querySpec.TxSetID == "" {
-		return nil, fmt.Errorf("tx set id not given for query tx set state tx")
+		return nil, errors.New("tx set id not given for query tx set state tx")
 	}
 
 	// Now create the Transactions message and send to Peer.
@@ -680,7 +690,7 @@ func (d *Devops) EXP_ExecuteWithBinding(ctx context.Context, executeWithBinding 
 		}
 		tid, generr := util.GenerateIDWithAlg("", ctorbytes)
 		if generr != nil {
-			return nil, fmt.Errorf("Error: cannot generate TX ID (executing with binding)")
+			return nil, fmt.Errorf("Error: cannot generate TX ID (executing with binding). (%s)", generr)
 		}
 
 		tx, err := txHandler.NewChaincodeExecute(executeWithBinding.ChaincodeInvocationSpec, tid)
@@ -688,7 +698,12 @@ func (d *Devops) EXP_ExecuteWithBinding(ctx context.Context, executeWithBinding 
 			return nil, fmt.Errorf("Error creating executing with binding:  %s", err)
 		}
 
-		return d.coord.ExecuteTransaction(pb.EncapsulateTransactionToInBlock(tx)), nil
+		encapsTx, err := pb.EncapsulateTransactionToInBlock(tx)
+		if err != nil {
+			return nil, fmt.Errorf("Unable to encapsulate transaction: %s", err)
+		}
+
+		return d.coord.ExecuteTransaction(encapsTx), nil
 		//return &pb.Response{Status: pb.Response_FAILURE, Msg: []byte("NOT IMPLEMENTED")}, nil
 
 		//return &pb.Response{Status: pb.Response_SUCCESS, Msg: sigmaOutputBytes}, nil

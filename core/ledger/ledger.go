@@ -584,6 +584,59 @@ func (ledger *Ledger) IsResetting() bool {
 	return ledger.blockchain.isResetting
 }
 
+// GetCurrentDefault returns the current default transaction of the queried txSetID
+func (ledger *Ledger) GetCurrentDefault(inBlockTx *protos.InBlockTransaction, committed bool) (*protos.Transaction, error) {
+	txSetStValue, err := ledger.GetTxSetState(inBlockTx.Txid, committed)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to retrieve the txSet state, txID: %s, err: %s.", inBlockTx.Txid, err)
+	}
+	var defTxBytes []byte
+	if inBlockTx.GetTransactionSet() != nil {
+		defTxBytes = inBlockTx.GetTransactionSet().Transactions[inBlockTx.GetTransactionSet().DefaultInx]
+	}
+	if txSetStValue == nil {
+		if inBlockTx.GetTransactionSet() == nil {
+			return nil, errors.New("The given transaction is not a transactions set.")
+		}
+		// Try to see if this was an encapsulated transaction
+		recoveredTx := &protos.Transaction{}
+		err := proto.Unmarshal(inBlockTx.GetTransactionSet().Transactions[0], recoveredTx)
+		if err != nil {
+			return nil, fmt.Errorf("Unable to decode encapsulated transaction: %s", err)
+		}
+		return recoveredTx, nil
+	} else {
+		defBlock := txSetStValue.Index.BlockNr
+		inxAtBlock := txSetStValue.Index.InBlockIndex
+		if defBlock < ledger.GetBlockchainSize() {
+			// Take the set definition from a previous block
+			txIdxMap, err := ledger.blockchain.indexer.fetchTransactionIndexMap(defBlock)
+			if err != nil {
+				return nil, err
+			}
+			txInx, ok := txIdxMap[defBlock]
+			if !ok {
+				return nil, fmt.Errorf("Unable to find given set at its current default block, txdi: %s", inBlockTx.Txid)
+			}
+			block, err := ledger.GetBlockByNumber(defBlock)
+			if err != nil {
+				return nil, err
+			}
+			txSet := block.GetTransactions()[txInx]
+			if txSet.GetTransactionSet() == nil {
+				return nil, fmt.Errorf("The current default block does not contain a tx set for the given tx id (%s).", inBlockTx.Txid)
+			}
+			defTxBytes = txSet.GetTransactionSet().Transactions[inxAtBlock]
+		}
+	}
+	transactionSpec := &protos.TxSpec{}
+	err = proto.Unmarshal(defTxBytes, transactionSpec)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to unmarshal default transaction. (%s)", err)
+	}
+	return protos.TransactionFromTxSpec(transactionSpec)
+}
+
 // GetTransactionByID return transaction by it's txId
 //REVIEW: check whether the txId referred to here is the one of the txSet or the default transaction
 func (ledger *Ledger) GetTransactionByID(txID string) (*protos.InBlockTransaction, error) {
@@ -679,11 +732,14 @@ func sendProducerBlockEvent(block *protos.Block) {
 	// events more lightweight as the payload for these types of transactions
 	// can be very large.
 	blockTransactions := block.GetTransactions()
-	for _, InBlockTx := range blockTransactions {
-		switch tx := InBlockTx.Transaction.(type) {
+	for _, inBlockTx := range blockTransactions {
+		switch inBlockTx.Transaction.(type) {
 		case *protos.InBlockTransaction_TransactionSet:
-			// TODO: This should get the *current* default transaction instead of the first default
-			transaction := tx.TransactionSet.GetTransactions()[tx.TransactionSet.DefaultInx]
+			transaction, err := ledger.GetCurrentDefault(inBlockTx, false)
+			if err != nil {
+				ledgerLogger.Errorf("Error getting the default transaction for set id: %s. Error: %s", inBlockTx.Txid, err)
+				continue
+			}
 			if transaction.Type == protos.ChaincodeAction_CHAINCODE_DEPLOY {
 				deploymentSpec := &protos.ChaincodeDeploymentSpec{}
 				err := proto.Unmarshal(transaction.Payload, deploymentSpec)
