@@ -99,6 +99,9 @@ func getTransactionBlockIndexMap(txID string) (*protos.TxSetToBlock, error) {
 	}
 	blockMap := &protos.TxSetToBlock{}
 	err = proto.Unmarshal(blockNumTxIndexBytes, blockMap)
+	if blockMap.IndexInBlock == nil {
+		blockMap.IndexInBlock = make(map[uint64]uint64)
+	}
 	return blockMap, err
 }
 
