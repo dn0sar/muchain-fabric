@@ -13,6 +13,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"os"
 	"reflect"
+	"github.com/hyperledger/fabric/core/crypto/txset"
 )
 
 func newSetCmd() *cobra.Command {
@@ -63,11 +64,17 @@ func muchainIssueTxSet(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	nonce, encryptedSpecs, err := txset.EncryptTxSetSpecification(txSpecs)
+	if err != nil {
+		return err
+	}
 
 	txSetSpec := &pb.TxSetSpec{
 		Type: txSetInputSpec.Type,
-		TxSpecs: txSpecs,
+		TxSpecs: encryptedSpecs,
 		DefaultInx: txSetInputSpec.DefaultIndex,
+		ConfidentialityLevel: pb.ConfidentialityLevel_CONFIDENTIAL,
+		Metadata: nonce, //TODO: In the shared scenario put only a share of the key and send a different one to every peer
 	}
 
 	devopsClient, err := common.GetDevopsClient(cmd)

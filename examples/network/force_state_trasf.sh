@@ -16,7 +16,7 @@ invoke() {
 
 # e.g. newset path
 newset() {
-  txsetid=$(CORE_PEER_ADDRESS="172.17.0.$REPLICA_MASTER:7051" peer muchain newset "$1" 2>&1 | grep txSetID | awk '{ print $(NF) }')
+  txsetid=$(CORE_PEER_ADDRESS="172.17.0.$REPLICA_MASTER:7051" peer muchain newset "$1" 2>&1 | grep -E -o 'txSetID: [^ ]*' | awk  -F " " '{ print $2 }')
   local blocknr=""
   while [[ -z $blocknr ]]
   do

@@ -449,9 +449,11 @@ func (d *Devops) IssueTxSet(ctx context.Context, txSetSpec *pb.TxSetSpec) (*pb.R
 	transSetBytes = append(transSetBytes, marshaledTimestamp...)
 
 	inBlockTx := &pb.InBlockTransaction{
-		Transaction: &pb.InBlockTransaction_TransactionSet{TransactionSet: transSet},
-		Txid:        hex.EncodeToString(util.ComputeCryptoHash(transSetBytes)),
-		Timestamp:   util.CreateUtcTimestamp(),
+		Transaction: 		  &pb.InBlockTransaction_TransactionSet{TransactionSet: transSet},
+		Txid:        		  hex.EncodeToString(util.ComputeCryptoHash(transSetBytes)),
+		Timestamp:   		  util.CreateUtcTimestamp(),
+		Nonce:		 		  txSetSpec.Metadata,
+		ConfidentialityLevel: pb.ConfidentialityLevel_CONFIDENTIAL,
 	}
 	resp := d.coord.ExecuteTransaction(inBlockTx)
 	if resp.Status == pb.Response_FAILURE {

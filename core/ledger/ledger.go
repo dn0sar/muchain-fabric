@@ -37,6 +37,7 @@ import (
 	"golang.org/x/net/context"
 	"errors"
 	"github.com/hyperledger/fabric/core/container"
+	"github.com/hyperledger/fabric/core/crypto/txset"
 )
 
 var ledgerLogger = logging.MustGetLogger("ledger")
@@ -635,6 +636,14 @@ func (ledger *Ledger) GetCurrentDefault(inBlockTx *protos.InBlockTransaction, co
 				return nil, fmt.Errorf("The current default block does not contain a tx set for the given tx id (%s).", inBlockTx.Txid)
 			}
 			defTxBytes = txSet.GetTransactionSet().Transactions[inxAtBlock]
+		}
+	}
+	if inBlockTx.ConfidentialityLevel == protos.ConfidentialityLevel_CONFIDENTIAL {
+		copiedDefTx := make([]byte, len(defTxBytes))
+		copy(copiedDefTx, defTxBytes)
+		defTxBytes, err = txset.DecryptTxSetSpecification(inBlockTx.Nonce, copiedDefTx, txSetStValue.Index.InBlockIndex)
+		if err != nil {
+			return nil, fmt.Errorf("Unable to decrypt transaction specification. Error: [%s]", err)
 		}
 	}
 	transactionSpec := &protos.TxSpec{}
