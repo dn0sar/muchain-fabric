@@ -56,7 +56,11 @@ func (eng *EngineImpl) ProcessTransactionMsg(msg *pb.Message, inBlockTx *pb.InBl
 			}
 			transaction := &pb.Transaction{}
 			err := proto.Unmarshal(txSet.TransactionSet.Transactions[0], transaction)
-			if err || transaction.Type != pb.ChaincodeAction_CHAINCODE_QUERY {
+			if err != nil {
+				logger.Infof("Error unmarshaling, probably it was not a query transaction, so ignoring it here. Err: [%s]", err)
+				break
+			}
+			if transaction.Type != pb.ChaincodeAction_CHAINCODE_QUERY {
 				break
 			}
 		}

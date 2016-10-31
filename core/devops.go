@@ -171,7 +171,7 @@ func (d *Devops) Deploy(ctx context.Context, spec *pb.ChaincodeSpec) (*pb.Respon
 		devopsLogger.Debugf("Sending deploy transaction (%s) to validator", tx.Txid)
 	}
 
-	encapsTx, err := pb.EncapsulateTransactionToInBlock(tx)
+	encapsTx, err := container.EncapsulateTransactionToInBlock(tx)
 	if err != nil {
 		return nil, fmt.Errorf("Unable to Encapsulate the transaction: %s", err)
 	}
@@ -256,7 +256,7 @@ func (d *Devops) invokeOrQuery(ctx context.Context, chaincodeInvocationSpec *pb.
 	if devopsLogger.IsEnabledFor(logging.DEBUG) {
 		devopsLogger.Debugf("Sending invocation transaction (%s) to validator", transaction.Txid)
 	}
-	encapsTx, err := pb.EncapsulateTransactionToInBlock(transaction)
+	encapsTx, err := container.EncapsulateTransactionToInBlock(transaction)
 	if err != nil {
 		return nil, fmt.Errorf("unable to encapsulate transaction: %s", err)
 	}
@@ -446,7 +446,7 @@ func (d *Devops) IssueTxSet(ctx context.Context, txSetSpec *pb.TxSetSpec) (*pb.R
 	if err != nil {
 		return nil, fmt.Errorf("Unable to marshal current timestamp. Err: %s", err)
 	}
-	transSetBytes = append(transSetBytes, marshaledTimestamp)
+	transSetBytes = append(transSetBytes, marshaledTimestamp...)
 
 	inBlockTx := &pb.InBlockTransaction{
 		Transaction: &pb.InBlockTransaction_TransactionSet{TransactionSet: transSet},
@@ -698,7 +698,7 @@ func (d *Devops) EXP_ExecuteWithBinding(ctx context.Context, executeWithBinding 
 			return nil, fmt.Errorf("Error creating executing with binding:  %s", err)
 		}
 
-		encapsTx, err := pb.EncapsulateTransactionToInBlock(tx)
+		encapsTx, err := container.EncapsulateTransactionToInBlock(tx)
 		if err != nil {
 			return nil, fmt.Errorf("Unable to encapsulate transaction: %s", err)
 		}

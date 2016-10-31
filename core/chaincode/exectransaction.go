@@ -440,7 +440,7 @@ func getTimeout(cID *pb.ChaincodeID) (time.Duration, error) {
 			if err == nil && transSet != nil && transSet.GetTransactionSet() != nil {
 				tx, err := ledger.GetCurrentDefault(transSet, false)
 				if err != nil {
-					return nil, err
+					return time.Duration(0), err
 				}
 				chaincodeDeploymentSpec := &pb.ChaincodeDeploymentSpec{}
 				proto.Unmarshal(tx.Payload, chaincodeDeploymentSpec)

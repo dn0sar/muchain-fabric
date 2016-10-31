@@ -36,6 +36,7 @@ import (
 	"github.com/hyperledger/fabric/protos"
 	"golang.org/x/net/context"
 	"errors"
+	"github.com/hyperledger/fabric/core/container"
 )
 
 var ledgerLogger = logging.MustGetLogger("ledger")
@@ -610,7 +611,7 @@ func (ledger *Ledger) GetCurrentDefault(inBlockTx *protos.InBlockTransaction, co
 		inxAtBlock := txSetStValue.Index.InBlockIndex
 		if defBlock < ledger.GetBlockchainSize() {
 			// Take the set definition from a previous block
-			txIdxMap, err := ledger.blockchain.indexer.fetchTransactionIndexMap(defBlock)
+			txIdxMap, err := ledger.blockchain.indexer.fetchTransactionIndexMap(inBlockTx.Txid)
 			if err != nil {
 				return nil, err
 			}
@@ -634,7 +635,7 @@ func (ledger *Ledger) GetCurrentDefault(inBlockTx *protos.InBlockTransaction, co
 	if err != nil {
 		return nil, fmt.Errorf("Unable to unmarshal default transaction. (%s)", err)
 	}
-	return protos.TransactionFromTxSpec(transactionSpec)
+	return container.TransactionFromTxSpec(transactionSpec)
 }
 
 // GetTransactionByID return transaction by it's txId

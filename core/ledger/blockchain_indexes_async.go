@@ -137,7 +137,27 @@ func (indexer *blockchainIndexerAsync) fetchTransactionIndexByID(txID string) (u
 		return 0, 0, err
 	}
 	indexer.indexerState.waitForLastCommittedBlock()
-	return fetchTransactionIndexByIDFromDB(txID)
+	mapping, err := fetchTransactionIndexByIDFromDB(txID)
+	if err != nil {
+		return 0, 0, err
+	}
+	for block, index := range mapping.IndexInBlock {
+		return block, index, nil
+	}
+	return 0, 0, newLedgerError(ErrorTypeResourceNotFound, fmt.Sprintf("Could not find any index for the given txID: %s", txID))
+}
+
+func (indexer *blockchainIndexerAsync) fetchTransactionIndexMap(txID string) (map[uint64]uint64, error) {
+	err := indexer.indexerState.checkError()
+	if err != nil {
+		return nil, err
+	}
+	indexer.indexerState.waitForLastCommittedBlock()
+	mapping, err := fetchTransactionIndexByIDFromDB(txID)
+	if err != nil {
+		return nil, newLedgerError(ErrorTypeResourceNotFound, fmt.Sprintf("Unable to fecth the transaction from the db. %s", err))
+	}
+	return mapping.IndexInBlock, nil
 }
 
 func (indexer *blockchainIndexerAsync) indexPendingBlocks() error {

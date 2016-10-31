@@ -28,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric/protos"
 	"github.com/op/go-logging"
 	"github.com/spf13/viper"
+	"github.com/hyperledger/fabric/core/container"
 )
 
 var sysccLogger = logging.MustGetLogger("sysccapi")
@@ -106,7 +107,7 @@ func deploySysCC(ctx context.Context, spec *protos.ChaincodeSpec) error {
 		return fmt.Errorf("Error deploying chaincode: %s ", err)
 	}
 
-	encapsTx, err := protos.EncapsulateTransactionToInBlock(transaction)
+	encapsTx, err := container.EncapsulateTransactionToInBlock(transaction)
 	if err != nil {
 		return err
 	}

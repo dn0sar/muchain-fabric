@@ -33,6 +33,7 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/container"
 )
 
 const (
@@ -208,7 +209,7 @@ func (handler *Handler) encryptOrDecrypt(encrypt bool, txid string, payload []by
 	var enc crypto.StateEncryptor
 	var err error
 	if txctx.transactionSecContext.Type == pb.ChaincodeAction_CHAINCODE_DEPLOY {
-		encapsTx, err := pb.EncapsulateTransactionToInBlock(handler.deployTXSecContext)
+		encapsTx, err := container.EncapsulateTransactionToInBlock(handler.deployTXSecContext)
 		if err != nil {
 			return nil, err
 		}
@@ -216,7 +217,7 @@ func (handler *Handler) encryptOrDecrypt(encrypt bool, txid string, payload []by
 			return nil, fmt.Errorf("error getting crypto encryptor for deploy tx :%s", err)
 		}
 	} else if txctx.transactionSecContext.Type == pb.ChaincodeAction_CHAINCODE_INVOKE || txctx.transactionSecContext.Type == pb.ChaincodeAction_CHAINCODE_QUERY {
-		encapsTx, err := pb.EncapsulateTransactionToInBlock(txctx.transactionSecContext)
+		encapsTx, err := container.EncapsulateTransactionToInBlock(txctx.transactionSecContext)
 		if err != nil {
 			return nil, err
 		}
@@ -1236,7 +1237,7 @@ func (handler *Handler) setChaincodeSecurityContext(tx *pb.Transaction, msg *pb.
 
 		msg.SecurityContext.CallerCert = tx.Cert
 		msg.SecurityContext.CallerSign = tx.Signature
-		encapsTx, err := pb.EncapsulateTransactionToInBlock(tx)
+		encapsTx, err := container.EncapsulateTransactionToInBlock(tx)
 		if err != nil {
 			return err
 		}

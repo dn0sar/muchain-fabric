@@ -75,13 +75,13 @@ func (indexer *blockchainIndexerSync) fetchTransactionIndexByID(txID string) (ui
 	for block, index := range mapping.IndexInBlock {
 		return block, index, nil
 	}
-	return 0, 0, ErrorTypeOutOfBounds
+	return 0, 0, newLedgerError(ErrorTypeOutOfBounds, fmt.Sprintf("No indexes stored for the queried txid [%x]", txID))
 }
 
 func (indexer *blockchainIndexerSync) fetchTransactionIndexMap(txID string) (map[uint64]uint64, error) {
 	mapping, err := fetchTransactionIndexByIDFromDB(txID)
 	if err != nil {
-		return nil, ErrorTypeResourceNotFound
+		return nil,  newLedgerError(ErrorTypeResourceNotFound, fmt.Sprintf("Unable to retrieve the index map from the db [%x]", err))
 	}
 	return mapping.IndexInBlock, nil
 }
@@ -122,7 +122,7 @@ func addIndexDataForPersistence(block *protos.Block, blockNumber uint64, blockHa
 			ledgerLogger.Errorf("Unable to get previous info for block allocation of TxID: %s. Err = %s", inBlockTx.Txid, err)
 			// Continue and ignore this error.
 		}
-		txBlockIndex.IndexInBlock[blockNumber] = txIndex
+		txBlockIndex.IndexInBlock[blockNumber] = uint64(txIndex)
 		bytes, err := proto.Marshal(txBlockIndex)
 		if err == nil {
 			writeBatch.PutCF(cf, encodeTxIDKey(inBlockTx.Txid), bytes)
@@ -172,7 +172,7 @@ func fetchBlockNumberByBlockHashFromDB(blockHash []byte) (uint64, error) {
 func fetchTransactionIndexByIDFromDB(txID string) (*protos.TxSetToBlock, error) {
 	blockNumTxIndexBytes, err := db.GetDBHandle().GetFromIndexesCF(encodeTxIDKey(txID))
 	if err != nil {
-		return 0, 0, err
+		return nil, err
 	}
 	if blockNumTxIndexBytes == nil {
 		return nil, ErrResourceNotFound

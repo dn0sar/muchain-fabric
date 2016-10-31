@@ -23,12 +23,14 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	ld "github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/protos"
+	"fmt"
 )
 
 var logger = shim.NewLogger("noop")
 
 type ledgerHandler interface {
 	GetTransactionByID(txID string) (*protos.InBlockTransaction, error)
+	GetCurrentDefault(inBlockTx *protos.InBlockTransaction, committed bool) (*protos.Transaction, error)
 }
 
 // SystemChaincode is type representing the chaincode
@@ -81,10 +83,14 @@ func (t *SystemChaincode) Query(stub shim.ChaincodeStubInterface, function strin
 		if nil != txerr || nil == inBlockTx {
 			return nil, txerr
 		}
-		switch tx := inBlockTx.Transaction.(type) {
+		switch inBlockTx.Transaction.(type) {
 		case *protos.InBlockTransaction_TransactionSet:
+			defTx, err := t.getLedger().GetCurrentDefault(inBlockTx, false)
+			if err != nil {
+				return nil, fmt.Errorf("Unable to get current default transaction. [%s]", err)
+			}
 			newCCIS := &protos.ChaincodeInvocationSpec{}
-			var merr = proto.Unmarshal(tx.TransactionSet.Transactions[tx.TransactionSet.DefaultInx].Payload, newCCIS)
+			var merr = proto.Unmarshal(defTx.Payload, newCCIS)
 			if nil != merr {
 				return nil, merr
 			}

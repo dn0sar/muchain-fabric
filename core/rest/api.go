@@ -102,12 +102,16 @@ func (s *ServerOpenchain) GetBlockByNumber(ctx context.Context, num *pb.BlockNum
 	// individual transaction.
 	blockTransactions := block.GetTransactions()
 	for _, inBlockTx := range blockTransactions {
-		switch tx := inBlockTx.Transaction.(type) {
+		switch inBlockTx.Transaction.(type) {
 		case *pb.InBlockTransaction_TransactionSet:
-			//TODO get the current default here instead
 			//REVIEW look whether I'm really compressing data here, and if they can access the information returned
 			// i.e. can they see the correct thing, or I'm just changing local information here?
-			transaction := tx.TransactionSet.Transactions[tx.TransactionSet.DefaultInx]
+			transaction, err := s.ledger.GetCurrentDefault(inBlockTx, false)
+			if err != nil {
+				restLogger.Errorf("Unable to get default transaction to put it into the block. Txid: [%s], Err: [%s]", inBlockTx.Txid, err)
+				// Do not modify this transaction
+				break
+			}
 			if transaction.Type == pb.ChaincodeAction_CHAINCODE_DEPLOY {
 				deploymentSpec := &pb.ChaincodeDeploymentSpec{}
 				err := proto.Unmarshal(transaction.Payload, deploymentSpec)
