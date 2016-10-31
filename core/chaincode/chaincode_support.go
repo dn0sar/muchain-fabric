@@ -417,7 +417,14 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, t *pb.
 	var cID *pb.ChaincodeID
 	var cMsg *pb.ChaincodeInput
 	var cLang pb.ChaincodeSpec_Type
+	var depTx *pb.Transaction
 	var initargs [][]byte
+	var err error
+
+	ledger, ledgerErr := ledger.GetLedger()
+	if ledgerErr != nil {
+		return cID, cMsg, fmt.Errorf("Failed to get handle to ledger (%s)", ledgerErr)
+	}
 
 	cds := &pb.ChaincodeDeploymentSpec{}
 	if t.Type == pb.ChaincodeAction_CHAINCODE_DEPLOY {
@@ -437,6 +444,33 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, t *pb.
 		}
 		cID = ci.ChaincodeSpec.ChaincodeID
 		cMsg = ci.ChaincodeSpec.CtorMsg
+		// Substituting the id of the set at which it refers to the current default tx id in that set.
+		if !chaincodeSupport.userRunsCC {
+			depTx, err = ledger.GetCurrentDefaultByID(cID.Name)
+			if err != nil {
+				return cID, cMsg, fmt.Errorf("Unable to retrieve the default deploy transaction for the given id transaction. TxID: [%s], Err: [%s]", cID.Name, err)
+			}
+			if nil != chaincodeSupport.secHelper {
+				var err error
+				depTransactionEncaps, err := container.EncapsulateTransactionToInBlock(depTx)
+				if err != nil {
+					return cID, cMsg, fmt.Errorf("Unable to incapsulate deploymentTransaction.Err: [%s]", err)
+				}
+				depTransactionEncaps, err = chaincodeSupport.secHelper.TransactionPreExecution(depTransactionEncaps)
+				// Note that t is now decrypted and is a deep clone of the original input t
+				if nil != err {
+					return cID, cMsg, fmt.Errorf("failed tx preexecution%s - %s", cID.Name, err)
+				}
+				depTx, err = ledger.GetCurrentDefault(depTransactionEncaps, true)
+				if err != nil {
+					return cID, cMsg, err
+				}
+			}
+			if depTx.Type != pb.ChaincodeAction_CHAINCODE_DEPLOY {
+				return cID, cMsg, fmt.Errorf("The current default transaction of the referred chaincode is not a deploy transaction. Curr type: [%v]", depTx.Type)
+			}
+			cID.Name = depTx.Txid
+		}
 	} else {
 		chaincodeSupport.runningChaincodes.Unlock()
 		return nil, nil, fmt.Errorf("invalid transaction type: %d", t.Type)
@@ -445,7 +479,6 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, t *pb.
 	chaincodeSupport.runningChaincodes.Lock()
 	var chrte *chaincodeRTEnv
 	var ok bool
-	var err error
 	//if its in the map, there must be a connected stream...nothing to do
 	if chrte, ok = chaincodeSupport.chaincodeHasBeenLaunched(chaincode); ok {
 		if !chrte.handler.registered {
@@ -463,7 +496,10 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, t *pb.
 	}
 	chaincodeSupport.runningChaincodes.Unlock()
 
-	var depTx *pb.Transaction
+	if ledger.IsResetting() && t.Type != pb.ChaincodeAction_CHAINCODE_DEPLOY {
+		chaincodeLogger.Warningf("Txid with id [%d] was trying to query or invoke a not launched chaincode while in resetting state.", t.Txid)
+		return cID, cMsg, fmt.Errorf("Wait for the chaincode to launch itself before quering or invoking in resetting state.")
+	}
 
 	//extract depTx so we can initialize hander.deployTXSecContext
 	//we need it only after container is launched and only if this is not a deploy tx
@@ -478,40 +514,10 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, t *pb.
 	// See issue #710
 
 	if t.Type != pb.ChaincodeAction_CHAINCODE_DEPLOY {
-		ledger, ledgerErr := ledger.GetLedger()
-
 		if chaincodeSupport.userRunsCC {
 			chaincodeLogger.Error("You are attempting to perform an action other than Deploy on Chaincode that is not ready and you are in developer mode. Did you forget to Deploy your chaincode?")
 		}
 
-		if ledgerErr != nil {
-			return cID, cMsg, fmt.Errorf("Failed to get handle to ledger (%s)", ledgerErr)
-		}
-
-		//hopefully we are restarting from existing image and the deployed transaction exists
-		transSet, ledgerErr := ledger.GetTransactionByID(chaincode)
-		if ledgerErr != nil {
-			return cID, cMsg, fmt.Errorf("Could not get deployment transaction for %s - %s", chaincode, ledgerErr)
-		}
-		if transSet == nil || transSet.GetTransactionSet() == nil || len(transSet.GetTransactionSet().Transactions) == 0{
-			return cID, cMsg, fmt.Errorf("deployment transaction does not exist for %s", chaincode)
-		}
-		if nil != chaincodeSupport.secHelper {
-			var err error
-			transSet, err = chaincodeSupport.secHelper.TransactionPreExecution(transSet)
-			// Note that t is now decrypted and is a deep clone of the original input t
-			if nil != err {
-				return cID, cMsg, fmt.Errorf("failed tx preexecution%s - %s", chaincode, err)
-			}
-		}
-
-		depTx, err := ledger.GetCurrentDefault(transSet, false)
-		if err != nil {
-			return cID, cMsg, fmt.Errorf("Failed to retrieve the deploy transaction for the transaction with id: %s. Err: (%s)", transSet.Txid, err)
-		}
-		if  depTx.Type != pb.ChaincodeAction_CHAINCODE_DEPLOY {
-			return cID, cMsg, fmt.Errorf("The referenced id does not correspond to a deploy transaction. (%s)", err)
-		}
 		//Get lang from original deployment
 		err = proto.Unmarshal(depTx.Payload, cds)
 		if err != nil {

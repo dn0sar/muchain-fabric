@@ -11,7 +11,7 @@ import (
 	"github.com/hyperledger/fabric/core/util"
 )
 
-var containerLogger = logging.MustGetLogger("core_util")
+var containerLogger = logging.MustGetLogger("container_transaction")
 
 func NewDeployTransaction(spec *pb.ChaincodeSpec) (*pb.Transaction, error) {
 	// get the deployment spec

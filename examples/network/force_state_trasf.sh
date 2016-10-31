@@ -78,8 +78,9 @@ wait_for_val $depid a 80
 mutate $txsetid $blocknr 2
 wait_for_val $depid a 60
 invoke $depid b a 1
+wait_for_val $depid a 61
 mutate $txsetid $blocknr 0
-wait_for_val $depid a 20
+wait_for_val $depid a 81
 setres=$(newset $2)
 depsetid=$(firstArg $setres)
 depblocknr=$(secondArg $setres)

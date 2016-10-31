@@ -117,42 +117,10 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, inBlockTx *pb.InBloc
 			}
 			markTxFinish(ledger, defTx, true)
 		} else if defTx.Type == pb.ChaincodeAction_CHAINCODE_INVOKE || defTx.Type == pb.ChaincodeAction_CHAINCODE_QUERY {
-			// Substituting the id of the set at which it refers to the current default tx id in that set.
-			prevPayload := defTx.Payload
-			ci := &pb.ChaincodeInvocationSpec{}
-			err := proto.Unmarshal(defTx.Payload, ci)
-			if err != nil {
-				return nil, nil, fmt.Errorf("Unable to unmarshal transaction payload (%s)", err)
-			}
-			depSetID := ci.ChaincodeSpec.ChaincodeID.Name
-			refSetStVal, err := ledger.GetTxSetState(depSetID, false)
-			if err != nil {
-				return nil, nil, fmt.Errorf("Unable to retrieve referenced txSet (%s)", err)
-			}
-			if refSetStVal != nil {
-				// The refSetStVal is defined hence the referenced deploy transaction was issued in a transactions set
-				// TODO: modify it to work with set extensions
-				depSet, err := ledger.GetTransactionByID(depSetID)
-				if err != nil || depSet.GetTransactionSet() == nil {
-					return nil, nil, fmt.Errorf("The referenced txSet (%s) is not a txSet. Originating txID: %s", depSetID, inBlockTx.Txid)
-				}
-				currDepTx, err := ledger.GetCurrentDefault(depSet, false)
-				ci.ChaincodeSpec.ChaincodeID.Name = currDepTx.Txid
-
-				marshalledCI, err := proto.Marshal(ci)
-				if err != nil {
-					return nil, nil, fmt.Errorf("Unable to re-marshal fixed chaincode specification: %s", err)
-				}
-				defTx.Payload = marshalledCI
-				defer func() {
-					defTx.Payload = prevPayload
-				}()
-			}
-
-
 			//will launch if necessary (and wait for ready)
 			cID, cMsg, err := chain.Launch(ctxt, defTx)
 			if err != nil {
+				chaincodeLogger.Errorf("Failed to launch chaincode spec(%s)", err)
 				return nil, nil, fmt.Errorf("Failed to launch chaincode spec(%s)", err)
 			}
 

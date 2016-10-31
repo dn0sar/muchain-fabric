@@ -440,7 +440,6 @@ func (ledger *Ledger) SetStateMultipleKeys(chaincodeID string, kvs map[string][]
 // GetStateSnapshot returns a point-in-time view of the global state for the current block. This
 // should be used when transferring the state from one peer to another peer. You must call
 // stateSnapshot.Release() once you are done with the snapshot to free up resources.
-// REVIEW: Check if this contains also all the values of the TxSet State: Does not!!
 func (ledger *Ledger) GetStateSnapshot() (*stcomm.StateSnapshot, *stcomm.StateSnapshot, error) {
 	dbSnapshot := db.GetDBHandle().GetSnapshot()
 	dbSnapshotForTxSet := db.GetDBHandle().GetSnapshot()
@@ -585,6 +584,14 @@ func (ledger *Ledger) IsResetting() bool {
 	return ledger.blockchain.isResetting
 }
 
+func (ledger *Ledger) GetCurrentDefaultByID(txSetID string) (*protos.Transaction, error) {
+	someInBlockWithMatchingID, err := ledger.blockchain.getTransactionByID(txSetID)
+	if err != nil {
+		return nil, fmt.Errorf("unable to retrieve queried txsetid default transaction. ID: [%s], Err: [%s]", txSetID, err)
+	}
+	return ledger.GetCurrentDefault(someInBlockWithMatchingID, false)
+}
+
 // GetCurrentDefault returns the current default transaction of the queried txSetID
 func (ledger *Ledger) GetCurrentDefault(inBlockTx *protos.InBlockTransaction, committed bool) (*protos.Transaction, error) {
 	txSetStValue, err := ledger.GetTxSetState(inBlockTx.Txid, committed)
@@ -596,7 +603,7 @@ func (ledger *Ledger) GetCurrentDefault(inBlockTx *protos.InBlockTransaction, co
 		defTxBytes = inBlockTx.GetTransactionSet().Transactions[inBlockTx.GetTransactionSet().DefaultInx]
 	}
 	if txSetStValue == nil {
-		if inBlockTx.GetTransactionSet() == nil {
+		if inBlockTx.GetTransactionSet() == nil || len(inBlockTx.GetTransactionSet().Transactions) == 0 {
 			return nil, errors.New("The given transaction is not a transactions set.")
 		}
 		// Try to see if this was an encapsulated transaction
