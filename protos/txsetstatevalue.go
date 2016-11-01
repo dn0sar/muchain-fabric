@@ -30,6 +30,9 @@ func (txSetStateValue *TxSetStateValue) IsValidBlockExtension(other *TxSetStateV
 				"IndexAtBlock[%d]. Previous: Block[%d], StartInx[%d], next: Block[%d], StartInx[%d].", i, indexInfo.BlockNr, indexInfo.InBlockIndex, other.IndexAtBlock[i].BlockNr, other.IndexAtBlock[i].InBlockIndex)
 		}
 	}
+	if txSetStateValue.IntroBlock != 0 && other.Index != txSetStateValue.Index {
+		return errors.New("It is not possible to modify the index in a set extension.")
+	}
 	return nil
 }
 
