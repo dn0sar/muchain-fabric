@@ -497,7 +497,7 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, t *pb.
 	chaincodeSupport.runningChaincodes.Unlock()
 
 	if ledger.IsResetting() && t.Type != pb.ChaincodeAction_CHAINCODE_DEPLOY {
-		chaincodeLogger.Warningf("Txid with id [%d] was trying to query or invoke a not launched chaincode while in resetting state.", t.Txid)
+		chaincodeLogger.Warningf("Txid with id [%s] was trying to query or invoke a not launched chaincode while in resetting state.", t.Txid)
 		return cID, cMsg, fmt.Errorf("Wait for the chaincode to launch itself before quering or invoking in resetting state.")
 	}
 
