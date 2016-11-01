@@ -57,6 +57,8 @@ message TransactionSet {
     repeated bytes transactions = 1;
     // defaultInx: the index of the default transaction in this set
     uint64 defaultInx = 2;
+    // if extend is true the current transaction set is an extension of an existing one
+    bool extend = 3;
 }
 
 message TxSetStateQuery {

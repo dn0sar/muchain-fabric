@@ -50,7 +50,7 @@ service Devops {
 
     // IssueExtensionSet deploys an extension to an existing TxSet. Note that the active transaction of the
     // set is not changed by issuing a set extension.
-    rpc IssueExtensionSet(TxSetSpec) returns (Response) {}
+    rpc IssueSetExtension(TxSetSpec) returns (Response) {}
 
     // Modifies the active transaction of a transactions set.
     // Contains two responses. The inner one contains the response for the execution of the new default transaction.

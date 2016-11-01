@@ -420,8 +420,7 @@ func (d *Devops) Query(ctx context.Context, chaincodeInvocationSpec *pb.Chaincod
 	return d.invokeOrQuery(ctx, chaincodeInvocationSpec, chaincodeInvocationSpec.ChaincodeSpec.Attributes, false)
 }
 
-// IssueTxSet deploys a transactions set or an extension of it in case the set that it refers to was already defined
-func (d *Devops) IssueTxSet(ctx context.Context, txSetSpec *pb.TxSetSpec) (*pb.Response, error) {
+func (d *Devops) issueOrExtend(ctx context.Context, txSetSpec *pb.TxSetSpec) (*pb.Response, error) {
 	isQuery, err := d.checkQueryConsistency(txSetSpec)
 	if err != nil {
 		return nil, err
@@ -438,19 +437,27 @@ func (d *Devops) IssueTxSet(ctx context.Context, txSetSpec *pb.TxSetSpec) (*pb.R
 	}
 	transSet := &pb.TransactionSet{Transactions: txSetSpec.TxSpecs, DefaultInx: txSetSpec.DefaultInx}
 
-	transSetBytes, err := proto.Marshal(transSet)
-	if err != nil {
-		return nil, fmt.Errorf("Unable to marshal the created txSet. Err: %s", err)
+	var txID string
+	switch txSetSpec.Type {
+	case pb.TxSetSpec_CREATION:
+		transSetBytes, err := proto.Marshal(transSet)
+		if err != nil {
+			return nil, fmt.Errorf("Unable to marshal the created txSet. Err: %s", err)
+		}
+		marshaledTimestamp, err := proto.Marshal(util.CreateUtcTimestamp())
+		if err != nil {
+			return nil, fmt.Errorf("Unable to marshal current timestamp. Err: %s", err)
+		}
+		transSetBytes = append(transSetBytes, marshaledTimestamp...)
+
+		txID = hex.EncodeToString(util.ComputeCryptoHash(transSetBytes))
+	case pb.TxSetSpec_EXTENSION:
+		txID = txSetSpec.ExtSetID
 	}
-	marshaledTimestamp, err := proto.Marshal(util.CreateUtcTimestamp())
-	if err != nil {
-		return nil, fmt.Errorf("Unable to marshal current timestamp. Err: %s", err)
-	}
-	transSetBytes = append(transSetBytes, marshaledTimestamp...)
 
 	inBlockTx := &pb.InBlockTransaction{
 		Transaction: 		  &pb.InBlockTransaction_TransactionSet{TransactionSet: transSet},
-		Txid:        		  hex.EncodeToString(util.ComputeCryptoHash(transSetBytes)),
+		Txid:        		  txID,
 		Timestamp:   		  util.CreateUtcTimestamp(),
 		Nonce:		 		  txSetSpec.Metadata,
 		ConfidentialityLevel: pb.ConfidentialityLevel_CONFIDENTIAL,
@@ -467,6 +474,16 @@ func (d *Devops) IssueTxSet(ctx context.Context, txSetSpec *pb.TxSetSpec) (*pb.R
 		InnerResp: resp,
 	}
 	return outerResponse, err
+}
+
+// IssueTxSet deploys a transactions set
+func (d *Devops) IssueTxSet(ctx context.Context, txSetSpec *pb.TxSetSpec) (*pb.Response, error) {
+	return d.issueOrExtend(ctx, txSetSpec)
+}
+
+// IssueSetExtension deploys a transactions set extension
+func (d *Devops) IssueSetExtension(ctx context.Context, txSetSpec *pb.TxSetSpec) (*pb.Response, error) {
+	return d.issueOrExtend(ctx, txSetSpec)
 }
 
 // Mutate - Modifies the active transaction of a transactions set
