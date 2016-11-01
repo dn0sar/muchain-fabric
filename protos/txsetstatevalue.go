@@ -18,11 +18,11 @@ func (txSetStateValue *TxSetStateValue) IsValidBlockExtension(other *TxSetStateV
 		return fmt.Errorf("The next state for this transactions set contains less transactions. "+
 			"Number of transactions info at current state: %d; other state: %d", txSetStateValue.TxNumber, other.TxNumber)
 	}
-	if len(txSetStateValue.IndexAtBlock) + 1 != len(other.IndexAtBlock) {
-		return errors.New("The set extension does not provide a valid next index start.")
+	if nextTxInx := other.IndexAtBlock[len(other.IndexAtBlock) - 1].InBlockIndex; nextTxInx != other.TxNumber-1  {
+		return fmt.Errorf("The index of the new set is not correct. Expected: [%d], Actual: [%d]", other.TxNumber-1, nextTxInx)
 	}
-	if nextTxInx := other.IndexAtBlock[len(other.IndexAtBlock) - 1].InBlockIndex; nextTxInx != txSetStateValue.TxNumber {
-		return fmt.Errorf("The index of the new set is not correct. Expected: [%d], Actual: [%d]", txSetStateValue.TxNumber, nextTxInx)
+	if nextBlock := other.IndexAtBlock[len(other.IndexAtBlock) - 1].BlockNr; nextBlock != other.LastModifiedAtBlock {
+		return fmt.Errorf("The block of the new set is not correct. Expected: [%d], Actual: [%d]", other.LastModifiedAtBlock, nextBlock)
 	}
 	for i, indexInfo := range txSetStateValue.IndexAtBlock {
 		if indexInfo.BlockNr != other.IndexAtBlock[i].BlockNr || indexInfo.InBlockIndex != other.IndexAtBlock[i].InBlockIndex {
@@ -55,12 +55,12 @@ func (txSetStateValue *TxSetStateValue) IsValidMutation(other *TxSetStateValue) 
 	return nil
 }
 
-func (txSetStateValue *TxSetStateValue) BlockForIndex(inx uint64) (*TxSetIndex, error) {
-	i := sort.Search(len(txSetStateValue.IndexAtBlock), func(i int) bool { return inx >= txSetStateValue.IndexAtBlock[i].InBlockIndex})
-	if i < len(txSetStateValue.IndexAtBlock) && inx >= txSetStateValue.IndexAtBlock[i].InBlockIndex {
-		return txSetStateValue.IndexAtBlock[i], nil
+func (txSetStateValue *TxSetStateValue) PositionForIndex(inx uint64) (int, error) {
+	i := sort.Search(len(txSetStateValue.IndexAtBlock), func(i int) bool { return inx <= txSetStateValue.IndexAtBlock[i].InBlockIndex})
+	if i < len(txSetStateValue.IndexAtBlock) {
+		return i, nil
 	} else {
-		return nil, fmt.Errorf("Block for index[%d] not found.")
+		return i, fmt.Errorf("Block for index [%d] not found.", inx)
 	}
 }
 
@@ -81,7 +81,7 @@ func (txSetStVal *TxSetStateValue) ToString() string {
 	buffer.WriteString(fmt.Sprintln("Active transaction index:", txSetStVal.Index))
 	buffer.WriteString(fmt.Sprintln("Number of transactions in the set:", txSetStVal.TxNumber))
 	buffer.WriteString(fmt.Sprintln("Number of transactions belonging to this set at a given block:"))
-	buffer.WriteString(fmt.Sprintln("Block\t\t\tStart Index"))
+	buffer.WriteString(fmt.Sprintln("Block\t\t\tLast Index"))
 	for _, inx := range txSetStVal.IndexAtBlock {
 		buffer.WriteString(fmt.Sprint(inx.BlockNr, "\t\t\t", inx.InBlockIndex, "\n"))
 	}

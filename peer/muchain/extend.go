@@ -9,6 +9,7 @@ import (
 	"github.com/hyperledger/fabric/peer/common"
 	"golang.org/x/net/context"
 	"github.com/hyperledger/fabric/core/crypto/txset"
+	"io/ioutil"
 )
 
 func extendSetCmd() *cobra.Command {
@@ -20,10 +21,6 @@ func extendSetCmd() *cobra.Command {
 		"The file containing the transactions to be added to the set.")
 	muchainExtendTxSetCmd.Flags().Uint64VarP(&currentSetSize, "actual-dim", "d", 0,
 		"The current dimension of the set to extend.")
-	muchainExtendTxSetCmd.Flags().BoolVarP(&muchainQueryRaw, "raw", "r", false,
-		"If true, output the query value as raw bytes, otherwise format as a printable string")
-	muchainExtendTxSetCmd.Flags().BoolVarP(&muchainQueryHex, "hex", "x", false,
-		"If true, output the query value byte array in hexadecimal. Incompatible with --raw")
 
 	return muchainExtendTxSetCmd
 }
@@ -47,11 +44,6 @@ var (
 )
 
 func muchainExtendTxSet(cmd *cobra.Command, args []string) error {
-
-	if !cmd.Flag("name").Changed {
-		return fmt.Errorf("A valid transactions set id must be provided.")
-	}
-
 	if !cmd.Flag("key").Changed {
 		return fmt.Errorf("A valid path to the key used to encrypt the original set must be provided.")
 	}
@@ -64,21 +56,31 @@ func muchainExtendTxSet(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("The current set size must be provided.")
 	}
 
-	txSetInputSpec, err := parseFile(jsonSetPath)
+	txSetInputSpec, err := parseFile(setJSONPath)
+	if err != nil {
+		return err
+	}
+
+	seed, err := ioutil.ReadFile(keyFilePath)
 	if err != nil {
 		return err
 	}
 
 	// Check that the txSetID is provided if the type is extension
-	if txSetInputSpec.SetID == "" {
+	if !cmd.Flag("name").Changed && txSetInputSpec.SetID == "" {
 		return errors.New("Given an extension of a tx set as input, but no tx set id was provided.")
+	}
+
+	setToExtend := txSetId
+	if setToExtend == "" {
+		setToExtend = txSetInputSpec.SetID
 	}
 
 	txSpecs, _, err := createTxSpecArray(txSetInputSpec.TxSpecs, 0)
 	if err != nil {
 		return err
 	}
-	nonce, encryptedSpecs, err := txset.EncryptTxSetSpecificationStartingFrom(txSpecs, currentSetSize)
+	_, encryptedSpecs, err := txset.EncryptTxSetSpecificationStartingFrom(txSpecs, seed, currentSetSize)
 	if err != nil {
 		return err
 	}
@@ -86,9 +88,9 @@ func muchainExtendTxSet(cmd *cobra.Command, args []string) error {
 	txSetSpec := &pb.TxSetSpec{
 		Type: pb.TxSetSpec_EXTENSION,
 		TxSpecs: encryptedSpecs,
-		ExtSetID: txSetInputSpec.SetID,
+		ExtSetID: setToExtend,
 		ConfidentialityLevel: pb.ConfidentialityLevel_CONFIDENTIAL,
-		Metadata: nonce, //TODO: In the shared scenario put only a share of the key and send a different one to every peer
+		Metadata: seed, //TODO: In the shared scenario put only a share of the key and send a different one to every peer
 	}
 
 	devopsClient, err := common.GetDevopsClient(cmd)
@@ -98,11 +100,7 @@ func muchainExtendTxSet(cmd *cobra.Command, args []string) error {
 
 	resp, err := devopsClient.IssueSetExtension(context.Background(), txSetSpec)
 	if err != nil {
-		return fmt.Errorf("Error issuing tx set: %s\n", err)
-	}
-
-	if resp.Msg != nil {
-		logger.Info("Assigned txSetID:", string(resp.Msg))
+		return fmt.Errorf("Error extending tx set: %s\n", err)
 	}
 
 	if resp.Status != pb.Response_SUCCESS {

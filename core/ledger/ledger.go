@@ -621,12 +621,15 @@ func (ledger *Ledger) GetCurrentDefault(inBlockTx *protos.InBlockTransaction, co
 		}
 		return recoveredTx, nil
 	} else {
-		defInxInfo, err := txSetStValue.BlockForIndex(txSetStValue.Index)
+		pos, err := txSetStValue.PositionForIndex(txSetStValue.Index)
 		if err != nil {
-			return nil, fmt.Errorf("unable to find queried default transaction index info. [%s]", err)
+			return nil, fmt.Errorf("Unable to find queried default transaction index info. [%s]", err)
 		}
-		defBlock := defInxInfo.BlockNr
-		inxAtBlock := txSetStValue.Index - defInxInfo.InBlockIndex
+		defBlock := txSetStValue.IndexAtBlock[pos].BlockNr
+		inxAtBlock := txSetStValue.Index
+		if pos > 0 {
+			inxAtBlock -= txSetStValue.IndexAtBlock[pos-1].InBlockIndex + 1
+		}
 		if defBlock < ledger.GetBlockchainSize() {
 			// Take the set definition from a previous block
 			txIdxMap, err := ledger.blockchain.indexer.fetchTransactionIndexMap(inBlockTx.Txid)

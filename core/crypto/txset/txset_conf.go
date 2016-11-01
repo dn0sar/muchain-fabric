@@ -18,16 +18,22 @@ var logger = logging.MustGetLogger("txsetcrypto")
 
 // EncryptTxSetSpecification encrypts the txSetSpecification and returns the nonce necessary to generate the decryption keys.
 func EncryptTxSetSpecification(specs [][]byte) ([]byte, [][]byte, error) {
-	return EncryptTxSetSpecificationStartingFrom(specs, 0)
+	return EncryptTxSetSpecificationStartingFrom(specs, nil, 0)
 }
 
 // EncryptTxSetSpecificationStartingFrom encrypts the txSetSpecification assuming prev transactions are already part of the set.
 // Returns the nonce necessary to generate the decryption keys.
-func EncryptTxSetSpecificationStartingFrom(specs [][]byte, startInx uint64) ([]byte, [][]byte, error) {
-	// Generate random initial value
-	randNonces, err := primitives.GetRandomBytes(NUM_SEEDS * SEED_BYTES)
-	if err != nil {
-		return nil, nil, fmt.Errorf("Unable to generate initial randomness for the transaction encryption. (%s)", err)
+func EncryptTxSetSpecificationStartingFrom(specs [][]byte, nonce []byte, startInx uint64) ([]byte, [][]byte, error) {
+
+	var err error
+	var randNonces []byte
+	randNonces = nonce
+	if randNonces == nil {
+		// Generate random initial value
+		randNonces, err = primitives.GetRandomBytes(NUM_SEEDS * SEED_BYTES)
+		if err != nil {
+			return nil, nil, fmt.Errorf("Unable to generate initial randomness for the transaction encryption. (%s)", err)
+		}
 	}
 	// Read and combine the randomness from the seeded PRG
 	txKeys := make([][]byte, len(specs))
@@ -38,7 +44,7 @@ func EncryptTxSetSpecificationStartingFrom(specs [][]byte, startInx uint64) ([]b
 	for i := 0; i < NUM_SEEDS; i++ {
 		rand.Seed(int64(binary.BigEndian.Uint64(randNonces[i * SEED_BYTES : (i + 1) * SEED_BYTES])))
 		for j := uint64(0); j < uint64(len(specs)) + startInx; j++ {
-			_, err := rand.Read(tempKey)
+			_, err = rand.Read(tempKey)
 			if err != nil {
 				return nil, nil, fmt.Errorf("Unable to generate random key for the transaction encryption. (%s)", err)
 			}

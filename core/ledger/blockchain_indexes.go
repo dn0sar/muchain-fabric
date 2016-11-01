@@ -139,10 +139,13 @@ func addIndexDataForPersistence(block *protos.Block, blockNumber uint64, blockHa
 		switch inBlockTx.Transaction.(type) {
 		case *protos.InBlockTransaction_TransactionSet:
 			defaultTx, errInt := ledger.GetCurrentDefault(inBlockTx, false)
-			err = errInt
-			if err != nil {
-				ledgerLogger.Errorf("Unable to retrieve default transaction. Error: [%s]", err)
+			if errInt != nil {
+				ledgerLogger.Errorf("Unable to retrieve default transaction. Error: [%s]", errInt)
 				break
+			}
+			if err == nil {
+				// keep only the first error
+				err = errInt
 			}
 			switch defaultTx.Type {
 			case protos.ChaincodeAction_CHAINCODE_DEPLOY, protos.ChaincodeAction_CHAINCODE_INVOKE:

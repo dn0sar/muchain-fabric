@@ -359,7 +359,7 @@ func (d *Devops) checkQueryConsistency(txSetSpec *pb.TxSetSpec) (bool, error) {
 	trans := &pb.TxSpec{}
 	err := proto.Unmarshal(txSetSpec.TxSpecs[0], trans)
 	if err != nil {
-		return false, err
+		return false, nil
 	}
 	isQuery := trans.Action == pb.ChaincodeAction_CHAINCODE_QUERY
 	return isQuery, nil
