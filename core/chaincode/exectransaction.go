@@ -62,10 +62,10 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, inBlockTx *pb.InBloc
 		if err != nil {
 			return nil, nil, fmt.Errorf("Failed to retrieve the txSet state, txID: %s, err: %s.", inBlockTx.Txid, err)
 		}
-		if !ledger.IsResetting() && (txSetStValue != nil || len(inBlockTx.GetTransactionSet().Transactions) > 1) {
+		var txSetExistedAlready = txSetStValue != nil
+		if !ledger.IsResetting() && (txSetExistedAlready || len(inBlockTx.GetTransactionSet().Transactions) > 1) {
 			// Update the tx set state. This is done only for transactions set with more than one transaction,
 			// or if the current tx is an extension of an already existing set).
-			var txSetExistedAlready = txSetStValue != nil
 			if !txSetExistedAlready && inBlockTx.GetTransactionSet().Extend {
 				return nil, nil, fmt.Errorf("Cannot extend a non existent transactions set.")
 			}
@@ -87,15 +87,16 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, inBlockTx *pb.InBloc
 			}
 			ledger.SetTxFinished(inBlockTx.Txid, true)
 
-			if txSetExistedAlready {
-				// The default transaction cannot be changed with a set extension, hence there is no need to re-execute the default transaction here
-				return nil, nil, err
-			}
 			if txSetStValue.IntroBlock != nextBlockNr {
 				// The transaction should be executed only in the block where it was introduced and not for extensions.
 				// do not execute it
 				return nil, nil, err
 			}
+		}
+
+		if inBlockTx.GetTransactionSet().Extend {
+			// Extensions should not be executed
+			return nil, nil, nil
 		}
 
 		defTx, err := ledger.GetCurrentDefault(inBlockTx, false)
@@ -294,7 +295,7 @@ func ApplyMutations(ctxt context.Context, cname ChainName) error {
 				_, _, txerr := Execute(ctxt, chain, t)
 				if txerr != nil {
 					// TODO process this better and don't ignore the errors!!
-					chaincodeLogger.Errorf("Error while re-executing transaction with id %s at block %d", t.Txid, i)
+					chaincodeLogger.Errorf("Error while re-executing transaction with id %s at block %d. Error: [%s]", t.Txid, i, txerr)
 				}
 			}
 		}
