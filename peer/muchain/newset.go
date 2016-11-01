@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"errors"
-	"encoding/json"
 
 	"github.com/spf13/cobra"
 	pb "github.com/hyperledger/fabric/protos"
@@ -63,13 +62,8 @@ func muchainIssueTxSet(cmd *cobra.Command, args []string) error {
 	}
 
 	// Check that default index is in range
-	if txSetInputSpec.Type == pb.TxSetSpec_CREATION && txSetInputSpec.DefaultIndex < 0 || txSetInputSpec.DefaultIndex >= uint64(len(txSetInputSpec.TxSpecs)) {
+	if txSetInputSpec.DefaultIndex < 0 || txSetInputSpec.DefaultIndex >= uint64(len(txSetInputSpec.TxSpecs)) {
 		return fmt.Errorf("Default index out of range. Index: %d; Set size: %d", txSetInputSpec.DefaultIndex, len(txSetInputSpec.TxSpecs))
-	}
-
-	// Check that the txSetID is provided if the type is extension
-	if txSetInputSpec.Type == pb.TxSetSpec_EXTENSION && txSetInputSpec.SetID == "" {
-		return errors.New("Given an extension of a tx set as input, but no tx set id was provided.")
 	}
 
 	txSpecs, defSpec, err := createTxSpecArray(txSetInputSpec.TxSpecs, txSetInputSpec.DefaultIndex)
@@ -87,7 +81,7 @@ func muchainIssueTxSet(cmd *cobra.Command, args []string) error {
 	}
 
 	txSetSpec := &pb.TxSetSpec{
-		Type: txSetInputSpec.Type,
+		Type: pb.TxSetSpec_CREATION,
 		TxSpecs: encryptedSpecs,
 		DefaultInx: txSetInputSpec.DefaultIndex,
 		ConfidentialityLevel: pb.ConfidentialityLevel_CONFIDENTIAL,
@@ -159,51 +153,4 @@ func muchainIssueTxSet(cmd *cobra.Command, args []string) error {
 	}
 
 	return err
-}
-
-func parseFile(path string) (*pb.TxSetInput, error) {
-	fileBytes, err := ioutil.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("Unable to read %s. Error: %s", path, err.Error())
-	}
-
-	var txSetInput = &pb.TxSetInput{}
-	err = json.Unmarshal(fileBytes, &txSetInput)
-	if err != nil {
-		return nil, fmt.Errorf("Muchain argument error: %s", err)
-	}
-
-	return txSetInput, nil
-}
-
-func createTxSpecArray(simpSpecArr []*pb.TxSetInput_SimplifiedSpec, defIndex uint64) ([][]byte, *pb.TxSpec, error) {
-	var defSpec *pb.TxSpec
-	var txSetSpecArr = make([][]byte, len(simpSpecArr))
-	for i, simpSpec := range simpSpecArr {
-		var txSpec = &pb.TxSpec{}
-		txSpec.Action = simpSpec.Action
-		spec := &pb.ChaincodeSpec{
-			Type:        simpSpec.Lang,
-			ChaincodeID: simpSpec.ChaincodeID,
-			CtorMsg:     simpSpec.InputArgs,
-		}
-		if simpSpec.Action == pb.ChaincodeAction_CHAINCODE_DEPLOY {
-			txSpec.Spec = &pb.TxSpec_CodeSpec{CodeSpec: spec}
-		} else {
-			invocationSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: spec}
-			if simpSpec.CustomIDGen != "" {
-				invocationSpec.IdGenerationAlg = simpSpec.CustomIDGen
-			}
-			txSpec.Spec = &pb.TxSpec_InvocationSpec{InvocationSpec: invocationSpec}
-		}
-		if uint64(i) == defIndex {
-			defSpec = txSpec
-		}
-		marshaledSpec, err := proto.Marshal(txSpec)
-		if err != nil {
-			return txSetSpecArr, defSpec, fmt.Errorf("Unable to marshal generated txSetSpecification: %s", err)
-		}
-		txSetSpecArr[i] = marshaledSpec
-	}
-	return txSetSpecArr, defSpec, nil
 }

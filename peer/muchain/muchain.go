@@ -18,6 +18,7 @@ func Cmd() *cobra.Command {
 	muchainCmd.AddCommand(newSetCmd())
 	muchainCmd.AddCommand(mutateCmd())
 	muchainCmd.AddCommand(queryState())
+	muchainCmd.AddCommand(extendSetCmd())
 
 	return muchainCmd
 }
