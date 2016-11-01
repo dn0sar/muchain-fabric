@@ -133,8 +133,7 @@ message TxSetSpec {
 // Carries the specification for a Mutant transaction.
 message MutantSpec {
     string txSetID = 1;
-    uint64 blockNum = 2;
-    uint64 index = 3;
+    uint64 index = 2;
 }
 
 // Specify the deployment of a chaincode.

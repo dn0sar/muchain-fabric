@@ -12,17 +12,14 @@ import (
 func mutateCmd() *cobra.Command {
 	muchainIssueMutantTxCmd.Flags().StringVarP(&txSetID, "name", "n", "",
 		"The ID of the transactions set that should be mutated.")
-	muchainIssueMutantTxCmd.Flags().Uint64VarP(&blockNum, "blocknum", "b", 0,
-		"The block (as a positive number) where the new transaction of the set is stored.")
 	muchainIssueMutantTxCmd.Flags().Uint64VarP(&index, "index", "i", 0,
-		"The index (as a positive number) of the new active transaction (from the transactions belonging to the transactions set declared in the block given with --blocknum).")
+		"The index (as a positive number) of the new active transaction.")
 
 	return muchainIssueMutantTxCmd
 }
 
 var (
 	txSetID string
-	blockNum uint64
 	index uint64
 )
 
@@ -40,16 +37,12 @@ func muchainIssueMutantTx(cmd *cobra.Command, args []string) error {
 	if !cmd.Flag("name").Changed {
 		return fmt.Errorf("A valid transactions set id must be provided")
 	}
-	if !cmd.Flag("blocknum").Changed {
-		return  fmt.Errorf("A valid block number must be provided")
-	}
 	if !cmd.Flag("index").Changed {
 		return  fmt.Errorf("A valid index must be provided")
 	}
 
 	mutantSpec := &pb.MutantSpec{
 		TxSetID: txSetID,
-		BlockNum: blockNum,
 		Index: index,
 	}
 

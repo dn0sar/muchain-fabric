@@ -473,20 +473,23 @@ func (d *Devops) IssueTxSet(ctx context.Context, txSetSpec *pb.TxSetSpec) (*pb.R
 func (d *Devops) Mutate(ctx context.Context, mutantSpec *pb.MutantSpec) (*pb.Response, error) {
 	mutantTx := &pb.MutantTransaction{
 		TxSetID:    mutantSpec.TxSetID,
-		TxSetIndex: &pb.TxSetIndex{
-			BlockNr: mutantSpec.BlockNum,
-			InBlockIndex: mutantSpec.Index,
-		},
+		TxSetIndex: mutantSpec.Index,
 	}
 
 	mutBytes, err := proto.Marshal(mutantTx)
 	if err != nil {
 		return nil, fmt.Errorf("Unable to marshal the mutant transaction (%s)", err)
 	}
+	marshaledTimestamp, err := proto.Marshal(util.CreateUtcTimestamp())
+	if err != nil {
+		return nil, fmt.Errorf("Unable to marshal current timestamp. Err: %s", err)
+	}
+	mutBytes = append(mutBytes, marshaledTimestamp...)
+
 
 	inBlockTx := &pb.InBlockTransaction{
 		Transaction: &pb.InBlockTransaction_MutantTransaction{MutantTransaction: mutantTx},
-		Txid:        hex.EncodeToString(util.ComputeCryptoHash(mutBytes)), //TODO: Consider setting this differently, since for the same transaction set and same index it will be the same
+		Txid:        hex.EncodeToString(util.ComputeCryptoHash(mutBytes)),
 		Timestamp:   util.CreateUtcTimestamp(),
 	}
 	resp := d.coord.ExecuteTransaction(inBlockTx)

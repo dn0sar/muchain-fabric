@@ -39,13 +39,13 @@ func (txStateDelta *TxSetStateDelta) Get(txSetID string) *TxSetUpdatedValue {
 
 // Set sets state value for a txSet
 func (txStateDelta *TxSetStateDelta) Set(txSetID string, value, prev *pb.TxSetStateValue) {
-	txStateDelta.Deltas[txSetID] = &TxSetUpdatedValue{value, prev}
+	txStateDelta.Deltas[txSetID] = &TxSetUpdatedValue{value, prev, prev != nil && value.Index != prev.Index}
 	return
 }
 
 // Delete deletes a txSet from the state
 func (txStateDelta *TxSetStateDelta) Delete(txSetID string, previousValue *pb.TxSetStateValue) {
-	txStateDelta.Deltas[txSetID] = &TxSetUpdatedValue{nil, previousValue}
+	txStateDelta.Deltas[txSetID] = &TxSetUpdatedValue{nil, previousValue, false}
 	return
 }
 
@@ -108,7 +108,7 @@ func (txStateDelta *TxSetStateDelta) GetUpdates(txSetID string) *TxSetUpdatedVal
 func (txStateDelta *TxSetStateDelta) getOrCreateTxSetUpValue(txSetID string) *TxSetUpdatedValue {
 	txSetValue, ok := txStateDelta.Deltas[txSetID]
 	if !ok {
-		txSetValue = &TxSetUpdatedValue{nil, nil}
+		txSetValue = &TxSetUpdatedValue{nil, nil, false}
 		txStateDelta.Deltas[txSetID] = txSetValue
 	}
 	return txSetValue
@@ -142,6 +142,7 @@ func (txStateDelta *TxSetStateDelta) ComputeCryptoHash() []byte {
 type TxSetUpdatedValue struct {
 	Value         *pb.TxSetStateValue
 	PreviousValue *pb.TxSetStateValue
+	IsMutant	  bool
 }
 
 // IsDeleted checks whether the key was deleted
@@ -157,6 +158,10 @@ func (updatedValue *TxSetUpdatedValue) GetValue() *pb.TxSetStateValue {
 // GetPreviousValue returns the previous value
 func (updatedValue *TxSetUpdatedValue) GetPreviousValue() *pb.TxSetStateValue {
 	return updatedValue.PreviousValue
+}
+
+func (updatedValue *TxSetUpdatedValue) IsMutantChange() bool {
+	return updatedValue.IsMutant
 }
 
 // marshalling / Unmarshalling code
@@ -183,6 +188,11 @@ func (txStateDelta *TxSetStateDelta) Marshal() (b []byte) {
 func (txSetDelta *TxSetUpdatedValue) marshal(buffer *proto.Buffer) {
 	txSetDelta.marshalValueWithMarker(buffer, txSetDelta.GetValue())
 	txSetDelta.marshalValueWithMarker(buffer, txSetDelta.GetPreviousValue())
+	if txSetDelta.IsMutantChange() {
+		buffer.EncodeVarint(uint64(0))
+	} else {
+		buffer.EncodeVarint(uint64(1))
+	}
 	return
 }
 
@@ -246,6 +256,15 @@ func (txSetStateValue *TxSetUpdatedValue) unmarshal(buffer *proto.Buffer) error 
 		return fmt.Errorf("Error unmarshaling tx set previous value (delta): %s", err)
 	}
 	txSetStateValue.PreviousValue = previousValue
+	res, err := buffer.DecodeVarint()
+	if err != nil {
+		return fmt.Errorf("Error unmarshaling tx set IsMutant value: %s", err)
+	}
+	if res == 0 {
+		txSetStateValue.IsMutant = false
+	} else {
+		txSetStateValue.IsMutant = true
+	}
 	return nil
 }
 

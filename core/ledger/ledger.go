@@ -376,19 +376,25 @@ func (ledger *Ledger) SetTxSetState(txSetID string, txSetStateValue *protos.TxSe
 	}
 	if previousValue == nil {
 		previousValue = &protos.TxSetStateValue{}
-		previousValue.TxsInBlock = make(map[uint64]uint64)
 	}
 	if txSetStateValue.Nonce != previousValue.Nonce+1 {
 		return newLedgerError(ErrorTypeInvalidArgument,
 			fmt.Sprintf("Wrong nonce update. Previous nonce: %d, new nonce: %d", previousValue.Nonce, txSetStateValue.Nonce))
 	}
-	err = previousValue.IsValidBlockExtension(txSetStateValue)
-	if err != nil {
-		return newLedgerError(ErrorTypeInvalidArgument, err.Error())
+	if previousValue.IntroBlock != 0 && previousValue.IntroBlock != txSetStateValue.IntroBlock {
+		return newLedgerError(ErrorTypeInvalidArgument,
+			fmt.Sprintf("A mutant transaction or an extension to a set cannot modify the intro block. Prev Intro Block: [%d], New Intro Block: [%d]", previousValue.IntroBlock, txSetStateValue.IntroBlock))
 	}
-	err = txSetStateValue.IsIndexInRange()
-	if err != nil {
-		return newLedgerError(ErrorTypeOutOfBounds, err.Error())
+	if previousValue.IntroBlock != 0 && previousValue.Index != txSetStateValue.Index {
+		err = previousValue.IsValidMutation(txSetStateValue)
+		if err != nil {
+			return newLedgerError(ErrorTypeInvalidArgument, err.Error())
+		}
+	} else {
+		err = previousValue.IsValidBlockExtension(txSetStateValue)
+		if err != nil {
+			return newLedgerError(ErrorTypeInvalidArgument, err.Error())
+		}
 	}
 	return ledger.txSetState.Set(txSetID, txSetStateValue)
 }
@@ -615,8 +621,12 @@ func (ledger *Ledger) GetCurrentDefault(inBlockTx *protos.InBlockTransaction, co
 		}
 		return recoveredTx, nil
 	} else {
-		defBlock := txSetStValue.Index.BlockNr
-		inxAtBlock := txSetStValue.Index.InBlockIndex
+		defInxInfo, err := txSetStValue.BlockForIndex(txSetStValue.Index)
+		if err != nil {
+			return nil, fmt.Errorf("unable to find queried default transaction index info. [%s]", err)
+		}
+		defBlock := defInxInfo.BlockNr
+		inxAtBlock := txSetStValue.Index - defInxInfo.InBlockIndex
 		if defBlock < ledger.GetBlockchainSize() {
 			// Take the set definition from a previous block
 			txIdxMap, err := ledger.blockchain.indexer.fetchTransactionIndexMap(inBlockTx.Txid)
@@ -641,7 +651,7 @@ func (ledger *Ledger) GetCurrentDefault(inBlockTx *protos.InBlockTransaction, co
 	if inBlockTx.ConfidentialityLevel == protos.ConfidentialityLevel_CONFIDENTIAL {
 		copiedDefTx := make([]byte, len(defTxBytes))
 		copy(copiedDefTx, defTxBytes)
-		defTxBytes, err = txset.DecryptTxSetSpecification(inBlockTx.Nonce, copiedDefTx, txSetStValue.Index.InBlockIndex)
+		defTxBytes, err = txset.DecryptTxSetSpecification(inBlockTx.Nonce, copiedDefTx, txSetStValue.Index)
 		if err != nil {
 			return nil, fmt.Errorf("Unable to decrypt transaction specification. Error: [%s]", err)
 		}

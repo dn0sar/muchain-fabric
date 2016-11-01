@@ -122,7 +122,7 @@ func (state *TxSetState) Get(txID string, committed bool) (*pb.TxSetStateValue, 
 
 // Set sets state to given index for the txSetID. Does not immediately writes to DB
 func (state *TxSetState) Set(txSetID string, stateValue *pb.TxSetStateValue) error {
-	txSetStateLogger.Debugf("set() txSetID=[%s], block=[%d], index=[%d]", txSetID, stateValue.Index.BlockNr, stateValue.Index.InBlockIndex)
+	txSetStateLogger.Debugf("set() txSetID=[%s], index=[%d]", txSetID, stateValue.Index)
 	// TODO: Do I need to start a transaction if this is primarily called for mutant transactions?
 	if !state.txInProgress() {
 		panic("State can be changed only in context of a tx.")
@@ -181,12 +181,16 @@ func (state *TxSetState) GetOlderBlockMod() (uint64, bool) {
 	var older uint64
 	var isSet = false
 	for _, stID := range state.txSetStateDelta.GetUpdatedTxSetIDs(false) {
+		updates := state.txSetStateDelta.GetUpdates(stID)
+		if !updates.IsMutant {
+			continue
+		}
 		if !isSet {
 			isSet = true
-			older = state.txSetStateDelta.GetUpdates(stID).Value.IntroBlock
+			older = updates.Value.IntroBlock
 		}
 		if state.txSetStateDelta.GetUpdates(stID).Value.IntroBlock < older {
-			older = state.txSetStateDelta.GetUpdates(stID).Value.IntroBlock
+			older = updates.Value.IntroBlock
 		}
 	}
 	return older, isSet

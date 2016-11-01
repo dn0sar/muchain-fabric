@@ -11,12 +11,15 @@ message TxSetStateValue {
     // The last block in which this state was modified
     uint64 lastModifiedAtBlock = 3;
     // Index of the current default transaction
-    TxSetIndex index = 4;
+    uint64 index = 4;
     // The number of transactions that belong to this Transactions Set
     uint64 txNumber = 5;
-    // txsInBlock[nlockNr] gives the number of transactions belonging to'
-    // this TxSet defined at block blockNr
-    map<uint64, uint64> txsInBlock = 6;
+    // txsInBlock[i] gives a index - block information for this transactions set
+    // For instance txsInBlock[i].inBlockIndex gives the starting index of the transactions
+    // in this set assigned to that block.
+    // e.g. if txsInBlock[i].inBlockIndex == 7 and txsInBlock[i].blockNr == 2 mean that the 8-th transaction
+    // of this transactions set is stored at block 2
+    repeated TxSetIndex indexAtBlock = 6;
 }
 
 // The TxSetIndex identifies a transaction among the ones

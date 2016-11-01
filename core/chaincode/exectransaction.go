@@ -71,13 +71,12 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, inBlockTx *pb.InBloc
 				txSetExistedAlready = false
 				txSetStValue = &pb.TxSetStateValue{}
 				txSetStValue.IntroBlock = nextBlockNr
-				txSetStValue.Index = &pb.TxSetIndex{BlockNr: nextBlockNr, InBlockIndex: tx.TransactionSet.DefaultInx}
-				txSetStValue.TxsInBlock = make(map[uint64]uint64)
+				txSetStValue.Index = tx.TransactionSet.DefaultInx
 			}
 			txSetStValue.Nonce++
+			txSetStValue.IndexAtBlock = append(txSetStValue.IndexAtBlock, &pb.TxSetIndex{InBlockIndex: txSetStValue.TxNumber, BlockNr: nextBlockNr})
 			txInSet := uint64(len(tx.TransactionSet.Transactions))
 			txSetStValue.TxNumber += txInSet
-			txSetStValue.TxsInBlock[nextBlockNr] = txInSet
 			txSetStValue.LastModifiedAtBlock = nextBlockNr
 			err = ledger.SetTxSetState(inBlockTx.Txid, txSetStValue)
 			if err != nil {

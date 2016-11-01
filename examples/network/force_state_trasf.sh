@@ -47,7 +47,7 @@ wait_for_val() {
 
 # e.g. mutate txsetid block index
 mutate() {
-  CORE_PEER_ADDRESS="172.17.0.$REPLICA_MASTER:7051" peer muchain mutate -n "$1" -b "$2" -i "$3" &> /dev/null
+  CORE_PEER_ADDRESS="172.17.0.$REPLICA_MASTER:7051" peer muchain mutate -n "$1" -i "$2" &> /dev/null
   sleep 2
 }
 
@@ -73,13 +73,13 @@ blocknr=$(secondArg $setres)
 echo "Issued tx set with id:" $txsetid
 echo "At block nr:" $blocknr
 wait_for_val $depid a 70
-mutate $txsetid $blocknr 0
+mutate $txsetid 0
 wait_for_val $depid a 80
-mutate $txsetid $blocknr 2
+mutate $txsetid 2
 wait_for_val $depid a 60
 invoke $depid b a 1
 wait_for_val $depid a 61
-mutate $txsetid $blocknr 0
+mutate $txsetid 0
 wait_for_val $depid a 81
 setres=$(newset $2)
 depsetid=$(firstArg $setres)
@@ -91,7 +91,7 @@ invoke $depsetid a b 1100
 wait_for_val $depsetid a -100
 invoke $depsetid a b 250
 wait_for_val $depsetid a -350
-mutate $depsetid $depblocknr 1
+mutate $depsetid 1
 wait_for_val $depsetid a 750
 invoke $depsetid a b 50
 wait_for_val $depsetid a 700
@@ -104,5 +104,3 @@ echo "Crashed, press any key to stop the execution"
 read -n 1 -s
 docker-compose unpause vp2
 docker-compose stop
-
-
