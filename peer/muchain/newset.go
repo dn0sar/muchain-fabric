@@ -17,6 +17,10 @@ import (
 )
 
 func newSetCmd() *cobra.Command {
+	muchainIssueTxSetCmd.Flags().StringVarP(&jsonSetPath, "set", "s", "",
+		"The path to the json file describing the transactions set.")
+	muchainIssueTxSetCmd.Flags().StringVarP(&keyOutFilePath, "out", "o", "",
+		"The path where the seed used to encrypt the transactions in the set will be saved.")
 	muchainIssueTxSetCmd.Flags().BoolVarP(&muchainQueryRaw, "raw", "r", false,
 		"If true, output the query value as raw bytes, otherwise format as a printable string")
 	muchainIssueTxSetCmd.Flags().BoolVarP(&muchainQueryHex, "hex", "x", false,
@@ -26,7 +30,7 @@ func newSetCmd() *cobra.Command {
 }
 
 var muchainIssueTxSetCmd = &cobra.Command{
-	Use:       "newset path/to/json/with/set/specification",
+	Use:       "newset",
 	Short:     fmt.Sprintf("Create a new %s transactions set.", muchainFuncName),
 	Long:      fmt.Sprintf(`Create a new %s transactions set.`, muchainFuncName),
 	ValidArgs: []string{"path"},
@@ -39,13 +43,21 @@ var muchainIssueTxSetCmd = &cobra.Command{
 var (
 	muchainQueryRaw bool
 	muchainQueryHex bool
+	jsonSetPath		string
+	keyOutFilePath	string
 )
 
 func muchainIssueTxSet(cmd *cobra.Command, args []string) error {
-	if len(args) != 1 {
-		return errors.New("Exactly one argument must be provided. The path to the JSON encoding the transaction set specification.")
+
+	if !cmd.Flag("set").Changed {
+		return fmt.Errorf("A valid transactions set json path must be provided")
 	}
-	txSetInputSpec, err := parseFile(args[0])
+
+	if !cmd.Flag("out").Changed {
+		return fmt.Errorf("A valid path to a output file must be provided")
+	}
+
+	txSetInputSpec, err := parseFile(jsonSetPath)
 	if err != nil {
 		return err
 	}
@@ -67,6 +79,11 @@ func muchainIssueTxSet(cmd *cobra.Command, args []string) error {
 	nonce, encryptedSpecs, err := txset.EncryptTxSetSpecification(txSpecs)
 	if err != nil {
 		return err
+	}
+
+	err = ioutil.WriteFile(keyOutFilePath, nonce, 0644)
+	if err != nil {
+		return fmt.Errorf("Unable to save the encryption seed. Err: [%s]", err)
 	}
 
 	txSetSpec := &pb.TxSetSpec{

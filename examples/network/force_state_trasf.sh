@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+KEY_COUNTER=1
+
 # e.g. deploy a 101 b 201
 # returns deployment id
 deploy() {
@@ -16,7 +18,8 @@ invoke() {
 
 # e.g. newset path
 newset() {
-  txsetid=$(CORE_PEER_ADDRESS="172.17.0.$REPLICA_MASTER:7051" peer muchain newset "$1" 2>&1 | grep -E -o 'txSetID: [^ ]*' | awk  -F " " '{ print $2 }')
+  txsetid=$(CORE_PEER_ADDRESS="172.17.0.$REPLICA_MASTER:7051" peer muchain newset -s "$1" -o "key$KEY_COUNTER" 2>&1 | grep -E -o 'txSetID: [^ ]*' | awk  -F " " '{ print $2 }')
+  ((KEY_COUNTER++))
   local blocknr=""
   while [[ -z $blocknr ]]
   do

@@ -65,12 +65,12 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, inBlockTx *pb.InBloc
 		if !ledger.IsResetting() && (txSetStValue != nil || len(inBlockTx.GetTransactionSet().Transactions) > 1) {
 			// Update the tx set state. This is done only for transactions set with more than one transaction,
 			// or if the current tx is an extension of an already existing set).
-			var txSetExistedAlready = txSetStValue == nil
+			var txSetExistedAlready = txSetStValue != nil
 			if !txSetExistedAlready && inBlockTx.GetTransactionSet().Extend {
 				return nil, nil, fmt.Errorf("Cannot extend a non existent transactions set.")
 			}
 			ledger.SetTxBegin(inBlockTx.Txid)
-			if txSetExistedAlready {
+			if !txSetExistedAlready {
 				txSetStValue = &pb.TxSetStateValue{}
 				txSetStValue.IntroBlock = nextBlockNr
 				txSetStValue.Index = tx.TransactionSet.DefaultInx

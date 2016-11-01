@@ -453,6 +453,7 @@ func (d *Devops) issueOrExtend(ctx context.Context, txSetSpec *pb.TxSetSpec) (*p
 		txID = hex.EncodeToString(util.ComputeCryptoHash(transSetBytes))
 	case pb.TxSetSpec_EXTENSION:
 		txID = txSetSpec.ExtSetID
+		transSet.Extend = true
 	}
 
 	inBlockTx := &pb.InBlockTransaction{
