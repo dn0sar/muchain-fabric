@@ -48,7 +48,9 @@ service Devops {
     // The inner response contains the result of the execution of the dafault transaction of the issued set.
     rpc IssueTxSet(TxSetSpec) returns (Response) {}
 
-    // TODO: Add method to allow the extension of a TxSet
+    // IssueExtensionSet deploys an extension to an existing TxSet. Note that the active transaction of the
+    // set is not changed by issuing a set extension.
+    rpc IssueExtensionSet(TxSetSpec) returns (Response) {}
 
     // Modifies the active transaction of a transactions set.
     // Contains two responses. The inner one contains the response for the execution of the new default transaction.
