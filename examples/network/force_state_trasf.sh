@@ -19,7 +19,6 @@ invoke() {
 # e.g. newset path
 newset() {
   txsetid=$(CORE_PEER_ADDRESS="172.17.0.$REPLICA_MASTER:7051" peer muchain newset -s "$1" -o "key$KEY_COUNTER" 2>&1 | grep -E -o 'txSetID: [^ ]*' | awk  -F " " '{ print $2 }')
-  ((KEY_COUNTER++))
   local blocknr=""
   while [[ -z $blocknr ]]
   do
@@ -71,6 +70,7 @@ wait_for_val $depid a 101
 invoke $depid a b 1
 wait_for_val $depid a 100
 setres=$(newset $1)
+((KEY_COUNTER++))
 txsetid=$(firstArg $setres)
 blocknr=$(secondArg $setres)
 echo "Issued tx set with id:" $txsetid
@@ -85,6 +85,7 @@ wait_for_val $depid a 61
 mutate $txsetid 0
 wait_for_val $depid a 81
 setres=$(newset $2)
+((KEY_COUNTER++))
 depsetid=$(firstArg $setres)
 depblocknr=$(secondArg $setres)
 echo "Issued tx set with id:" $depsetid
@@ -98,12 +99,12 @@ mutate $depsetid 1
 wait_for_val $depsetid a 750
 invoke $depsetid a b 50
 wait_for_val $depsetid a 700
-docker-compose pause vp2
-echo "Start vp3 and then press any key here to continue."
-read -n 1 -s
+# docker-compose pause vp2
+# echo "Start vp3 and then press any key here to continue."
+# read -n 1 -s
 REPLICA_MASTER=5
 invoke $depsetid a b 50
-echo "Crashed, press any key to stop the execution"
-read -n 1 -s
-docker-compose unpause vp2
-docker-compose stop
+# echo "Crashed, press any key to stop the execution"
+# read -n 1 -s
+# docker-compose unpause vp2
+# docker-compose stop
