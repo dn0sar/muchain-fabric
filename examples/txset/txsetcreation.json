@@ -1,7 +1,7 @@
 {
   "type": 0,
   "defaultIndex" : 0,
-  "txSpecs" : [
+  "txSpecs": [
     {
       "action": 1,
       "lang": 1,
