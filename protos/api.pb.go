@@ -7,20 +7,24 @@ Package protos is a generated protocol buffer package.
 
 It is generated from these files:
 	api.proto
+	blockchainmessages.proto
 	chaincodeevent.proto
-	chaincode.proto
 	devops.proto
 	events.proto
 	fabric.proto
 	server_admin.proto
+	state.proto
 
 It has these top-level messages:
 	BlockNumber
 	BlockCount
-	ChaincodeEvent
 	ChaincodeID
 	ChaincodeInput
+	TxSetInput
 	ChaincodeSpec
+	TxSpec
+	TxSetSpec
+	MutantSpec
 	ChaincodeDeploymentSpec
 	ChaincodeInvocationSpec
 	ChaincodeSecurityContext
@@ -31,6 +35,7 @@ It has these top-level messages:
 	RangeQueryStateClose
 	RangeQueryStateKeyValue
 	RangeQueryStateResponse
+	ChaincodeEvent
 	Secret
 	SigmaInput
 	ExecuteWithBinding
@@ -44,6 +49,10 @@ It has these top-level messages:
 	Unregister
 	Event
 	Transaction
+	MutantTransaction
+	TransactionSet
+	TxSetStateQuery
+	InBlockTransaction
 	TransactionBlock
 	TransactionResult
 	Block
@@ -65,6 +74,9 @@ It has these top-level messages:
 	SyncStateDeltasRequest
 	SyncStateDeltas
 	ServerStatus
+	TxSetStateValue
+	TxSetIndex
+	TxSetToBlock
 */
 package protos
 

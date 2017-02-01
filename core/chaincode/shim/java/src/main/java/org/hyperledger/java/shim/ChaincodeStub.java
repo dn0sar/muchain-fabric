@@ -21,7 +21,6 @@ import org.hyperledger.protos.BlockchainMessages;
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.hyperledger.protos.Chaincode;
 import org.hyperledger.protos.TableProto;
 
 import java.util.ArrayList;
@@ -282,7 +281,7 @@ public class ChaincodeStub {
         }
     }
     private List<TableProto.Column> getKeyAndVerifyRow(TableProto.Table table, TableProto.Row row) throws Exception {
-        List keys  = new ArrayList();
+        List<TableProto.Column> keys  = new ArrayList<TableProto.Column>();
         //logger.debug("Entering getKeyAndVerifyRow with tableName -" + table.getName() );
         //logger.debug("Entering getKeyAndVerifyRow with rowcount -" + row.getColumnsCount() );
         if ( !row.isInitialized() || row.getColumnsCount() != table.getColumnDefinitionsCount()){

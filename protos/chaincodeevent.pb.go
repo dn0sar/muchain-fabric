@@ -25,15 +25,15 @@ type ChaincodeEvent struct {
 func (m *ChaincodeEvent) Reset()                    { *m = ChaincodeEvent{} }
 func (m *ChaincodeEvent) String() string            { return proto.CompactTextString(m) }
 func (*ChaincodeEvent) ProtoMessage()               {}
-func (*ChaincodeEvent) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{0} }
+func (*ChaincodeEvent) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{0} }
 
 func init() {
 	proto.RegisterType((*ChaincodeEvent)(nil), "protos.ChaincodeEvent")
 }
 
-func init() { proto.RegisterFile("chaincodeevent.proto", fileDescriptor1) }
+func init() { proto.RegisterFile("chaincodeevent.proto", fileDescriptor2) }
 
-var fileDescriptor1 = []byte{
+var fileDescriptor2 = []byte{
 	// 151 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xe2, 0x12, 0x49, 0xce, 0x48, 0xcc,
 	0xcc, 0x4b, 0xce, 0x4f, 0x49, 0x4d, 0x2d, 0x4b, 0xcd, 0x2b, 0xd1, 0x2b, 0x28, 0xca, 0x2f, 0xc9,
