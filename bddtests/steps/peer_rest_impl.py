@@ -16,36 +16,34 @@
 
 import requests
 from behave import *
-from peer_basic_impl import buildUrl
-from peer_basic_impl import getAttributeFromJSON
-
-import bdd_test_util
+from peer_basic_impl import buildUrl, getAttributeFromJSON
+from bdd_test_util import bdd_log
 
 
-@when(u'I request transaction certs with query parameters on "{containerName}"')
-def step_impl(context, containerName):
+@when(u'I request transaction certs with query parameters on "{containerAlias}"')
+def step_impl(context, containerAlias):
     assert 'table' in context, "table (of query parameters) not found in context"
     assert 'userName' in context, "userName not found in context"
     assert 'compose_containers' in context, "compose_containers not found in context"
 
-    ipAddress = bdd_test_util.ipFromContainerNamePart(containerName, context.compose_containers)
+    ipAddress = context.containerAliasMap[containerAlias].ipAddress
     request_url = buildUrl(context, ipAddress, "/registrar/{0}/tcert".format(context.userName))
-    print("Requesting path = {0}".format(request_url))
+    bdd_log("Requesting path = {0}".format(request_url))
     queryParams = {}
     for row in context.table.rows:
         key, value = row['key'], row['value']
         queryParams[key] = value
 
-    print("Query parameters = {0}".format(queryParams))
+    bdd_log("Query parameters = {0}".format(queryParams))
     resp = requests.get(request_url, params=queryParams, headers={'Accept': 'application/json'}, verify=False)
 
     assert resp.status_code == 200, "Failed to GET to %s:  %s" % (request_url, resp.text)
     context.response = resp
-    print("")
+    bdd_log("")
 
 @then(u'I should get a JSON response with "{expectedValue}" different transaction certs')
 def step_impl(context, expectedValue):
-    print(context.response.json())
+    bdd_log(context.response.json())
     foundValue = getAttributeFromJSON("OK", context.response.json(), "Attribute not found in response (OK)")
-    print(len(set(foundValue)))
+    bdd_log(len(set(foundValue)))
     assert (len(set(foundValue)) == int(expectedValue)), "For attribute OK, expected different transaction cert of size (%s), instead found (%s)" % (expectedValue, len(set(foundValue)))

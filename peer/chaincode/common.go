@@ -88,7 +88,7 @@ func getChaincodeSpecification(cmd *cobra.Command) (*pb.ChaincodeSpec, error) {
 		} else {
 			// Check if the token is not there and fail
 			if os.IsNotExist(err) {
-				return spec, fmt.Errorf("User '%s' not logged in. Use the 'login' command to obtain a security token.", chaincodeUsr)
+				return spec, fmt.Errorf("User '%s' not logged in. Use the 'peer network login' command to obtain a security token.", chaincodeUsr)
 			}
 			// Unexpected error
 			panic(fmt.Errorf("Fatal error when checking for client login token: %s\n", err))
@@ -187,19 +187,17 @@ func checkChaincodeCmdParams(cmd *cobra.Command) error {
 			return fmt.Errorf("Chaincode argument error: %s", err)
 		}
 		m := f.(map[string]interface{})
-		if len(m) != 2 {
-			return fmt.Errorf("Non-empty JSON chaincode parameters must contain exactly 2 keys: 'Function' and 'Args'")
-		}
+		sm := make(map[string]interface{})
 		for k := range m {
-			switch strings.ToLower(k) {
-			case "args":
-			case "function":
-			default:
-				return fmt.Errorf("Illegal chaincode key '%s' - must be 'Function' or 'Args'", k)
-			}
+			sm[strings.ToLower(k)] = m[k]
+		}
+		_, argsPresent := sm["args"]
+		_, funcPresent := sm["function"]
+		if !argsPresent || (len(m) == 2 && !funcPresent) || len(m) > 2 {
+			return fmt.Errorf("Non-empty JSON chaincode parameters must contain the following keys: 'Args' or 'Function' and 'Args'")
 		}
 	} else {
-		return errors.New("Empty JSON chaincode parameters must contain exactly 2 keys: 'Function' and 'Args'")
+		return errors.New("Empty JSON chaincode parameters must contain the following keys: 'Args' or 'Function' and 'Args'")
 	}
 
 	if chaincodeAttributesJSON != "[]" {

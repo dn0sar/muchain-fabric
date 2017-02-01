@@ -37,7 +37,7 @@
 #   - dist-clean - superset of 'clean' that also removes persistent state
 
 PROJECT_NAME   = hyperledger/fabric
-BASE_VERSION   = 0.6.0
+BASE_VERSION   = 0.7.0
 IS_RELEASE     = false # commit as 'true' only once for a given $(BASE_VERSION)
 
 ifneq ($(IS_RELEASE),true)
@@ -53,7 +53,7 @@ PKGNAME = github.com/$(PROJECT_NAME)
 GO_LDFLAGS = -X github.com/hyperledger/fabric/metadata.Version=$(PROJECT_VERSION)
 CGO_FLAGS = CGO_CFLAGS=" " CGO_LDFLAGS="-lrocksdb -lstdc++ -lm -lz -lbz2 -lsnappy"
 UID = $(shell id -u)
-CHAINTOOL_RELEASE=v0.8.1
+CHAINTOOL_RELEASE=v0.9.0
 
 EXECUTABLES = go docker git curl
 K := $(foreach exec,$(EXECUTABLES),\
@@ -70,10 +70,6 @@ BASEIMAGE_DEPS    = $(shell git ls-files images/base scripts/provision)
 JAVASHIM_DEPS =  $(shell git ls-files core/chaincode/shim/java)
 PROJECT_FILES = $(shell git ls-files)
 IMAGES = base src ccenv peer membersrvc javaenv
-
-PROTOS=$(shell find . -name "*.proto" | grep -v "vendor" | grep -v "shim/java" | grep -v "/sdk")
-
-PB_GOS=$(patsubst %.proto,%.pb.go,${PROTOS})
 
 all: peer membersrvc checks
 
@@ -93,6 +89,13 @@ membersrvc-image: build/image/membersrvc/.dummy
 
 unit-test: peer-image gotools
 	@./scripts/goUnitTests.sh $(DOCKER_TAG) "$(GO_LDFLAGS)"
+
+node-sdk: sdk/node
+
+node-sdk-unit-tests: peer membersrvc
+	cd sdk/node && $(MAKE) unit-tests
+
+unit-tests: unit-test node-sdk-unit-tests
 
 .PHONY: images
 images: $(patsubst %,build/image/%/.dummy, $(IMAGES))
@@ -184,15 +187,13 @@ build/image/base/.dummy: $(BASEIMAGE_DEPS)
 	@touch $@
 
 # Special override for src-image
-build/image/src/.dummy: $(PB_GOS) build/image/base/.dummy $(PROJECT_FILES)
+build/image/src/.dummy: build/image/base/.dummy $(PROJECT_FILES)
 	@echo "Building docker src-image"
 	@mkdir -p $(@D)
 	@cat images/src/Dockerfile.in \
 		| sed -e 's/_TAG_/$(DOCKER_TAG)/g' \
 		> $(@D)/Dockerfile
-	@git ls-files > $(@D)/file_list.txt
-	@find . -name "*.pb.go" | grep -v vendor >> $(@D)/file_list.txt 
-	@cat $(@D)/file_list.txt | tar -jcT - > $(@D)/gopath.tar.bz2
+	@git ls-files | tar -jcT - > $(@D)/gopath.tar.bz2
 	docker build -t $(PROJECT_NAME)-src $(@D)
 	docker tag $(PROJECT_NAME)-src $(PROJECT_NAME)-src:$(DOCKER_TAG)
 	@touch $@
@@ -208,16 +209,16 @@ build/image/ccenv/.dummy: build/image/src/.dummy build/image/ccenv/bin/protoc-ge
 	@touch $@
 
 # Special override for java-image
+# Following items are packed and sent to docker context while building image
+# 1. Java shim layer source code
+# 2. Proto files used to generate java classes
+# 3. Gradle settings file
 build/image/javaenv/.dummy: Makefile $(JAVASHIM_DEPS)
 	@echo "Building docker javaenv-image"
 	@mkdir -p $(@D)
 	@cat images/javaenv/Dockerfile.in > $(@D)/Dockerfile
-	# Following items are packed and sent to docker context while building image
-	# 1. Java shim layer source code
-	# 2. Proto files used to generate java classes
-	# 3. Gradle settings file
 	@git ls-files core/chaincode/shim/java | tar -jcT - > $(@D)/javashimsrc.tar.bz2
-	@git ls-files protos settings.gradle  | tar -jcT - > $(@D)/protos.tar.bz2
+	@git ls-files protos core/chaincode/shim/table.proto settings.gradle  | tar -jcT - > $(@D)/protos.tar.bz2
 	docker build -t $(PROJECT_NAME)-javaenv $(@D)
 	docker tag $(PROJECT_NAME)-javaenv $(PROJECT_NAME)-javaenv:$(DOCKER_TAG)
 	@touch $@
@@ -236,13 +237,8 @@ build/image/%/.dummy: build/image/src/.dummy build/docker/bin/%
 	@touch $@
 
 .PHONY: protos
-protos: gotools ${PB_GOS}
-
-
-%.pb.go: %.proto
-	protoc --proto_path=$(abspath $(@D)) --go_out=plugins=grpc:$(abspath $(@D)) $(abspath $(@D)/*.proto)
-
-
+protos: gotools
+	./devenv/compile_protos.sh
 
 base-image-clean:
 	-docker rmi -f $(PROJECT_NAME)-baseimage
@@ -256,11 +252,6 @@ src-image-clean: ccenv-image-clean peer-image-clean membersrvc-image-clean
 	-@rm -rf build/image/$(TARGET) ||:
 
 images-clean: $(patsubst %,%-image-clean, $(IMAGES))
-
-node-sdk: sdk/node
-
-node-sdk-unit-tests: peer membersrvc
-	cd sdk/node && $(MAKE) unit-tests
 
 .PHONY: $(SUBDIRS:=-clean)
 $(SUBDIRS:=-clean):

@@ -16,18 +16,17 @@
 
 import os
 import os.path
-import re
 import time
 import copy
 from behave import *
 from datetime import datetime, timedelta
 import base64
 
-import sys, requests, json
+import requests, json
 
 import bdd_compose_util
 import bdd_test_util
-from bdd_test_util import currentTime
+from bdd_test_util import bdd_log
 from bdd_rest_util import buildUrl
 from bdd_json_util import getAttributeFromJSON
 
@@ -47,15 +46,18 @@ def step_impl(context, composeYamlFile):
     assert bdd_compose_util.allContainersAreReadyWithinTimeout(context, timeoutSeconds), \
         "Containers did not come up within {} seconds, aborting".format(timeoutSeconds)
 
-@when(u'requesting "{path}" from "{containerName}"')
-def step_impl(context, path, containerName):
-    ipAddress = bdd_test_util.ipFromContainerNamePart(containerName, context.compose_containers)
+    context.containerAliasMap = bdd_compose_util.mapAliasesToContainers(context)
+    context.containerNameMap = bdd_compose_util.mapContainerNamesToContainers(context)
+
+@when(u'requesting "{path}" from "{containerAlias}"')
+def step_impl(context, path, containerAlias):
+    ipAddress = context.containerAliasMap[containerAlias].ipAddress
     request_url = buildUrl(context, ipAddress, path)
-    print("Requesting path = {0}".format(request_url))
+    bdd_log("Requesting path = {0}".format(request_url))
     resp = requests.get(request_url, headers={'Accept': 'application/json'}, verify=False)
     assert resp.status_code == 200, "Failed to GET url %s:  %s" % (request_url,resp.text)
     context.response = resp
-    print("")
+    bdd_log("")
 
 @then(u'I should get a JSON response containing "{attribute}" attribute')
 def step_impl(context, attribute):
@@ -67,7 +69,7 @@ def step_impl(context, attribute):
         getAttributeFromJSON(attribute, context.response.json(), "")
         assert None, "Attribute found in response (%s)" %(attribute)
     except AssertionError:
-        print("Attribute not found as was expected.")
+        bdd_log("Attribute not found as was expected.")
 
 def formatStringToCompare(value):
     # double quotes are replaced by simple quotes because is not possible escape double quotes in the attribute parameters.
@@ -95,9 +97,9 @@ def step_impl(context, seconds):
 def step_impl(context, seconds):
     time.sleep(float(seconds))
 
-@when(u'I deploy lang chaincode "{chaincodePath}" of "{chainLang}" with ctor "{ctor}" to "{containerName}"')
-def step_impl(context, chaincodePath, chainLang, ctor, containerName):
-    print("Printing chaincode language " + chainLang)
+@when(u'I deploy lang chaincode "{chaincodePath}" of "{chainLang}" with ctor "{ctor}" to "{containerAlias}"')
+def step_impl(context, chaincodePath, chainLang, ctor, containerAlias):
+    bdd_log("Printing chaincode language " + chainLang)
 
     chaincode = {
         "path": chaincodePath,
@@ -106,7 +108,7 @@ def step_impl(context, chaincodePath, chainLang, ctor, containerName):
         "args": getArgsFromContext(context),
     }
 
-    deployChainCodeToContainer(context, chaincode, containerName)
+    deployChainCodeToContainer(context, chaincode, containerAlias)
 
 def getArgsFromContext(context):
     args = []
@@ -115,8 +117,8 @@ def getArgsFromContext(context):
        args = context.table[0].cells
     return args
 
-@when(u'I deploy chaincode "{chaincodePath}" with ctor "{ctor}" to "{containerName}"')
-def step_impl(context, chaincodePath, ctor, containerName):
+@when(u'I deploy chaincode "{chaincodePath}" with ctor "{ctor}" to "{containerAlias}"')
+def step_impl(context, chaincodePath, ctor, containerAlias):
     chaincode = {
         "path": chaincodePath,
         "language": "GOLANG",
@@ -124,10 +126,10 @@ def step_impl(context, chaincodePath, ctor, containerName):
         "args": getArgsFromContext(context),
     }
 
-    deployChainCodeToContainer(context, chaincode, containerName)
+    deployChainCodeToContainer(context, chaincode, containerAlias)
 
-@when(u'I deploy chaincode with name "{chaincodeName}" and with ctor "{ctor}" to "{containerName}"')
-def step_impl(context, chaincodeName, ctor, containerName):
+@when(u'I deploy chaincode with name "{chaincodeName}" and with ctor "{ctor}" to "{containerAlias}"')
+def step_impl(context, chaincodeName, ctor, containerAlias):
     chaincode = {
         "name": chaincodeName,
         "language": "GOLANG",
@@ -135,13 +137,13 @@ def step_impl(context, chaincodeName, ctor, containerName):
         "args": getArgsFromContext(context),
     }
 
-    deployChainCodeToContainer(context, chaincode, containerName)
+    deployChainCodeToContainer(context, chaincode, containerAlias)
     time.sleep(2.0) # After #2068 implemented change this to only apply after a successful ping
 
-def deployChainCodeToContainer(context, chaincode, containerName):
-    ipAddress = bdd_test_util.ipFromContainerNamePart(containerName, context.compose_containers)
+def deployChainCodeToContainer(context, chaincode, containerAlias):
+    ipAddress = context.containerAliasMap[containerAlias].ipAddress
     request_url = buildUrl(context, ipAddress, "/chaincode")
-    print("Requesting path = {0}".format(request_url))
+    bdd_log("Requesting path = {0}".format(request_url))
 
     chaincodeSpec = createChaincodeSpec(context, chaincode)
     chaincodeOpPayload = createChaincodeOpPayload("deploy", chaincodeSpec)
@@ -152,8 +154,8 @@ def deployChainCodeToContainer(context, chaincode, containerName):
     chaincodeName = resp.json()['result']['message']
     chaincodeSpec['chaincodeID']['name'] = chaincodeName
     context.chaincodeSpec = chaincodeSpec
-    print(json.dumps(chaincodeSpec, indent=4))
-    print("")
+    bdd_log(json.dumps(chaincodeSpec, indent=4))
+    bdd_log("")
 
 def createChaincodeSpec(context, chaincode):
     chaincode = validateChaincodeDictionary(chaincode)
@@ -221,37 +223,37 @@ def step_impl(context):
     else:
         fail('chaincodeSpec not in context')
 
-@when(u'I invoke chaincode "{chaincodeName}" function name "{functionName}" on "{containerName}" with "{idGenAlg}"')
-def step_impl(context, chaincodeName, functionName, containerName, idGenAlg):
+@when(u'I invoke chaincode "{chaincodeName}" function name "{functionName}" on "{containerAlias}" with "{idGenAlg}"')
+def step_impl(context, chaincodeName, functionName, containerAlias, idGenAlg):
     assert 'chaincodeSpec' in context, "chaincodeSpec not found in context"
-    invokeChaincode(context, "invoke", functionName, containerName, idGenAlg)
+    invokeChaincode(context, "invoke", functionName, containerAlias, idGenAlg)
 
-@when(u'I invoke chaincode "{chaincodeName}" function name "{functionName}" on "{containerName}" "{times}" times')
-def step_impl(context, chaincodeName, functionName, containerName, times):
+@when(u'I invoke chaincode "{chaincodeName}" function name "{functionName}" on "{containerAlias}" "{times}" times')
+def step_impl(context, chaincodeName, functionName, containerAlias, times):
     assert 'chaincodeSpec' in context, "chaincodeSpec not found in context"
-    ipAddress = bdd_test_util.ipFromContainerNamePart(containerName, context.compose_containers)
+    ipAddress = context.containerAliasMap[containerAlias].ipAddress
     request_url = buildUrl(context, ipAddress, "/chain")
     resp = requests.get(request_url, headers={'Accept': 'application/json'}, verify=False)
     assert resp.status_code == 200, "Failed to get chain height %s:  %s" % (request_url,resp.text)
     context.chainheight = getAttributeFromJSON("height", resp.json(), "Height not found in response.")
     context.txcount = times
     for i in range(int(times)):
-        invokeChaincode(context, "invoke", functionName, containerName)
+        invokeChaincode(context, "invoke", functionName, containerAlias)
 
-@when(u'I invoke chaincode "{chaincodeName}" function name "{functionName}" with attributes "{attrs}" on "{containerName}"')
-def step_impl(context, chaincodeName, functionName, attrs, containerName):
+@when(u'I invoke chaincode "{chaincodeName}" function name "{functionName}" with attributes "{attrs}" on "{containerAlias}"')
+def step_impl(context, chaincodeName, functionName, attrs, containerAlias):
     assert 'chaincodeSpec' in context, "chaincodeSpec not found in context"
     assert attrs, "attrs were not specified"
-    invokeChaincode(context, "invoke", functionName, containerName, None, attrs.split(","))
+    invokeChaincode(context, "invoke", functionName, containerAlias, None, attrs.split(","))
 
-@when(u'I invoke chaincode "{chaincodeName}" function name "{functionName}" on "{containerName}"')
-def step_impl(context, chaincodeName, functionName, containerName):
+@when(u'I invoke chaincode "{chaincodeName}" function name "{functionName}" on "{containerAlias}"')
+def step_impl(context, chaincodeName, functionName, containerAlias):
     assert 'chaincodeSpec' in context, "chaincodeSpec not found in context"
-    invokeChaincode(context, "invoke", functionName, containerName)
+    invokeChaincode(context, "invoke", functionName, containerAlias)
 
-@when(u'I invoke master chaincode "{chaincodeName}" function name "{functionName}" on "{containerName}"')
-def step_impl(context, chaincodeName, functionName, containerName):
-    invokeMasterChaincode(context, "invoke", chaincodeName, functionName, containerName)
+@when(u'I invoke master chaincode "{chaincodeName}" function name "{functionName}" on "{containerAlias}"')
+def step_impl(context, chaincodeName, functionName, containerAlias):
+    invokeMasterChaincode(context, "invoke", chaincodeName, functionName, containerAlias)
 
 @then(u'I should have received a transactionID')
 def step_impl(context):
@@ -259,13 +261,13 @@ def step_impl(context):
     assert context.transactionID != ""
     pass
 
-@when(u'I unconditionally query chaincode "{chaincodeName}" function name "{functionName}" on "{containerName}"')
-def step_impl(context, chaincodeName, functionName, containerName):
-    invokeChaincode(context, "query", functionName, containerName)
+@when(u'I unconditionally query chaincode "{chaincodeName}" function name "{functionName}" on "{containerAlias}"')
+def step_impl(context, chaincodeName, functionName, containerAlias):
+    invokeChaincode(context, "query", functionName, containerAlias)
 
-@when(u'I query chaincode "{chaincodeName}" function name "{functionName}" on "{containerName}"')
-def step_impl(context, chaincodeName, functionName, containerName):
-    invokeChaincode(context, "query", functionName, containerName)
+@when(u'I query chaincode "{chaincodeName}" function name "{functionName}" on "{containerAlias}"')
+def step_impl(context, chaincodeName, functionName, containerAlias):
+    invokeChaincode(context, "query", functionName, containerAlias)
 
 def createChaincodeOpPayload(method, chaincodeSpec):
     chaincodeOpPayload = {
@@ -276,7 +278,7 @@ def createChaincodeOpPayload(method, chaincodeSpec):
     }
     return chaincodeOpPayload
 
-def invokeChaincode(context, devopsFunc, functionName, containerName, idGenAlg=None, attributes=[]):
+def invokeChaincode(context, devopsFunc, functionName, containerAlias, idGenAlg=None, attributes=[]):
     assert 'chaincodeSpec' in context, "chaincodeSpec not found in context"
     # Update the chaincodeSpec ctorMsg for invoke
     args = []
@@ -292,53 +294,53 @@ def invokeChaincode(context, devopsFunc, functionName, containerName, idGenAlg=N
     #If idGenAlg is passed then, we still using the deprecated devops API because this parameter can't be passed in the new API.
     if idGenAlg != None:
         context.chaincodeSpec['ctorMsg']['args'] = to_bytes(args)
-        invokeUsingDevopsService(context, devopsFunc, functionName, containerName, idGenAlg)
+        invokeUsingDevopsService(context, devopsFunc, functionName, containerAlias, idGenAlg)
     else:
         context.chaincodeSpec['ctorMsg']['args'] = args
-        invokeUsingChaincodeService(context, devopsFunc, functionName, containerName)
+        invokeUsingChaincodeService(context, devopsFunc, functionName, containerAlias)
 
-def invokeUsingChaincodeService(context, devopsFunc, functionName, containerName):
+def invokeUsingChaincodeService(context, devopsFunc, functionName, containerAlias):
     # Invoke the POST
     chaincodeOpPayload = createChaincodeOpPayload(devopsFunc, context.chaincodeSpec)
 
-    ipAddress = bdd_test_util.ipFromContainerNamePart(containerName, context.compose_containers)
+    ipAddress = context.containerAliasMap[containerAlias].ipAddress
 
     request_url = buildUrl(context, ipAddress, "/chaincode")
-    print("{0} POSTing path = {1}".format(currentTime(), request_url))
-    print("Using attributes {0}".format(context.chaincodeSpec['attributes']))
+    bdd_log("POSTing path = {}".format(request_url))
+    bdd_log("Using attributes {0}".format(context.chaincodeSpec['attributes']))
 
     resp = requests.post(request_url, headers={'Content-type': 'application/json'}, data=json.dumps(chaincodeOpPayload), verify=False)
     assert resp.status_code == 200, "Failed to POST to %s:  %s" %(request_url, resp.text)
     context.response = resp
-    print("RESULT from {0} of chaincode from peer {1}".format(functionName, containerName))
-    print(json.dumps(context.response.json(), indent = 4))
+    bdd_log("RESULT from {0} of chaincode from peer {1}".format(functionName, containerAlias))
+    bdd_log(json.dumps(context.response.json(), indent = 4))
     if 'result' in resp.json():
         result = resp.json()['result']
         if 'message' in result:
             transactionID = result['message']
             context.transactionID = transactionID
 
-def invokeUsingDevopsService(context, devopsFunc, functionName, containerName, idGenAlg):
+def invokeUsingDevopsService(context, devopsFunc, functionName, containerAlias, idGenAlg):
     # Invoke the POST
     chaincodeInvocationSpec = {
         "chaincodeSpec" : context.chaincodeSpec
     }
-    ipAddress = bdd_test_util.ipFromContainerNamePart(containerName, context.compose_containers)
+    ipAddress = context.containerAliasMap[containerAlias].ipAddress
     if idGenAlg is not None:
 	    chaincodeInvocationSpec['idGenerationAlg'] = idGenAlg
     request_url = buildUrl(context, ipAddress, "/devops/{0}".format(devopsFunc))
-    print("{0} POSTing path = {1}".format(currentTime(), request_url))
+    bdd_log("POSTing path = {}".format(request_url))
 
     resp = requests.post(request_url, headers={'Content-type': 'application/json'}, data=json.dumps(chaincodeInvocationSpec), verify=False)
     assert resp.status_code == 200, "Failed to POST to %s:  %s" %(request_url, resp.text)
     context.response = resp
-    print("RESULT from {0} of chaincode from peer {1}".format(functionName, containerName))
-    print(json.dumps(context.response.json(), indent = 4))
+    bdd_log("RESULT from {0} of chaincode from peer {1}".format(functionName, containerAlias))
+    bdd_log(json.dumps(context.response.json(), indent = 4))
     if 'message' in resp.json():
         transactionID = context.response.json()['message']
         context.transactionID = transactionID
 
-def invokeMasterChaincode(context, devopsFunc, chaincodeName, functionName, containerName):
+def invokeMasterChaincode(context, devopsFunc, chaincodeName, functionName, containerAlias):
     args = []
     if 'table' in context:
        args = context.table[0].cells
@@ -358,15 +360,15 @@ def invokeMasterChaincode(context, devopsFunc, chaincodeName, functionName, cont
 
     chaincodeOpPayload = createChaincodeOpPayload(devopsFunc, chaincodeSpec)
 
-    ipAddress = bdd_test_util.ipFromContainerNamePart(containerName, context.compose_containers)
+    ipAddress = context.containerAliasMap[containerAlias].ipAddress
     request_url = buildUrl(context, ipAddress, "/chaincode")
-    print("{0} POSTing path = {1}".format(currentTime(), request_url))
+    bdd_log("POSTing path = {}".format(request_url))
 
     resp = requests.post(request_url, headers={'Content-type': 'application/json'}, data=json.dumps(chaincodeOpPayload), verify=False)
     assert resp.status_code == 200, "Failed to POST to %s:  %s" %(request_url, resp.text)
     context.response = resp
-    print("RESULT from {0} of chaincode from peer {1}".format(functionName, containerName))
-    print(json.dumps(context.response.json(), indent = 4))
+    bdd_log("RESULT from {0} of chaincode from peer {1}".format(functionName, containerAlias))
+    bdd_log(json.dumps(context.response.json(), indent = 4))
     if 'result' in resp.json():
         result = resp.json()['result']
         if 'message' in result:
@@ -378,17 +380,17 @@ def step_impl(context, seconds):
     """ This step takes into account the chaincodeImagesUpToDate tag, in which case the wait is reduce to some default seconds"""
     reducedWaitTime = 4
     if 'chaincodeImagesUpToDate' in context.tags:
-        print("Assuming images are up to date, sleeping for {0} seconds instead of {1} in scenario {2}".format(reducedWaitTime, seconds, context.scenario.name))
+        bdd_log("Assuming images are up to date, sleeping for {0} seconds instead of {1} in scenario {2}".format(reducedWaitTime, seconds, context.scenario.name))
         time.sleep(float(reducedWaitTime))
     else:
         time.sleep(float(seconds))
 
-@then(u'I wait "{seconds}" seconds for transaction to be committed to block on "{containerName}"')
-def step_impl(context, seconds, containerName):
+@then(u'I wait "{seconds}" seconds for transaction to be committed to block on "{containerAlias}"')
+def step_impl(context, seconds, containerAlias):
     assert 'transactionID' in context, "transactionID not found in context"
-    ipAddress = bdd_test_util.ipFromContainerNamePart(containerName, context.compose_containers)
+    ipAddress = context.containerAliasMap[containerAlias].ipAddress
     request_url = buildUrl(context, ipAddress, "/transactions/{0}".format(context.transactionID))
-    print("{0} GETing path = {1}".format(currentTime(), request_url))
+    bdd_log("GETing path = {}".format(request_url))
 
     resp = requests.get(request_url, headers={'Accept': 'application/json'}, verify=False)
     assert resp.status_code == 200, "Failed to POST to %s:  %s" %(request_url, resp.text)
@@ -397,7 +399,7 @@ def step_impl(context, seconds, containerName):
 def multiRequest(context, seconds, containerDataList, pathBuilderFunc):
     """Perform a multi request against the system"""
     # Build map of "containerName" : response
-    respMap = {container.containerName:None for container in containerDataList}
+    respMap = {container.name:None for container in containerDataList}
     # Set the max time before stopping attempts
     maxTime = datetime.now() + timedelta(seconds = int(seconds))
     for container in containerDataList:
@@ -406,9 +408,9 @@ def multiRequest(context, seconds, containerDataList, pathBuilderFunc):
 
         # Loop unless failure or time exceeded
         while (datetime.now() < maxTime):
-            print("{0} GETing path = {1}".format(currentTime(), request_url))
+            bdd_log("GETing path = {}".format(request_url))
             resp = requests.get(request_url, headers={'Accept': 'application/json'}, verify=False)
-            respMap[container.containerName] = resp
+            respMap[container.name] = resp
         else:
             raise Exception("Max time exceeded waiting for multiRequest with current response map = {0}".format(respMap))
 
@@ -418,7 +420,7 @@ def step_impl(context, seconds):
     assert 'compose_containers' in context, "compose_containers not found in context"
 
     # Build map of "containerName" : resp.statusCode
-    respMap = {container.containerName:0 for container in context.compose_containers}
+    respMap = {container.name:0 for container in context.compose_containers}
 
     # Set the max time before stopping attempts
     maxTime = datetime.now() + timedelta(seconds = int(seconds))
@@ -428,40 +430,28 @@ def step_impl(context, seconds):
 
         # Loop unless failure or time exceeded
         while (datetime.now() < maxTime):
-            print("{0} GETing path = {1}".format(currentTime(), request_url))
+            bdd_log("GETing path = {}".format(request_url))
             resp = requests.get(request_url, headers={'Accept': 'application/json'}, verify=False)
             if resp.status_code == 404:
                 # Pause then try again
-                respMap[container.containerName] = 404
+                respMap[container.name] = 404
                 time.sleep(1)
                 continue
             elif resp.status_code == 200:
                 # Success, continue
-                respMap[container.containerName] = 200
+                respMap[container.name] = 200
                 break
             else:
                 raise Exception("Error requesting {0}, returned result code = {1}".format(request_url, resp.status_code))
         else:
             raise Exception("Max time exceeded waiting for transactions with current response map = {0}".format(respMap))
-    print("Result of request to all peers = {0}".format(respMap))
-    print("")
+    bdd_log("Result of request to all peers = {0}".format(respMap))
+    bdd_log("")
 
 @then(u'I check the transaction ID if it is "{tUUID}"')
 def step_impl(context, tUUID):
     assert 'transactionID' in context, "transactionID not found in context"
     assert context.transactionID == tUUID, "transactionID is not tUUID"
-
-def getContainerDataValuesFromContext(context, aliases, callback):
-    """Returns the IPAddress based upon a name part of the full container name"""
-    assert 'compose_containers' in context, "compose_containers not found in context"
-    values = []
-    containerNamePrefix = os.path.basename(os.getcwd()) + "_"
-    for namePart in aliases:
-        for containerData in context.compose_containers:
-            if containerData.containerName.startswith(containerNamePrefix + namePart):
-                values.append(callback(containerData))
-                break
-    return values
 
 @then(u'I wait up to "{seconds}" seconds for transaction to be committed to peers')
 def step_impl(context, seconds):
@@ -469,37 +459,37 @@ def step_impl(context, seconds):
     assert 'compose_containers' in context, "compose_containers not found in context"
     assert 'table' in context, "table (of peers) not found in context"
 
-    aliases =  context.table.headings
-    containerDataList = bdd_test_util.getContainerDataValuesFromContext(context, aliases, lambda containerData: containerData)
-
-    # Build map of "containerName" : resp.statusCode
-    respMap = {container.containerName:0 for container in containerDataList}
-
     # Set the max time before stopping attempts
     maxTime = datetime.now() + timedelta(seconds = int(seconds))
-    for container in containerDataList:
+    respMap = {}
+
+    aliases =  context.table.headings
+    for containerAlias in aliases:
+        container = context.containerAliasMap[containerAlias]
+        respMap[container.name] = 0
+
         ipAddress = container.ipAddress
         request_url = buildUrl(context, ipAddress, "/transactions/{0}".format(context.transactionID))
 
         # Loop unless failure or time exceeded
         while (datetime.now() < maxTime):
-            print("{0} GETing path = {1}".format(currentTime(), request_url))
+            bdd_log("GETing path = {}".format(request_url))
             resp = requests.get(request_url, headers={'Accept': 'application/json'}, verify=False)
             if resp.status_code == 404:
                 # Pause then try again
-                respMap[container.containerName] = 404
+                respMap[container.name] = 404
                 time.sleep(1)
                 continue
             elif resp.status_code == 200:
                 # Success, continue
-                respMap[container.containerName] = 200
+                respMap[container.name] = 200
                 break
             else:
                 raise Exception("Error requesting {0}, returned result code = {1}".format(request_url, resp.status_code))
         else:
             raise Exception("Max time exceeded waiting for transactions with current response map = {0}".format(respMap))
-    print("Result of request to all peers = {0}".format(respMap))
-    print("")
+    bdd_log("Result of request to all peers = {0}".format(respMap))
+    bdd_log("")
 
 @then(u'I wait up to "{seconds}" seconds for transactions to be committed to peers')
 def step_impl(context, seconds):
@@ -508,32 +498,30 @@ def step_impl(context, seconds):
     assert 'compose_containers' in context, "compose_containers not found in context"
     assert 'table' in context, "table (of peers) not found in context"
 
-    aliases =  context.table.headings
-    containerDataList = bdd_test_util.getContainerDataValuesFromContext(context, aliases, lambda containerData: containerData)
-
-    # Build map of "containerName" : resp.statusCode
-    respMap = {container.containerName:0 for container in containerDataList}
-
     # Set the max time before stopping attempts
     maxTime = datetime.now() + timedelta(seconds = int(seconds))
-    for container in containerDataList:
+    responseStatusCodeMap = {}
+
+    aliases =  context.table.headings
+    for containerAlias in aliases:
+        container = context.containerAliasMap[containerAlias]
         ipAddress = container.ipAddress
         request_url = buildUrl(context, ipAddress, "/chain")
 
         # Loop unless failure or time exceeded
         while (datetime.now() < maxTime):
-            print("{0} GETing path = {1}".format(currentTime(), request_url))
+            bdd_log("GETing path = {}".format(request_url))
             resp = requests.get(request_url, headers={'Accept': 'application/json'}, verify=False)
             if resp.status_code == 404:
                 # Pause then try again
-                respMap[container.containerName] = 404
+                responseStatusCodeMap[container.name] = 404
                 time.sleep(1)
                 continue
             elif resp.status_code == 200:
                 height = getAttributeFromJSON("height", resp.json(), "Height not found in response.")
 		if height >= int(context.chainheight) + int(context.txcount):
                         # Success, continue
-                        respMap[container.containerName] = 200
+                        responseStatusCodeMap[container.name] = 200
                         break
 		else:
 		        continue
@@ -541,8 +529,8 @@ def step_impl(context, seconds):
                 raise Exception("Error requesting {0}, returned result code = {1}".format(request_url, resp.status_code))
         else:
             raise Exception("Max time exceeded waiting for transactions with current response map = {0}".format(respMap))
-    print("Result of request to all peers = {0}".format(respMap))
-    print("")
+    bdd_log("Result of request to all peers = {0}".format(responseStatusCodeMap))
+    bdd_log("")
 
 
 @then(u'I should get a rejection message in the listener after stopping it')
@@ -572,7 +560,7 @@ def step_impl(context, chaincodeName, functionName):
     responses = []
     for container in context.compose_containers:
         request_url = buildUrl(context, container.ipAddress, "/chaincode")
-        print("{0} POSTing path = {1}".format(currentTime(), request_url))
+        bdd_log("POSTing path = {}".format(request_url))
         resp = requests.post(request_url, headers={'Content-type': 'application/json'}, data=json.dumps(chaincodeOpPayload), verify=False)
         assert resp.status_code == 200, "Failed to POST to %s:  %s" %(request_url, resp.text)
         responses.append(resp)
@@ -592,9 +580,6 @@ def query_common(context, chaincodeName, functionName, value, failOnError):
     assert 'table' in context, "table (of peers) not found in context"
     assert 'peerToSecretMessage' in context, "peerToSecretMessage map not found in context"
 
-    aliases =  context.table.headings
-    containerDataList = bdd_test_util.getContainerDataValuesFromContext(context, aliases, lambda containerData: containerData)
-
     # Update the chaincodeSpec ctorMsg for invoke
     context.chaincodeSpec['ctorMsg']['args'] = [functionName, value]
     # Invoke the POST
@@ -602,17 +587,20 @@ def query_common(context, chaincodeName, functionName, value, failOnError):
     chaincodeOpPayload = createChaincodeOpPayload("query", copy.deepcopy(context.chaincodeSpec))
 
     responses = []
-    for container in containerDataList:
+    aliases =  context.table.headings
+    for containerAlias in aliases:
+        container = context.containerAliasMap[containerAlias]
+
         # Change the SecurityContext per call
         chaincodeOpPayload['params']["secureContext"] = context.peerToSecretMessage[container.composeService]['enrollId']
-        print("Container {0} enrollID = {1}".format(container.containerName, container.getEnv("CORE_SECURITY_ENROLLID")))
+        bdd_log("Container {0} enrollID = {1}".format(container.name, container.getEnv("CORE_SECURITY_ENROLLID")))
         request_url = buildUrl(context, container.ipAddress, "/chaincode")
-        print("{0} POSTing path = {1}".format(currentTime(), request_url))
+        bdd_log("POSTing path = {}".format(request_url))
         resp = requests.post(request_url, headers={'Content-type': 'application/json'}, data=json.dumps(chaincodeOpPayload), timeout=30, verify=False)
         if failOnError:
             assert resp.status_code == 200, "Failed to POST to %s:  %s" %(request_url, resp.text)
-        print("RESULT from {0} of chaincode from peer {1}".format(functionName, container.containerName))
-        print(json.dumps(resp.json(), indent = 4))
+        bdd_log("RESULT from {0} of chaincode from peer {1}".format(functionName, container.name))
+        bdd_log(json.dumps(resp.json(), indent = 4))
         responses.append(resp)
     context.responses = responses
 
@@ -638,24 +626,22 @@ def step_impl(context, userName, secret):
     assert 'compose_containers' in context, "compose_containers not found in context"
     assert 'table' in context, "table (of peers) not found in context"
 
-    # Get list of IPs to login to
-    aliases =  context.table.headings
-    containerDataList = bdd_test_util.getContainerDataValuesFromContext(context, aliases, lambda containerData: containerData)
-
     secretMsg = {
         "enrollId": userName,
         "enrollSecret" : secret
     }
 
     # Login to each container specified
-    for containerData in containerDataList:
+    aliases =  context.table.headings
+    for containerAlias in aliases:
+        containerData = context.containerAliasMap[containerAlias]
         request_url = buildUrl(context, containerData.ipAddress, "/registrar")
-        print("{0} POSTing path = {1}".format(currentTime(), request_url))
+        bdd_log("POSTing path = {}".format(request_url))
 
         resp = requests.post(request_url, headers={'Content-type': 'application/json'}, data=json.dumps(secretMsg), verify=False)
         assert resp.status_code == 200, "Failed to POST to %s:  %s" %(request_url, resp.text)
         context.response = resp
-        print("message = {0}".format(resp.json()))
+        bdd_log("message = {0}".format(resp.json()))
 
         # Create new User entry
         bdd_test_util.registerUser(context, secretMsg, containerData.composeService)
@@ -682,14 +668,14 @@ def step_impl(context):
             "enrollSecret" : secret
         }
 
-        ipAddress = bdd_test_util.ipFromContainerNamePart(peer, context.compose_containers)
+        ipAddress = context.containerAliasMap[peer].ipAddress
         request_url = buildUrl(context, ipAddress, "/registrar")
-        print("POSTing to service = {0}, path = {1}".format(peer, request_url))
+        bdd_log("POSTing to service = {0}, path = {1}".format(peer, request_url))
 
         resp = requests.post(request_url, headers={'Content-type': 'application/json'}, data=json.dumps(secretMsg), verify=False)
         assert resp.status_code == 200, "Failed to POST to %s:  %s" %(request_url, resp.text)
         context.response = resp
-        print("message = {0}".format(resp.json()))
+        bdd_log("message = {0}".format(resp.json()))
         peerToSecretMessage[peer] = secretMsg
     context.peerToSecretMessage = peerToSecretMessage
 
@@ -735,7 +721,10 @@ def compose_op(context, op):
            context.compose_containers = [containerData for containerData in context.compose_containers if containerData.composeService != service]
        else:
            bdd_compose_util.parseComposeOutput(context)
-       print("After {0}ing, the container service list is = {1}".format(op, [containerData.composeService for  containerData in context.compose_containers]))
+       bdd_log("After {0}ing, the container service list is = {1}".format(op, [containerData.composeService for  containerData in context.compose_containers]))
+
+    context.containerAliasMap = bdd_compose_util.mapAliasesToContainers(context)
+    context.containerNameMap = bdd_compose_util.mapContainerNamesToContainers(context)
 
 def to_bytes(strlist):
     return [base64.standard_b64encode(s.encode('ascii')) for s in strlist]

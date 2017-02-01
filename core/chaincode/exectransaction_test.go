@@ -286,8 +286,8 @@ func invoke(ctx context.Context, spec *pb.ChaincodeSpec, typ pb.Transaction_Type
 		ledger, _ := ledger.GetLedger()
 		ledger.BeginTxBatch("1")
 		retval, ccevt, execErr = Execute(ctx, GetChain(DefaultChain), transaction)
-		if err != nil {
-			return nil, uuid, nil, fmt.Errorf("Error invoking chaincode: %s ", err)
+		if execErr != nil {
+			return nil, uuid, nil, fmt.Errorf("Error invoking chaincode: %s ", execErr)
 		}
 		ledger.CommitTxBatch("1", []*pb.Transaction{transaction}, nil, nil)
 	}
@@ -376,9 +376,7 @@ func TestHTTPExecuteDeployTransaction(t *testing.T) {
 	// itself or it won't be downloaded because it will be found
 	// in GOPATH, which would defeat the test
 	testDBWrapper.CleanDB(t)
-	//executeDeployTransaction(t, "http://github.com/hyperledger/fabric-test-resources/examples/chaincode/go/chaincode_example01")
-	// forked the above until the ChaincodeStubInterface change is accepted into the fabric-test-resources project
-	executeDeployTransaction(t, "http://github.com/brad-gorman/fabric-test-resources/examples/chaincode/go/chaincode_example01")
+	executeDeployTransaction(t, "http://gopkg.in/mastersingh24/fabric-test-resources.v0")
 }
 
 // Check the correctness of the final state after transaction execution.
