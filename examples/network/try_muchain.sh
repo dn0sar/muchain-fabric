@@ -5,24 +5,24 @@ KEY_COUNTER=1
 # e.g. deploy a 101 b 201
 # returns deployment id
 deploy() {
-  depid=$(CORE_PEER_ADDRESS="172.17.0.$REPLICA_MASTER:7051" peer chaincode deploy -n mycc -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 -c '{"Function": "init", "args": ["'$1'", "'$2'", "'$3'", "'$4'"]}' 2>&1 | grep -E -o 'name[^ ]*' | awk  -F \" '{ print $2 }')
+  depid=$(CORE_PEER_ADDRESS="172.17.0.$REPLICA_MASTER:7051" CORE_LOGGING_CHAINCODE="info" peer chaincode deploy -n mycc -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 -c '{"Function": "init", "args": ["'$1'", "'$2'", "'$3'", "'$4'"]}' 2>&1 | grep -E -o 'name[^ ]*' | awk  -F \" '{ print $2 }')
   sleep 2
   echo "$depid"
 }
 
 # e.g. invoke $name a b 100
 invoke() {
-  CORE_PEER_ADDRESS="172.17.0.$REPLICA_MASTER:7051" peer chaincode invoke -n "$1" -c '{"Function": "invoke", "args": ["'$2'", "'$3'", "'$4'"]}' &> /dev/null
+  CORE_PEER_ADDRESS="172.17.0.$REPLICA_MASTER:7051" CORE_LOGGING_CHAINCODE="info" peer chaincode invoke -n "$1" -c '{"Function": "invoke", "args": ["'$2'", "'$3'", "'$4'"]}' &> /dev/null
   sleep 2
 }
 
 # e.g. newset path
 newset() {
-  txsetid=$(CORE_PEER_ADDRESS="172.17.0.$REPLICA_MASTER:7051" peer muchain newset -s "$1" -o "key$KEY_COUNTER" 2>&1 | grep -E -o 'txSetID: [^ ]*' | awk  -F " " '{ print $2 }')
+  txsetid=$(CORE_PEER_ADDRESS="172.17.0.$REPLICA_MASTER:7051" CORE_LOGGING_CHAINCODE="info" peer muchain newset -s "$1" -o "key$KEY_COUNTER" 2>&1 | grep -E -o 'txSetID: [^ ]*' | awk  -F " " '{ print $2 }')
   local blocknr=""
   while [[ -z $blocknr ]]
   do
-    blocknr=$(CORE_PEER_ADDRESS="172.17.0.$REPLICA_MASTER:7051" peer muchain query-state "$txsetid" 2>&1 | grep Introduced | awk  -F : '{ print $2 }')
+    blocknr=$(CORE_PEER_ADDRESS="172.17.0.$REPLICA_MASTER:7051" CORE_LOGGING_CHAINCODE="info" peer muchain query-state "$txsetid" 2>&1 | grep Introduced | awk  -F : '{ print $2 }')
     blocknr="$(echo -e "${blocknr}" | sed -e 's/^[[:space:]]*//')"
     sleep 2
   done
@@ -31,7 +31,7 @@ newset() {
 
 # e.g. query txid var
 query() {
-  res=$(CORE_PEER_ADDRESS="172.17.0.$REPLICA_MASTER:7051" peer chaincode query -n $1 -c '{"Function": "query", "args": ["'$2'"]}' 2> /dev/null | awk  -F : '{ print $2 }')
+  res=$(CORE_PEER_ADDRESS="172.17.0.$REPLICA_MASTER:7051" CORE_LOGGING_CHAINCODE="info" peer chaincode query -n $1 -c '{"Function": "query", "args": ["'$2'"]}' 2> /dev/null | awk  -F : '{ print $2 }')
   sleep 1
   echo $res
 }
@@ -49,7 +49,7 @@ wait_for_val() {
 
 # e.g. mutate txsetid block index
 mutate() {
-  CORE_PEER_ADDRESS="172.17.0.$REPLICA_MASTER:7051" peer muchain mutate -n "$1" -i "$2" &> /dev/null
+  CORE_PEER_ADDRESS="172.17.0.$REPLICA_MASTER:7051" CORE_LOGGING_CHAINCODE="info" peer muchain mutate -n "$1" -i "$2" &> /dev/null
   sleep 2
 }
 
@@ -69,7 +69,7 @@ echo "Deployed transaction with id:" $depid
 wait_for_val $depid a 101
 invoke $depid a b 1
 wait_for_val $depid a 100
-setres=$(newset $1)
+setres=$(newset $GOPATH/src/github.com/hyperledger/fabric/examples/txset/txsetmod.json)
 ((KEY_COUNTER++))
 txsetid=$(firstArg $setres)
 blocknr=$(secondArg $setres)
@@ -84,7 +84,7 @@ invoke $depid b a 1
 wait_for_val $depid a 61
 mutate $txsetid 0
 wait_for_val $depid a 81
-setres=$(newset $2)
+setres=$(newset $GOPATH/src/github.com/hyperledger/fabric/examples/txset/txsetcreation.json)
 ((KEY_COUNTER++))
 depsetid=$(firstArg $setres)
 depblocknr=$(secondArg $setres)
