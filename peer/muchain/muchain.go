@@ -13,7 +13,7 @@ const (
 
 var logger = logging.MustGetLogger("muchainCmd")
 
-// Cmd returns the cobra command for Chaincode
+// Cmd returns the cobra command for Muchain
 func Cmd() *cobra.Command {
 	muchainCmd.AddCommand(newSetCmd())
 	muchainCmd.AddCommand(mutateCmd())

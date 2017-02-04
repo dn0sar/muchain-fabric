@@ -53,7 +53,7 @@ func muchainIssueTxSet(cmd *cobra.Command, args []string) error {
 	}
 
 	if !cmd.Flag("out").Changed {
-		return fmt.Errorf("A valid path to a output file must be provided")
+		return fmt.Errorf("A valid path to an output file must be provided")
 	}
 
 	txSetInputSpec, err := parseFile(jsonSetPath)
@@ -75,7 +75,7 @@ func muchainIssueTxSet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	err = ioutil.WriteFile(keyOutFilePath, nonce, 0644)
+	err = ioutil.WriteFile(keyOutFilePath, nonce, 0600)
 	if err != nil {
 		return fmt.Errorf("Unable to save the encryption seed. Err: [%s]", err)
 	}
