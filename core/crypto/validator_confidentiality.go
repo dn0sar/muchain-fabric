@@ -86,7 +86,6 @@ func (validator *validatorImpl) deepCloneAndDecryptTx1_2(tx *pb.InBlockTransacti
 
 	switch tx.Transaction.(type) {
 	case *pb.InBlockTransaction_TransactionSet:
-		//TODO take the current default instead
 
 		currDefault, err := ledger.GetCurrentDefault(tx, false)
 		if err != nil {

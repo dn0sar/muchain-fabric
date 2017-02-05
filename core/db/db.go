@@ -36,6 +36,7 @@ const stateDeltaCF = "stateDeltaCF"
 const blockStateCF = "blockStateCF"
 const txSetStateCF = "txSetStateCF"
 const txSetStateDeltaCF = "txSetStateDeltaCF"
+const noncesCF = "noncesCF"
 const indexesCF = "indexesCF"
 const persistCF = "persistCF"
 
@@ -46,6 +47,7 @@ var columnfamilies = []string{
 	blockStateCF,	   // the global state at a given block
 	txSetStateCF,      // transactions sets state
 	txSetStateDeltaCF, // open transactions set state
+	noncesCF,		   // save every nonce apart from the blockchain
 	indexesCF,         // tx uuid -> blockno
 	persistCF,         // persistent per-peer state (consensus)
 }
@@ -59,6 +61,7 @@ type OpenchainDB struct {
 	BlockStateCF	  *gorocksdb.ColumnFamilyHandle
 	TxSetStateCF      *gorocksdb.ColumnFamilyHandle
 	TxSetStateDeltaCF *gorocksdb.ColumnFamilyHandle
+	NoncesCF		  *gorocksdb.ColumnFamilyHandle
 	IndexesCF         *gorocksdb.ColumnFamilyHandle
 	PersistCF         *gorocksdb.ColumnFamilyHandle
 }
@@ -120,6 +123,11 @@ func (openchainDB *OpenchainDB) GetFromTxSetStateDeltaCF(key []byte) ([]byte, er
 	return openchainDB.Get(openchainDB.TxSetStateDeltaCF, key)
 }
 
+// GetFromNoncesCF get value for given key from column family - indexCF
+func (openchainDB *OpenchainDB) GetFromNoncesCF(key []byte) ([]byte, error) {
+	return openchainDB.Get(openchainDB.NoncesCF, key)
+}
+
 // GetFromIndexesCF get value for given key from column family - indexCF
 func (openchainDB *OpenchainDB) GetFromIndexesCF(key []byte) ([]byte, error) {
 	return openchainDB.Get(openchainDB.IndexesCF, key)
@@ -164,12 +172,12 @@ func (openchainDB *OpenchainDB) GetStateDeltaCFIterator() *gorocksdb.Iterator {
 	return openchainDB.GetIterator(openchainDB.StateDeltaCF)
 }
 
-// GetTxSetStateCFIterator get iterator for column family - txSetStateCF
+// GetTxSetStateCFSnapshotIterator get iterator for column family - txSetStateCF
 func (openchainDB *OpenchainDB) GetTxSetStateCFSnapshotIterator(snapshot *gorocksdb.Snapshot) *gorocksdb.Iterator {
 	return openchainDB.getSnapshotIterator(snapshot, openchainDB.TxSetStateCF)
 }
 
-// GetTxSetStateDeltaCFIterator get iterator for column family - txSetStateCF
+// GetTxSetStateDeltaCFSnapshotIterator get iterator for column family - txSetStateDeltaCF
 func (openchainDB *OpenchainDB) GetTxSetStateDeltaCFSnapshotIterator() *gorocksdb.Iterator {
 	return openchainDB.GetIterator(openchainDB.TxSetStateDeltaCF)
 }
@@ -233,8 +241,9 @@ func (openchainDB *OpenchainDB) open() {
 	openchainDB.BlockStateCF = cfHandlers[4]
 	openchainDB.TxSetStateCF = cfHandlers[5]
 	openchainDB.TxSetStateDeltaCF = cfHandlers[6]
-	openchainDB.IndexesCF = cfHandlers[7]
-	openchainDB.PersistCF = cfHandlers[8]
+	openchainDB.NoncesCF = cfHandlers[7]
+	openchainDB.IndexesCF = cfHandlers[8]
+	openchainDB.PersistCF = cfHandlers[9]
 }
 
 // Close releases all column family handles and closes rocksdb
@@ -245,6 +254,7 @@ func (openchainDB *OpenchainDB) close() {
 	openchainDB.BlockStateCF.Destroy()
 	openchainDB.TxSetStateCF.Destroy()
 	openchainDB.TxSetStateDeltaCF.Destroy()
+	openchainDB.NoncesCF.Destroy()
 	openchainDB.IndexesCF.Destroy()
 	openchainDB.PersistCF.Destroy()
 	openchainDB.DB.Close()

@@ -91,7 +91,7 @@ func (eng *EngineImpl) ProcessTransactionMsg(msg *pb.Message, inBlockTx *pb.InBl
 	// Chaincode Transaction
 	response = &pb.Response{Status: pb.Response_SUCCESS, Msg: []byte(inBlockTx.Txid)}
 
-	//TODO: Do we need to verify security, or can we supply a flag on the invoke ot this functions
+	//TODO: Do we need to verify security, or can we supply a flag on the invoke of this functions
 	// If we fail to marshal or verify the tx, don't send it to consensus plugin
 	if response.Status == pb.Response_FAILURE {
 		return response

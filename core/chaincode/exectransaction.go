@@ -333,7 +333,7 @@ func prevDefault(txSetID string) (*pb.Transaction, error) {
 //will return an array of errors one for each transaction. If the execution
 //succeeded, array element will be nil. returns []byte of state hash or
 //error
-func ExecuteTransactions(ctxt context.Context, cname ChainName, xacts []*pb.InBlockTransaction) (succeededTXs []*pb.InBlockTransaction, stateHash []byte, ccevents []*pb.ChaincodeEvent, txerrs []error, err error) {
+func ExecuteTransactions(ctxt context.Context, cname ChainName, xacts []*pb.InBlockTransaction) (succeededTxs []*pb.InBlockTransaction, stateHash []byte, ccevents []*pb.ChaincodeEvent, txerrs []error, err error) {
 	var chain = GetChain(cname)
 	if chain == nil {
 		// TODO: We should never get here, but otherwise a good reminder to better handle
@@ -342,7 +342,7 @@ func ExecuteTransactions(ctxt context.Context, cname ChainName, xacts []*pb.InBl
 
 	txerrs = make([]error, len(xacts))
 	ccevents = make([]*pb.ChaincodeEvent, len(xacts))
-	var succeededTxs = make([]*pb.InBlockTransaction, 0)
+	succeededTxs = make([]*pb.InBlockTransaction, 0)
 	var setIndexes = make([]int, 0)
 
 	// Execute all the mutant transactions first

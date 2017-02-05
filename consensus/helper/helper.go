@@ -191,7 +191,7 @@ func (h *Helper) ExecTxs(id interface{}, txs []*pb.InBlockTransaction) ([]byte, 
 	for i, e := range txerrs {
 		//NOTE- it'll be nice if we can have error values. For now success == 0, error == 1
 		if txerrs[i] != nil {
-			// TODO: If the transaction was a set specilize the ID by the ID of the default transaction or the ID of the set (depending on which caused the error)
+			// TODO: If the transaction was a set specialize the ID by the ID of the default transaction or the ID of the set (depending on which caused the error)
 			txresults[i] = &pb.TransactionResult{Txid: txs[i].Txid, Error: e.Error(), ErrorCode: 1, ChaincodeEvent: ccevents[i]}
 		} else {
 			txresults[i] = &pb.TransactionResult{Txid: txs[i].Txid, ChaincodeEvent: ccevents[i]}

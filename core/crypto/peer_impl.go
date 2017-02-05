@@ -122,10 +122,11 @@ func (peer *peerImpl) TransactionPreValidation(tx *obc.InBlockTransaction) (*obc
 	return tx, nil
 }
 
-// TransactionPreValidation verifies that the transaction is
+// TransactionPreExecution verifies that the transaction is
 // well formed with the respect to the security layer
 // prescriptions (i.e. signature verification). If this is the case,
 // the method prepares the transaction to be executed.
+// TransactionPreExecution returns a clone of tx.
 func (peer *peerImpl) TransactionPreExecution(tx *obc.InBlockTransaction) (*obc.InBlockTransaction, error) {
 	return nil, utils.ErrNotImplemented
 }
