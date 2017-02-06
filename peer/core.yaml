@@ -67,7 +67,8 @@ logging:
     node:      info
     network:   warning
     chaincode: warning
-    version: warning
+    muchain:   info
+    version:   warning
 
 ###############################################################################
 #
