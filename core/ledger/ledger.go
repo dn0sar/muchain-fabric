@@ -654,7 +654,11 @@ func (ledger *Ledger) GetCurrentDefault(inBlockTx *protos.InBlockTransaction, co
 	if inBlockTx.ConfidentialityLevel == protos.ConfidentialityLevel_CONFIDENTIAL {
 		copiedDefTx := make([]byte, len(defTxBytes))
 		copy(copiedDefTx, defTxBytes)
-		defTxBytes, err = txset.DecryptTxSetSpecification(inBlockTx.Nonce, copiedDefTx, txSetStValue.Index)
+		nonce, err := txset.RetrieveNonce(inBlockTx.Txid)
+		if err != nil {
+			return nil, fmt.Errorf("Unable to retrieve nonce for given in block transaction. Error: [%s]", err)
+		}
+		defTxBytes, err = txset.DecryptTxSetSpecification(nonce, copiedDefTx, txSetStValue.Index)
 		if err != nil {
 			return nil, fmt.Errorf("Unable to decrypt transaction specification. Error: [%s]", err)
 		}

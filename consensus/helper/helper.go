@@ -31,6 +31,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/peer"
 	pb "github.com/hyperledger/fabric/protos"
+	"github.com/hyperledger/fabric/core/crypto/txset"
 )
 
 // Helper contains the reference to the peer's MessageHandlerCoordinator
@@ -179,6 +180,11 @@ func (h *Helper) ExecTxs(id interface{}, txs []*pb.InBlockTransaction) ([]byte, 
 	// The secHelper is set during creat ChaincodeSupport, so we don't need this step
 	// cxt := context.WithValue(context.Background(), "security", h.coordinator.GetSecHelper())
 	// TODO return directly once underlying implementation no longer returns []error
+
+	err := txset.PersistNonces(txs);
+	if  err != nil {
+		return nil, fmt.Errorf("Unable to persists nonces of given InBlockTransactions. Error: [%s]", err)
+	}
 
 	succeededTxs, res, ccevents, txerrs, err := chaincode.ExecuteTransactions(context.Background(), chaincode.DefaultChain, txs)
 
