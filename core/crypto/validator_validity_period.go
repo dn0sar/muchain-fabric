@@ -24,7 +24,6 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/hyperledger/fabric/core/crypto/primitives"
-	"github.com/hyperledger/fabric/core/ledger"
 	obc "github.com/hyperledger/fabric/protos"
 )
 
@@ -53,13 +52,7 @@ func (validator *validatorImpl) verifyValidityPeriod(tx *obc.Transaction) (*obc.
 
 		cid := viper.GetString("pki.validity-period.chaincodeHash")
 
-		ledger, err := ledger.GetLedger()
-		if err != nil {
-			validator.Errorf("verifyValidityPeriod: failed getting access to the ledger %s:", err)
-			return tx, err
-		}
-
-		vpBytes, err := ledger.GetState(cid, "system.validity.period", true)
+		vpBytes, err := validator.ledger.GetState(cid, "system.validity.period", true)
 		if err != nil {
 			validator.Errorf("verifyValidityPeriod: failed reading validity period from the ledger %s:", err)
 			return tx, err

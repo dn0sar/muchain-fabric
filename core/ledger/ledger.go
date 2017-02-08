@@ -36,8 +36,8 @@ import (
 	"github.com/hyperledger/fabric/protos"
 	"golang.org/x/net/context"
 	"errors"
-	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/core/crypto/txset"
+	"github.com/hyperledger/fabric/core/container"
 )
 
 var ledgerLogger = logging.MustGetLogger("ledger")

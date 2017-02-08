@@ -9,6 +9,8 @@ import (
 	pb "github.com/hyperledger/fabric/protos"
 	"errors"
 	"github.com/hyperledger/fabric/core/util"
+	"github.com/hyperledger/fabric/core/crypto"
+	"github.com/hyperledger/fabric/core/comm"
 )
 
 var containerLogger = logging.MustGetLogger("container_transaction")
@@ -33,49 +35,87 @@ func NewDeployTransaction(spec *pb.ChaincodeSpec) (*pb.Transaction, error) {
 	transID := chaincodeDeploymentSpec.ChaincodeSpec.ChaincodeID.Name
 
 	var tx *pb.Transaction
-	containerLogger.Debugf("Creating deployment transaction (%s)", transID)
-	tx, err = pb.NewChaincodeDeployTransaction(chaincodeDeploymentSpec, transID)
-	if err != nil {
-		return nil, fmt.Errorf("Error deploying chaincode: %s ", err)
-	}
+	var sec crypto.Client
 
+	if comm.SecurityEnabled() {
+		if containerLogger.IsEnabledFor(logging.DEBUG) {
+			containerLogger.Debugf("Initializing secure devops using context %s", spec.SecureContext)
+		}
+		sec, err = crypto.InitClient(spec.SecureContext, nil)
+		if sec != nil {
+			defer crypto.CloseClient(sec)
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		// remove the security context since we are no longer need it down stream
+		// spec.ChaincodeSpec.SecureContext = ""
+
+		if containerLogger.IsEnabledFor(logging.DEBUG) {
+			containerLogger.Debugf("Creating secure transaction %s", transID)
+		}
+		tx, err = sec.NewChaincodeDeployTransaction(chaincodeDeploymentSpec, transID, spec.Attributes...)
+		if nil != err {
+			return nil, err
+		}
+	} else {
+		containerLogger.Debugf("Creating deployment transaction (%s)", transID)
+		tx, err = pb.NewChaincodeDeployTransaction(chaincodeDeploymentSpec, transID)
+		if err != nil {
+			return nil, fmt.Errorf("Error deploying chaincode: %s ", err)
+		}
+	}
 	return tx, nil
 }
 
-func NewExecTransaction(spec *pb.ChaincodeInvocationSpec, invokeTx bool) (*pb.Transaction, error) {
+func NewExecTransaction(spec *pb.ChaincodeInvocationSpec) (*pb.Transaction, error) {
 	var uuid string
+	var sec crypto.Client
+	var err error
+	var tx *pb.Transaction
 	var customIDgenAlg = strings.ToLower(spec.IdGenerationAlg)
-	if invokeTx {
-		if customIDgenAlg != "" {
-			ctorbytes, err := asn1.Marshal(*spec.ChaincodeSpec.CtorMsg)
-			if err != nil {
-				return nil, fmt.Errorf("Error marshalling constructor: %s", err)
-			}
-			uuid, err = util.GenerateIDWithAlg(customIDgenAlg, ctorbytes)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			uuid = util.GenerateUUID()
+
+	if customIDgenAlg != "" {
+		ctorbytes, err := asn1.Marshal(*spec.ChaincodeSpec.CtorMsg)
+		if err != nil {
+			return nil, fmt.Errorf("Error marshalling constructor: %s", err)
+		}
+		uuid, err = util.GenerateIDWithAlg(customIDgenAlg, ctorbytes)
+		if err != nil {
+			return nil, err
 		}
 	} else {
 		uuid = util.GenerateUUID()
 	}
 
-	if containerLogger.IsEnabledFor(logging.DEBUG) {
-		containerLogger.Debugf("Creating invocation transaction (%s)", uuid)
+	if comm.SecurityEnabled() {
+		containerLogger.Debugf("Initializing secure devops using context %s", spec.ChaincodeSpec.SecureContext)
+		sec, err = crypto.InitClient(spec.ChaincodeSpec.SecureContext, nil)
+		if sec != nil {
+			defer crypto.CloseClient(sec)
+		}
+		if nil != err {
+			return nil, err
+		}
+		// remove the security context since we are no longer need it down stream
+		// spec.ChaincodeSpec.SecureContext = ""
 	}
-	var t pb.ChaincodeAction
-	if invokeTx {
-		t = pb.ChaincodeAction_CHAINCODE_INVOKE
+
+	if sec != nil {
+		containerLogger.Debugf("Creating secure invocation transaction %s", uuid)
+		tx, err = sec.NewChaincodeExecute(spec, uuid, spec.ChaincodeSpec.Attributes...)
+		if nil != err {
+			return nil, err
+		}
 	} else {
-		t = pb.ChaincodeAction_CHAINCODE_QUERY
+		containerLogger.Debugf("Creating invocation transaction (%s)", uuid)
+		tx, err = pb.NewChaincodeExecute(spec, uuid, pb.ChaincodeAction_CHAINCODE_INVOKE)
+		if nil != err {
+			return nil, err
+		}
 	}
-	tx, err := pb.NewChaincodeExecute(spec, uuid, t)
-	if nil != err {
-		return nil, err
-	}
-	return tx, err
+	return tx, nil
 }
 
 func TransactionFromTxSpec(txSpec *pb.TxSpec) (tx *pb.Transaction, err error) {
@@ -92,7 +132,7 @@ func TransactionFromTxSpec(txSpec *pb.TxSpec) (tx *pb.Transaction, err error) {
 		if txSpec.GetInvocationSpec() == nil {
 			return nil, errors.New("Trying to add a Invoke transaction to the tx set without a valid Invocation Specification.")
 		}
-		tx, err = NewExecTransaction(txSpec.GetInvocationSpec(), true)
+		tx, err = NewExecTransaction(txSpec.GetInvocationSpec())
 		if err != nil {
 			return nil, err
 		}

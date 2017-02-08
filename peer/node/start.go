@@ -46,6 +46,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/grpclog"
+	"github.com/hyperledger/fabric/core/ledger"
 )
 
 var chaincodeDevMode bool
@@ -353,12 +354,16 @@ func getSecHelper() (crypto.Peer, error) {
 			enrollID := viper.GetString("security.enrollID")
 			enrollSecret := viper.GetString("security.enrollSecret")
 			if peer.ValidatorEnabled() {
+				ledger, err := ledger.GetLedger()
+				if err != nil {
+					return
+				}
 				logger.Debugf("Registering validator with enroll ID: %s", enrollID)
-				if err = crypto.RegisterValidator(enrollID, nil, enrollID, enrollSecret); nil != err {
+				if err = crypto.RegisterValidator(enrollID, nil, enrollID, enrollSecret, ledger); nil != err {
 					return
 				}
 				logger.Debugf("Initializing validator with enroll ID: %s", enrollID)
-				secHelper, err = crypto.InitValidator(enrollID, nil)
+				secHelper, err = crypto.InitValidator(enrollID, nil, ledger)
 				if nil != err {
 					return
 				}

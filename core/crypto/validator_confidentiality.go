@@ -24,7 +24,6 @@ import (
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/hyperledger/fabric/core/crypto/utils"
 	pb "github.com/hyperledger/fabric/protos"
-	"github.com/hyperledger/fabric/core/ledger"
 	"fmt"
 )
 
@@ -57,10 +56,6 @@ func (validator *validatorImpl) deepCloneAndDecryptTx(tx *pb.InBlockTransaction)
 
 //Returns an InBlockTransaction with the currentDefault decrypted or with the Mutable decrypted!
 func (validator *validatorImpl) deepCloneAndDecryptTx1_2(tx *pb.InBlockTransaction) (*pb.InBlockTransaction, error) {
-	ledger, err := ledger.GetLedger()
-	if err != nil {
-		return nil, fmt.Errorf("Unable to get the ledger handle. Err: [%s]", err)
-	}
 
 	if tx.Nonce == nil || len(tx.Nonce) == 0 {
 		return nil, errors.New("Failed decrypting payload. Invalid nonce.")
@@ -87,7 +82,7 @@ func (validator *validatorImpl) deepCloneAndDecryptTx1_2(tx *pb.InBlockTransacti
 	switch tx.Transaction.(type) {
 	case *pb.InBlockTransaction_TransactionSet:
 
-		currDefault, err := ledger.GetCurrentDefault(tx, false)
+		currDefault, err := validator.ledger.GetCurrentDefault(tx, false)
 		if err != nil {
 			return nil, fmt.Errorf("unable to get current default transaction for tx id: [%s], error [%s]", tx.Txid, err)
 		}
