@@ -5,6 +5,7 @@ import (
 
 	"github.com/op/go-logging"
 	"github.com/spf13/cobra"
+	"github.com/hyperledger/fabric/peer/common"
 )
 
 const (
@@ -15,6 +16,11 @@ var logger = logging.MustGetLogger("muchainCmd")
 
 // Cmd returns the cobra command for Muchain
 func Cmd() *cobra.Command {
+	flags := muchainCmd.PersistentFlags()
+
+	flags.StringVarP(&fabricUsr, "username", "u", common.UndefinedParamValue,
+		fmt.Sprint("Username for fabric operations when security is enabled"))
+
 	muchainCmd.AddCommand(newSetCmd())
 	muchainCmd.AddCommand(mutateCmd())
 	muchainCmd.AddCommand(queryState())
@@ -22,6 +28,10 @@ func Cmd() *cobra.Command {
 
 	return muchainCmd
 }
+
+var (
+	fabricUsr string
+)
 
 var muchainCmd = &cobra.Command{
 	Use:   muchainFuncName,

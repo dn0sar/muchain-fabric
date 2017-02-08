@@ -6,6 +6,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"io/ioutil"
 	pb "github.com/hyperledger/fabric/protos"
+	"github.com/hyperledger/fabric/peer/common"
 )
 
 func parseFile(path string) (*pb.TxSetInput, error) {
@@ -33,6 +34,10 @@ func createTxSpecArray(simpSpecArr []*pb.TxSetInput_SimplifiedSpec, defIndex uin
 			Type:        simpSpec.Lang,
 			ChaincodeID: simpSpec.ChaincodeID,
 			CtorMsg:     simpSpec.InputArgs,
+		}
+		spec, err := common.SetSecurityParams(fabricUsr, spec)
+		if err != nil {
+			return txSetSpecArr, defSpec, fmt.Errorf("Unable to set security for one of the transactions of the set: %s", err)
 		}
 		if simpSpec.Action == pb.ChaincodeAction_CHAINCODE_DEPLOY {
 			txSpec.Spec = &pb.TxSpec_CodeSpec{CodeSpec: spec}

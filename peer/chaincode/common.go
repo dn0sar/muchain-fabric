@@ -20,16 +20,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 
-	"github.com/hyperledger/fabric/core"
 	"github.com/hyperledger/fabric/peer/common"
-	"github.com/hyperledger/fabric/peer/util"
 	pb "github.com/hyperledger/fabric/protos"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"golang.org/x/net/context"
 )
 
@@ -57,51 +53,7 @@ func getChaincodeSpecification(cmd *cobra.Command) (*pb.ChaincodeSpec, error) {
 		CtorMsg:     input,
 		Attributes:  attributes,
 	}
-	// If security is enabled, add client login token
-	if core.SecurityEnabled() {
-		if chaincodeUsr == common.UndefinedParamValue {
-			return spec, errors.New("Must supply username for chaincode when security is enabled")
-		}
-
-		// Retrieve the CLI data storage path
-		// Returns /var/openchain/production/client/
-		localStore := util.GetCliFilePath()
-
-		// Check if the user is logged in before sending transaction
-		if _, err := os.Stat(localStore + "loginToken_" + chaincodeUsr); err == nil {
-			logger.Infof("Local user '%s' is already logged in. Retrieving login token.\n", chaincodeUsr)
-
-			// Read in the login token
-			token, err := ioutil.ReadFile(localStore + "loginToken_" + chaincodeUsr)
-			if err != nil {
-				panic(fmt.Errorf("Fatal error when reading client login token: %s\n", err))
-			}
-
-			// Add the login token to the chaincodeSpec
-			spec.SecureContext = string(token)
-
-			// If privacy is enabled, mark chaincode as confidential
-			if viper.GetBool("security.privacy") {
-				logger.Info("Set confidentiality level to CONFIDENTIAL.\n")
-				spec.ConfidentialityLevel = pb.ConfidentialityLevel_CONFIDENTIAL
-			}
-		} else {
-			// Check if the token is not there and fail
-			if os.IsNotExist(err) {
-				return spec, fmt.Errorf("User '%s' not logged in. Use the 'peer network login' command to obtain a security token.", chaincodeUsr)
-			}
-			// Unexpected error
-			panic(fmt.Errorf("Fatal error when checking for client login token: %s\n", err))
-		}
-	} else {
-		if chaincodeUsr != common.UndefinedParamValue {
-			logger.Warning("Username supplied but security is disabled.")
-		}
-		if viper.GetBool("security.privacy") {
-			panic(errors.New("Privacy cannot be enabled as requested because security is disabled"))
-		}
-	}
-	return spec, nil
+	return common.SetSecurityParams(chaincodeUsr, spec)
 }
 
 // chaincodeInvokeOrQuery invokes or queries the chaincode. If successful, the
