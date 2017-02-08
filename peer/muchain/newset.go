@@ -16,7 +16,7 @@ import (
 )
 
 func newSetCmd() *cobra.Command {
-	muchainIssueTxSetCmd.Flags().StringVarP(&jsonSetPath, "set", "s", "",
+	muchainIssueTxSetCmd.Flags().StringVarP(&jsonSetPath, "tx-set-path", "s", "",
 		"The path to the json file describing the transactions set.")
 	muchainIssueTxSetCmd.Flags().StringVarP(&keyOutFilePath, "out", "o", "",
 		"The path where the seed used to encrypt the transactions in the set will be saved.")
@@ -48,7 +48,7 @@ var (
 
 func muchainIssueTxSet(cmd *cobra.Command, args []string) error {
 
-	if !cmd.Flag("set").Changed {
+	if !cmd.Flag("tx-set-path").Changed {
 		return fmt.Errorf("A valid transactions set json path must be provided")
 	}
 

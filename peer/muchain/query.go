@@ -41,7 +41,7 @@ func muchainQueryTxSetState(cmd *cobra.Command, args []string) error {
 
 	resp, err := devopsClient.QueryTxSetState(context.Background(), querySpec)
 	if err != nil {
-		return fmt.Errorf("Error query the tx set state: %s\n", err)
+		return fmt.Errorf("Error querying the tx set state: %s\n", err)
 	}
 
 	if resp.Status != pb.Response_SUCCESS {

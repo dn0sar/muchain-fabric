@@ -17,10 +17,8 @@ func extendSetCmd() *cobra.Command {
 		"The tx set id to extend.")
 	muchainExtendTxSetCmd.Flags().StringVarP(&keyFilePath, "key", "k", "",
 		"The path where the seed used to encrypt the transactions in the set will be saved.")
-	muchainExtendTxSetCmd.Flags().StringVarP(&setJSONPath, "set", "s", "",
+	muchainExtendTxSetCmd.Flags().StringVarP(&setJSONPath, "tx-set-path", "s", "",
 		"The file containing the transactions to be added to the set.")
-	muchainExtendTxSetCmd.Flags().Uint64VarP(&currentSetSize, "actual-dim", "d", 0,
-		"The current dimension of the set to extend.")
 
 	return muchainExtendTxSetCmd
 }
@@ -40,7 +38,6 @@ var (
 	txSetId		   string
 	keyFilePath	   string
 	setJSONPath    string
-	currentSetSize uint64
 )
 
 func muchainExtendTxSet(cmd *cobra.Command, args []string) error {
@@ -48,12 +45,8 @@ func muchainExtendTxSet(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("A valid path to the key used to encrypt the original set must be provided.")
 	}
 
-	if !cmd.Flag("set").Changed {
+	if !cmd.Flag("tx-set-path").Changed {
 		return fmt.Errorf("A valid path to the transactions to be added to the set must be provided.")
-	}
-
-	if !cmd.Flag("actual-dim").Changed {
-		return fmt.Errorf("The current set size must be provided.")
 	}
 
 	txSetInputSpec, err := parseFile(setJSONPath)
@@ -76,11 +69,30 @@ func muchainExtendTxSet(cmd *cobra.Command, args []string) error {
 		setToExtend = txSetInputSpec.SetID
 	}
 
+	devopsClient, err := common.GetDevopsClient(cmd)
+	if err != nil {
+		return fmt.Errorf("Error building the txSet: %s", err)
+	}
+
+	resp, err := devopsClient.QueryTxSetState(context.Background(), &pb.MutantSpec{TxSetID: setToExtend})
+	if err != nil {
+		return fmt.Errorf("Unable to retrieve information about the transaction set to extend. Error: %s\n", err)
+	}
+
+	if resp.Status != pb.Response_SUCCESS {
+		return fmt.Errorf("No error returned while querying the tx set state, but the response status is not successfull. Status: %#v", resp.Status)
+	}
+
+	txSetState, err := pb.UnmarshalTxSetStateValue(resp.Msg)
+	if err != nil {
+		return errors.New("Query successfull, but unable to unmarshal the response.")
+	}
+
 	txSpecs, _, err := createTxSpecArray(txSetInputSpec.TxSpecs, 0)
 	if err != nil {
 		return err
 	}
-	_, encryptedSpecs, err := txset.EncryptTxSetSpecificationStartingFrom(txSpecs, seed, currentSetSize)
+	_, encryptedSpecs, err := txset.EncryptTxSetSpecificationStartingFrom(txSpecs, seed, txSetState.TxNumber)
 	if err != nil {
 		return err
 	}
@@ -93,12 +105,7 @@ func muchainExtendTxSet(cmd *cobra.Command, args []string) error {
 		Metadata: seed, //TODO: In the shared scenario put only a share of the key and send a different one to every peer
 	}
 
-	devopsClient, err := common.GetDevopsClient(cmd)
-	if err != nil {
-		return fmt.Errorf("Error building the txSet: %s", err)
-	}
-
-	resp, err := devopsClient.IssueSetExtension(context.Background(), txSetSpec)
+	resp, err = devopsClient.IssueSetExtension(context.Background(), txSetSpec)
 	if err != nil {
 		return fmt.Errorf("Error extending tx set: %s\n", err)
 	}
