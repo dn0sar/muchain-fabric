@@ -50,7 +50,7 @@ func NewDeployTransaction(spec *pb.ChaincodeSpec) (*pb.Transaction, error) {
 		}
 
 		// remove the security context since we are no longer need it down stream
-		// spec.ChaincodeSpec.SecureContext = ""
+		spec.SecureContext = ""
 
 		if containerLogger.IsEnabledFor(logging.DEBUG) {
 			containerLogger.Debugf("Creating secure transaction %s", transID)
@@ -99,7 +99,7 @@ func NewExecTransaction(spec *pb.ChaincodeInvocationSpec) (*pb.Transaction, erro
 			return nil, err
 		}
 		// remove the security context since we are no longer need it down stream
-		// spec.ChaincodeSpec.SecureContext = ""
+		spec.ChaincodeSpec.SecureContext = ""
 	}
 
 	if sec != nil {
