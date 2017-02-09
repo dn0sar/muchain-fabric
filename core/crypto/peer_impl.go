@@ -131,6 +131,11 @@ func (peer *peerImpl) TransactionPreExecution(tx *obc.Transaction) (*obc.Transac
 	return nil, utils.ErrNotImplemented
 }
 
+
+func (peer *peerImpl) InBlockTransactionPreExecution(tx *obc.InBlockTransaction) (*obc.InBlockTransaction, error) {
+	return nil, utils.ErrNotImplemented
+}
+
 // Sign signs msg with this validator's signing key and outputs
 // the signature if no error occurred.
 func (peer *peerImpl) Sign(msg []byte) ([]byte, error) {

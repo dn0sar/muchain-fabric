@@ -46,6 +46,42 @@ func (validator *validatorImpl) TransactionPreValidation(tx *obc.Transaction) (*
 	return validator.peerImpl.TransactionPreValidation(tx)
 }
 
+// InBlockTransactionPreExecution verifies that the transaction is
+// well formed with the respect to the security layer
+// prescriptions (i.e. signature verification). If this is the case,
+// the method prepares the transaction to be executed.
+func (validator *validatorImpl) InBlockTransactionPreExecution(tx *obc.InBlockTransaction) (*obc.InBlockTransaction, error) {
+	if !validator.isInitialized {
+		return nil, utils.ErrNotInitialized
+	}
+
+	//	validator.debug("Pre executing [%s].", tx.String())
+	validator.Debugf("Tx confdential level [%s].", tx.ConfidentialityLevel.String())
+
+	switch tx.ConfidentialityLevel {
+	case obc.ConfidentialityLevel_PUBLIC:
+		// Nothing to do here!
+
+		return tx, nil
+	case obc.ConfidentialityLevel_CONFIDENTIAL:
+		validator.Debug("Clone and Decrypt.")
+
+
+
+		// Clone the transaction and decrypt it
+		newTx, err := validator.deepCloneAndDecryptInBlockTx(tx)
+		if err != nil {
+			validator.Errorf("Failed decrypting [%s].", err.Error())
+
+			return nil, err
+		}
+
+		return newTx, nil
+	default:
+		return nil, utils.ErrInvalidConfidentialityLevel
+	}
+}
+
 // TransactionPreExecution verifies that the transaction is
 // well formed with the respect to the security layer
 // prescriptions (i.e. signature verification). If this is the case,

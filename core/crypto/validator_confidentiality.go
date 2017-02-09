@@ -24,7 +24,6 @@ import (
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/hyperledger/fabric/core/crypto/utils"
 	pb "github.com/hyperledger/fabric/protos"
-	"fmt"
 )
 
 func (validator *validatorImpl) deepCloneTransaction(tx *pb.Transaction) (*pb.Transaction, error) {
@@ -42,6 +41,55 @@ func (validator *validatorImpl) deepCloneTransaction(tx *pb.Transaction) (*pb.Tr
 
 		return nil, err
 	}
+
+	return clone, nil
+}
+
+func (validator *validatorImpl) deepCloneInBlockTx(tx *pb.InBlockTransaction) (*pb.InBlockTransaction, error) {
+	raw, err := proto.Marshal(tx)
+	if err != nil {
+		validator.Errorf("Failed cloning transaction [%s].", err.Error())
+
+		return nil, err
+	}
+
+	clone := &pb.InBlockTransaction{}
+	err = proto.Unmarshal(raw, clone)
+	if err != nil {
+		validator.Errorf("Failed cloning transaction [%s].", err.Error())
+
+		return nil, err
+	}
+
+	return clone, nil
+}
+
+func (validator *validatorImpl) deepCloneAndDecryptInBlockTx(tx *pb.InBlockTransaction) (*pb.InBlockTransaction, error) {
+	if tx.Nonce == nil || len(tx.Nonce) == 0 {
+		return nil, errors.New("Failed decrypting. Invalid nonce.")
+	}
+
+	// clone tx
+	clone, err := validator.deepCloneInBlockTx(tx)
+	if err != nil {
+		validator.Errorf("Failed deep cloning [%s].", err.Error())
+		return nil, err
+	}
+
+	// Derive nonce
+	cipher, err := validator.eciesSPI.NewAsymmetricCipherFromPrivateKey(validator.chainPrivateKey)
+	if err != nil {
+		validator.Errorf("Failed init decryption engine [%s].", err.Error())
+		return nil, err
+	}
+
+	decryptedNonce, err := cipher.Process(tx.Nonce)
+	if err != nil {
+		validator.Errorf("Failed decrypting nonce [% x]: [%s].", tx.Nonce, err.Error())
+		return nil, err
+	}
+
+	clone.Nonce = decryptedNonce
 
 	return clone, nil
 }
@@ -77,10 +125,6 @@ func (validator *validatorImpl) deepCloneAndDecryptTx1_2(tx *pb.Transaction) (*p
 	if err != nil {
 		validator.Errorf("Failed init decryption engine [%s].", err.Error())
 		return nil, err
-	}
-
-	if err != nil {
-		return nil, fmt.Errorf("unable to get current default transaction for tx id: [%s], error [%s]", tx.Txid, err)
 	}
 
 	validator.Debugf("Transaction kind: [Set], current default type: [%s].", tx.Type)

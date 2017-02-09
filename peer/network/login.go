@@ -129,6 +129,13 @@ func networkLogin(args []string) error {
 			panic(fmt.Errorf("Fatal error when storing client login token: %s\n", err))
 		}
 
+		// Store client security context into a file
+		logger.Infof("Storing chain public key for user '%s'.\n", args[0])
+		err = ioutil.WriteFile(localStore+"chainpub_"+args[0], loginResult.Msg, 0755)
+		if err != nil {
+			panic(fmt.Errorf("Fatal error when storing the chain public key: %s\n", err))
+		}
+
 		logger.Infof("Login successful for user '%s'.\n", args[0])
 	} else {
 		return fmt.Errorf("Error on client login: %s", string(loginResult.Msg))

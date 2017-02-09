@@ -92,7 +92,17 @@ func (d *Devops) Login(ctx context.Context, secret *pb.Secret) (*pb.Response, er
 	if err := crypto.RegisterClient(secret.EnrollId, nil, secret.EnrollId, secret.EnrollSecret); nil != err {
 		return &pb.Response{Status: pb.Response_FAILURE, Msg: []byte(err.Error())}, nil
 	}
-	return &pb.Response{Status: pb.Response_SUCCESS}, nil
+	sec, err :=crypto.InitClient(secret.EnrollId, nil)
+	if err != nil {
+		return &pb.Response{Status: pb.Response_FAILURE, Msg: []byte(fmt.Errorf("Client successfully registered, but unable to initialize it: [%s] ", err).Error())}, nil
+	}
+	chainPubKey, err := sec.GetChainPublicKey()
+	if err != nil {
+		if err != nil {
+			return &pb.Response{Status: pb.Response_FAILURE, Msg: []byte(fmt.Errorf("Client successfully registered, but unable to get the chain pubblic key: [%s] ", err).Error())}, nil
+		}
+	}
+	return &pb.Response{Status: pb.Response_SUCCESS, Msg: chainPubKey}, nil
 
 	// TODO: Handle timeout and expiration
 }

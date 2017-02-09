@@ -22,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 	"github.com/hyperledger/fabric/core/crypto/utils"
 	obc "github.com/hyperledger/fabric/protos"
+	"crypto/ecdsa"
 )
 
 type clientImpl struct {
@@ -83,7 +84,7 @@ func (client *clientImpl) GetNextTCerts(nCerts int, attributes ...string) (tCert
 	return tCerts, nil
 }
 
-// NewChaincodeInvokeTransaction is used to invoke chaincode's functions.
+// NewChaincodeExecute is used to invoke chaincode's functions.
 func (client *clientImpl) NewChaincodeExecute(chaincodeInvocation *obc.ChaincodeInvocationSpec, uuid string, attributes ...string) (*obc.Transaction, error) {
 	// Verify that the client is initialized
 	if !client.IsInitialized() {
@@ -129,7 +130,12 @@ func (client *clientImpl) NewChaincodeQuery(chaincodeInvocation *obc.ChaincodeIn
 	return client.newChaincodeQueryUsingTCert(chaincodeInvocation, uuid, attributes, tBlocks[0].tCert, nil)
 }
 
-// GetEnrollmentCertHandler returns a CertificateHandler whose certificate is the enrollment certificate
+// GetChainPublicKey returns the public key of the chain at which this user is logged in
+func (client *clientImpl) GetChainPublicKey(attributes ...string) ([]byte, error) {
+	return primitives.PublicKeyToPEM(client.enrollChainKey.(*ecdsa.PublicKey), nil)
+}
+
+// GetEnrollmentCertificateHandler returns a CertificateHandler whose certificate is the enrollment certificate
 func (client *clientImpl) GetEnrollmentCertificateHandler() (CertificateHandler, error) {
 	// Verify that the client is initialized
 	if !client.IsInitialized() {
@@ -147,7 +153,7 @@ func (client *clientImpl) GetEnrollmentCertificateHandler() (CertificateHandler,
 	return handler, nil
 }
 
-// GetTCertHandlerNext returns a CertificateHandler whose certificate is the next available TCert
+// GetTCertificateHandlerNext returns a CertificateHandler whose certificate is the next available TCert
 func (client *clientImpl) GetTCertificateHandlerNext(attributes ...string) (CertificateHandler, error) {
 	// Verify that the client is initialized
 	if !client.IsInitialized() {
@@ -177,7 +183,7 @@ func (client *clientImpl) GetTCertificateHandlerNext(attributes ...string) (Cert
 	return handler, nil
 }
 
-// GetTCertHandlerFromDER returns a CertificateHandler whose certificate is the one passed
+// GetTCertificateHandlerFromDER returns a CertificateHandler whose certificate is the one passed
 func (client *clientImpl) GetTCertificateHandlerFromDER(tCertDER []byte) (CertificateHandler, error) {
 	// Verify that the client is initialized
 	if !client.IsInitialized() {
