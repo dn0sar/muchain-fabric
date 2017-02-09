@@ -40,7 +40,7 @@ var (
 // Public Methods
 
 // RegisterValidator registers a validator to the PKI infrastructure
-func RegisterValidator(name string, pwd []byte, enrollID, enrollPWD string, ledger Ledger) error {
+func RegisterValidator(name string, pwd []byte, enrollID, enrollPWD string) error {
 	mutex.Lock()
 	defer mutex.Unlock()
 
@@ -52,7 +52,7 @@ func RegisterValidator(name string, pwd []byte, enrollID, enrollPWD string, ledg
 		return nil
 	}
 
-	validator := newValidator(ledger)
+	validator := newValidator()
 	if err := validator.register(name, pwd, enrollID, enrollPWD, nil); err != nil {
 		if err != utils.ErrAlreadyRegistered && err != utils.ErrAlreadyInitialized {
 			log.Errorf("Failed registering validator [%s] with name [%s] [%s].", enrollID, name, err)
@@ -72,7 +72,7 @@ func RegisterValidator(name string, pwd []byte, enrollID, enrollPWD string, ledg
 }
 
 // InitValidator initializes a validator named name with password pwd
-func InitValidator(name string, pwd []byte, ledger Ledger) (Peer, error) {
+func InitValidator(name string, pwd []byte) (Peer, error) {
 	mutex.Lock()
 	defer mutex.Unlock()
 
@@ -86,7 +86,7 @@ func InitValidator(name string, pwd []byte, ledger Ledger) (Peer, error) {
 		return validators[name].validator, nil
 	}
 
-	validator := newValidator(ledger)
+	validator := newValidator()
 	if err := validator.init(name, pwd, nil); err != nil {
 		log.Errorf("Failed validator initialization [%s]: [%s]", name, err)
 
@@ -128,8 +128,8 @@ func CloseAllValidators() (bool, []error) {
 
 // Private Methods
 
-func newValidator(ledger Ledger) *validatorImpl {
-	return &validatorImpl{&peerImpl{&nodeImpl{}, sync.RWMutex{}, nil}, ledger, nil}
+func newValidator() *validatorImpl {
+	return &validatorImpl{&peerImpl{&nodeImpl{}, sync.RWMutex{}, nil}, nil}
 }
 
 func closeValidatorInternal(peer Peer, force bool) error {

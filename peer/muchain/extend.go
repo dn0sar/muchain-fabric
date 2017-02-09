@@ -10,6 +10,7 @@ import (
 	"golang.org/x/net/context"
 	"github.com/hyperledger/fabric/core/crypto/txset"
 	"io/ioutil"
+	"github.com/hyperledger/fabric/core"
 )
 
 func extendSetCmd() *cobra.Command {
@@ -95,6 +96,13 @@ func muchainExtendTxSet(cmd *cobra.Command, args []string) error {
 	_, encryptedSpecs, err := txset.EncryptTxSetSpecificationStartingFrom(txSpecs, seed, txSetState.TxNumber)
 	if err != nil {
 		return err
+	}
+
+	if core.SecurityEnabled() {
+		seed, err = encryptNonce(seed)
+		if err != nil {
+			return err
+		}
 	}
 
 	txSetSpec := &pb.TxSetSpec{

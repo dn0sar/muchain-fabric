@@ -7,6 +7,10 @@ import (
 	"io/ioutil"
 	pb "github.com/hyperledger/fabric/protos"
 	"github.com/hyperledger/fabric/peer/common"
+	"github.com/hyperledger/fabric/core/crypto/primitives"
+	"github.com/hyperledger/fabric/peer/util"
+	"github.com/hyperledger/fabric/core/crypto/primitives/ecies"
+	"crypto/ecdsa"
 )
 
 func parseFile(path string) (*pb.TxSetInput, error) {
@@ -58,5 +62,35 @@ func createTxSpecArray(simpSpecArr []*pb.TxSetInput_SimplifiedSpec, defIndex uin
 		txSetSpecArr[i] = marshaledSpec
 	}
 	return txSetSpecArr, defSpec, nil
+}
+
+func encryptNonce(nonce []byte) ([]byte, error) {
+	localStore := util.GetCliFilePath()
+	logger.Infof("Local data store for client loginToken: %s", localStore)
+	pem, err := ioutil.ReadFile(localStore + "chainpub_" + fabricUsr)
+	if err != nil {
+		return nil, fmt.Errorf("Error when reading the chain public key: %s\n", err)
+	}
+	eciesSPI := ecies.NewSPI()
+	pubTemp, err := primitives.PEMtoPublicKey(pem, nil)
+	if err != nil {
+		return nil, fmt.Errorf("Error when reading the chain public key: %s\n", err)
+	}
+	pubKey, err := eciesSPI.NewPublicKey(nil, pubTemp.(*ecdsa.PublicKey))
+	if err != nil {
+		return nil, fmt.Errorf("Error when converting the chain public key: %s\n", err)
+	}
+	cipher, err := eciesSPI.NewAsymmetricCipherFromPublicKey(pubKey)
+	if err != nil {
+		logger.Errorf("Failed creating new encryption scheme: [%s]", err)
+		return nil, err
+	}
+
+	nonce, err = cipher.Process(nonce)
+	if err != nil {
+		logger.Errorf("Failed encrypting the nonce: [%s]", err)
+		return nil, err
+	}
+	return nonce, nil
 }
 

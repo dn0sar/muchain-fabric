@@ -446,28 +446,15 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, t *pb.
 		cMsg = ci.ChaincodeSpec.CtorMsg
 		// Substituting the id of the set at which it refers to the current default tx id in that set.
 		if !chaincodeSupport.userRunsCC {
-			depInBlock, err := ledger.GetTransactionByID(cID.Name)
+			depTx, err := ledger.GetCurrentDefaultByID(cID.Name)
 			if err != nil {
 				return cID, cMsg, fmt.Errorf("Unable to retrieve the in block deploy transaction for the given id transaction. TxID: [%s], Err: [%s]", cID.Name, err)
 			}
 			if nil != chaincodeSupport.secHelper {
-				depInBlock, err = chaincodeSupport.secHelper.InBlockTransactionPreExecution(depInBlock)
-				if err != nil {
-					return cID, cMsg, fmt.Errorf("Unable to retrieve the nonce of the InBlock deploy transaction. TxID: [%s], Err: [%s]", cID.Name, err)
-				}
-				depTx, err = ledger.GetCurrentDefault(depInBlock, false)
-				if err != nil {
-					return cID, cMsg, fmt.Errorf("Unable to retrieve the current default transaction for the InBlockTx with TxID: [%s], Err: [%s]", cID.Name, err)
-				}
 				depTx, err = chaincodeSupport.secHelper.TransactionPreExecution(depTx)
 				// Note that t is now decrypted and is a deep clone of the original input t
 				if nil != err {
 					return cID, cMsg, fmt.Errorf("failed tx preexecution%s - %s", cID.Name, err)
-				}
-			} else  {
-				depTx, err = ledger.GetCurrentDefault(depInBlock, false)
-				if err != nil {
-					return cID, cMsg, fmt.Errorf("Unable to retrieve the default deploy transaction for the given id transaction. TxID: [%s], Err: [%s]", cID.Name, err)
 				}
 			}
 			if depTx.Type != pb.ChaincodeAction_CHAINCODE_DEPLOY {

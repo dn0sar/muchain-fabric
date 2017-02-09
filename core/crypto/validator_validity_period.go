@@ -40,7 +40,7 @@ func validityPeriodVerificationEnabled() bool {
 	return true
 }
 
-func (validator *validatorImpl) verifyValidityPeriod(tx *obc.Transaction) (*obc.Transaction, error) {
+func (validator *validatorImpl) verifyValidityPeriod(tx *obc.Transaction, ledger Ledger) (*obc.Transaction, error) {
 	if tx.Cert != nil && tx.Signature != nil {
 
 		// Unmarshal cert
@@ -52,7 +52,7 @@ func (validator *validatorImpl) verifyValidityPeriod(tx *obc.Transaction) (*obc.
 
 		cid := viper.GetString("pki.validity-period.chaincodeHash")
 
-		vpBytes, err := validator.ledger.GetState(cid, "system.validity.period", true)
+		vpBytes, err := ledger.GetState(cid, "system.validity.period", true)
 		if err != nil {
 			validator.Errorf("verifyValidityPeriod: failed reading validity period from the ledger %s:", err)
 			return tx, err

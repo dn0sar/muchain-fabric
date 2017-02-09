@@ -26,6 +26,7 @@ var configurationCached = false
 // Cached values of commonly used configuration constants.
 var tlsEnabled bool
 var securityEnabled bool
+var validatorEnabled bool
 
 // CacheConfiguration computes and caches commonly-used constants and
 // computed constants as package variables. Routines which were previously
@@ -33,6 +34,7 @@ func CacheConfiguration() (err error) {
 
 	tlsEnabled = viper.GetBool("peer.tls.enabled")
 	securityEnabled = viper.GetBool("security.enabled")
+	validatorEnabled = viper.GetBool("peer.validator.enabled")
 
 	configurationCached = true
 
@@ -55,5 +57,15 @@ func TLSEnabled() bool {
 }
 
 func SecurityEnabled() bool {
+	if !configurationCached {
+		cacheConfiguration()
+	}
 	return securityEnabled
+}
+
+func ValidatorEnabled() bool {
+	if !configurationCached {
+		cacheConfiguration()
+	}
+	return validatorEnabled
 }

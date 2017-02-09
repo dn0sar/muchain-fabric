@@ -7,6 +7,7 @@ pb "github.com/hyperledger/fabric/protos"
 	"fmt"
 	"reflect"
 	"github.com/hyperledger/fabric/core/comm"
+	"github.com/hyperledger/fabric/core/helper"
 )
 
 // PersistNonces persists the nonces of the transactions in the local db.
@@ -42,8 +43,16 @@ func PersistNonces(txs []*pb.InBlockTransaction) (error) {
 	return nil;
 }
 
-func RetrieveNonce(txID string) ([]byte, error) {
-	return db.GetDBHandle().GetFromNoncesCF(encodeTxID(txID))
+func RetrieveNonce(tx *pb.InBlockTransaction) ([]byte, error) {
+	if comm.SecurityEnabled() {
+		secHelper, err := helper.GetSecHelper()
+		if err != nil {
+			return nil, fmt.Errorf("Unable to get the security helper. Error: [%s]", err)
+		}
+		clone, err := secHelper.InBlockTransactionPreExecution(tx)
+		return clone.Nonce, nil
+	}
+	return db.GetDBHandle().GetFromNoncesCF(encodeTxID(tx.Txid))
 }
 
 func encodeTxID(ID string) ([]byte) {

@@ -181,7 +181,7 @@ func (peer *peerImpl) Verify(vkID, signature, message []byte) error {
 	return nil
 }
 
-func (peer *peerImpl) GetStateEncryptor(deployTx *obc.Transaction, invokeTx *obc.InBlockTransaction) (StateEncryptor, error) {
+func (peer *peerImpl) GetStateEncryptor(deployTx *obc.Transaction, invokeTx *obc.Transaction) (StateEncryptor, error) {
 	return nil, utils.ErrNotImplemented
 }
 

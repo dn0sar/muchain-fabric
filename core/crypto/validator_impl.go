@@ -30,7 +30,6 @@ import (
 
 type validatorImpl struct {
 	*peerImpl
-	ledger Ledger
 	// Chain
 	chainPrivateKey primitives.PrivateKey
 }

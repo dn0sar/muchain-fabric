@@ -199,7 +199,7 @@ func (ledger *Ledger) CommitTxBatch(id interface{}, transactions []*protos.InBlo
 				ccEvents[i] = &protos.ChaincodeEvent{}
 			}
 			if transactionResults[i].ErrorCode != 0 {
-				ledgerLogger.Infof("Transaction with id %s contained errors: %s", transactionResults[i].Txid, transactionResults[i].Error)
+				ledgerLogger.Warningf("Transaction with id %s contained errors: %s", transactionResults[i].Txid, transactionResults[i].Error)
 				numErroneusTxs++
 			}
 		}
@@ -654,12 +654,9 @@ func (ledger *Ledger) GetCurrentDefault(inBlockTx *protos.InBlockTransaction, co
 	if inBlockTx.ConfidentialityLevel == protos.ConfidentialityLevel_CONFIDENTIAL {
 		copiedDefTx := make([]byte, len(defTxBytes))
 		copy(copiedDefTx, defTxBytes)
-		nonce := inBlockTx.Nonce
-		if nonce == nil {
-			nonce, err = txset.RetrieveNonce(inBlockTx.Txid)
-			if err != nil {
-				return nil, fmt.Errorf("Unable to retrieve nonce for given in block transaction. Error: [%s]", err)
-			}
+		nonce, err := txset.RetrieveNonce(inBlockTx)
+		if err != nil {
+			return nil, fmt.Errorf("Unable to retrieve nonce for given in block transaction. Error: [%s]", err)
 		}
 		defTxBytes, err = txset.DecryptTxSetSpecification(nonce, copiedDefTx, txSetStValue.Index)
 		if err != nil {

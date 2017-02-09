@@ -113,7 +113,7 @@ type Peer interface {
 	// GetStateEncryptor returns a StateEncryptor linked to pair defined by
 	// the deploy transaction and the execute transaction. Notice that,
 	// executeTx can also correspond to a deploy transaction.
-	GetStateEncryptor(deployTx *obc.Transaction, executeTx *obc.InBlockTransaction) (StateEncryptor, error)
+	GetStateEncryptor(deployTx *obc.Transaction, executeTx *obc.Transaction) (StateEncryptor, error)
 
 	GetTransactionBinding(tx *obc.InBlockTransaction) ([]byte, error)
 }

@@ -209,19 +209,11 @@ func (handler *Handler) encryptOrDecrypt(encrypt bool, txid string, payload []by
 	var enc crypto.StateEncryptor
 	var err error
 	if txctx.transactionSecContext.Type == pb.ChaincodeAction_CHAINCODE_DEPLOY {
-		encapsTx, err := container.EncapsulateTransactionToInBlock(handler.deployTXSecContext)
-		if err != nil {
-			return nil, err
-		}
-		if enc, err = secHelper.GetStateEncryptor(handler.deployTXSecContext, encapsTx); err != nil {
+		if enc, err = secHelper.GetStateEncryptor(handler.deployTXSecContext, handler.deployTXSecContext); err != nil {
 			return nil, fmt.Errorf("error getting crypto encryptor for deploy tx :%s", err)
 		}
 	} else if txctx.transactionSecContext.Type == pb.ChaincodeAction_CHAINCODE_INVOKE || txctx.transactionSecContext.Type == pb.ChaincodeAction_CHAINCODE_QUERY {
-		encapsTx, err := container.EncapsulateTransactionToInBlock(txctx.transactionSecContext)
-		if err != nil {
-			return nil, err
-		}
-		if enc, err = secHelper.GetStateEncryptor(handler.deployTXSecContext, encapsTx); err != nil {
+		if enc, err = secHelper.GetStateEncryptor(handler.deployTXSecContext, txctx.transactionSecContext); err != nil {
 			return nil, fmt.Errorf("error getting crypto encryptor %s", err)
 		}
 	} else {

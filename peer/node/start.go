@@ -25,11 +25,11 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strconv"
-	"sync"
 	"syscall"
 	"time"
 
 	"github.com/hyperledger/fabric/consensus/helper"
+	hlp "github.com/hyperledger/fabric/core/helper"
 	"github.com/hyperledger/fabric/core"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/core/comm"
@@ -46,7 +46,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/grpclog"
-	"github.com/hyperledger/fabric/core/ledger"
 )
 
 var chaincodeDevMode bool
@@ -136,7 +135,7 @@ func serve(args []string) error {
 
 	grpcServer := grpc.NewServer(opts...)
 
-	secHelper, err := getSecHelper()
+	secHelper, err := hlp.GetSecHelper()
 	if err != nil {
 		return err
 	}
@@ -339,46 +338,4 @@ func writePid(fileName string, pid int) error {
 		return fmt.Errorf("can't release lock '%s', lock is held", fd.Name())
 	}
 	return nil
-}
-
-var once sync.Once
-
-//this should be called exactly once and the result cached
-//NOTE- this crypto func might rightly belong in a crypto package
-//and universally accessed
-func getSecHelper() (crypto.Peer, error) {
-	var secHelper crypto.Peer
-	var err error
-	once.Do(func() {
-		if core.SecurityEnabled() {
-			enrollID := viper.GetString("security.enrollID")
-			enrollSecret := viper.GetString("security.enrollSecret")
-			if peer.ValidatorEnabled() {
-				ledger, err := ledger.GetLedger()
-				if err != nil {
-					return
-				}
-				logger.Debugf("Registering validator with enroll ID: %s", enrollID)
-				if err = crypto.RegisterValidator(enrollID, nil, enrollID, enrollSecret, ledger); nil != err {
-					return
-				}
-				logger.Debugf("Initializing validator with enroll ID: %s", enrollID)
-				secHelper, err = crypto.InitValidator(enrollID, nil, ledger)
-				if nil != err {
-					return
-				}
-			} else {
-				logger.Debugf("Registering non-validator with enroll ID: %s", enrollID)
-				if err = crypto.RegisterPeer(enrollID, nil, enrollID, enrollSecret); nil != err {
-					return
-				}
-				logger.Debugf("Initializing non-validator with enroll ID: %s", enrollID)
-				secHelper, err = crypto.InitPeer(enrollID, nil)
-				if nil != err {
-					return
-				}
-			}
-		}
-	})
-	return secHelper, err
 }
