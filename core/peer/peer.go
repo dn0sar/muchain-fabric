@@ -43,6 +43,7 @@ import (
 	txsetstmgmt "github.com/hyperledger/fabric/core/ledger/state/txsetst/statemgmt"
 	"github.com/hyperledger/fabric/core/util"
 	pb "github.com/hyperledger/fabric/protos"
+	"github.com/hyperledger/fabric/core/container"
 )
 
 // Peer provides interface for a peer
@@ -292,7 +293,12 @@ func (p *Impl) ProcessTransaction(ctx context.Context, tx *pb.InBlockTransaction
 		secHelper := p.secHelper
 		if nil != secHelper {
 			peerLogger.Debugf("Verifying transaction signature %s", tx.Txid)
-			if tx, err = secHelper.TransactionPreValidation(tx); err != nil {
+			encTx, err := container.EncapsulateInBlockToTraditionalTx(tx)
+			if err != nil {
+				peerLogger.Errorf("ProcessTransaction failed to encapsulate transaction to a normal one %v", err)
+				return &pb.Response{Status: pb.Response_FAILURE, Msg: []byte(err.Error())}, nil
+			}
+			if _, err = secHelper.TransactionPreValidation(encTx); err != nil {
 				peerLogger.Errorf("ProcessTransaction failed to verify transaction %v", err)
 				return &pb.Response{Status: pb.Response_FAILURE, Msg: []byte(err.Error())}, nil
 			}

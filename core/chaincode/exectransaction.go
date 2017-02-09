@@ -40,14 +40,6 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, inBlockTx *pb.InBloc
 		return nil, nil, fmt.Errorf("Failed to get handle to ledger (%s)", err)
 	}
 
-	if secHelper := chain.getSecHelper(); nil != secHelper {
-		inBlockTx, err = secHelper.TransactionPreExecution(inBlockTx)
-		// Note that inBlockTx is now decrypted and is a deep clone of the original input inBlockTx
-		if nil != err {
-			return nil, nil, err
-		}
-	}
-
 	nextBlockNr := ledger.GetCurrentBlockEx()
 
 	switch tx := inBlockTx.Transaction.(type) {
@@ -102,6 +94,12 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, inBlockTx *pb.InBloc
 		defTx, err := ledger.GetCurrentDefault(inBlockTx, false)
 		if err != nil {
 			return nil, nil, err
+		}
+		if secHelper := chain.getSecHelper(); nil != secHelper {
+			defTx, err = secHelper.TransactionPreExecution(defTx)
+			if nil != err {
+				return nil, nil, err
+			}
 		}
 
 		if defTx.Type == pb.ChaincodeAction_CHAINCODE_DEPLOY {

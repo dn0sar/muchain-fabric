@@ -452,18 +452,10 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, t *pb.
 			}
 			if nil != chaincodeSupport.secHelper {
 				var err error
-				depTransactionEncaps, err := container.EncapsulateTransactionToInBlock(depTx)
-				if err != nil {
-					return cID, cMsg, fmt.Errorf("Unable to incapsulate deploymentTransaction.Err: [%s]", err)
-				}
-				depTransactionEncaps, err = chaincodeSupport.secHelper.TransactionPreExecution(depTransactionEncaps)
+				depTx, err = chaincodeSupport.secHelper.TransactionPreExecution(depTx)
 				// Note that t is now decrypted and is a deep clone of the original input t
 				if nil != err {
 					return cID, cMsg, fmt.Errorf("failed tx preexecution%s - %s", cID.Name, err)
-				}
-				depTx, err = ledger.GetCurrentDefault(depTransactionEncaps, true)
-				if err != nil {
-					return cID, cMsg, err
 				}
 			}
 			if depTx.Type != pb.ChaincodeAction_CHAINCODE_DEPLOY {

@@ -27,7 +27,7 @@ import (
 	"fmt"
 )
 
-func (validator *validatorImpl) deepCloneTransaction(tx *pb.InBlockTransaction) (*pb.InBlockTransaction, error) {
+func (validator *validatorImpl) deepCloneTransaction(tx *pb.Transaction) (*pb.Transaction, error) {
 	raw, err := proto.Marshal(tx)
 	if err != nil {
 		validator.Errorf("Failed cloning transaction [%s].", err.Error())
@@ -35,7 +35,7 @@ func (validator *validatorImpl) deepCloneTransaction(tx *pb.InBlockTransaction) 
 		return nil, err
 	}
 
-	clone := &pb.InBlockTransaction{}
+	clone := &pb.Transaction{}
 	err = proto.Unmarshal(raw, clone)
 	if err != nil {
 		validator.Errorf("Failed cloning transaction [%s].", err.Error())
@@ -46,7 +46,7 @@ func (validator *validatorImpl) deepCloneTransaction(tx *pb.InBlockTransaction) 
 	return clone, nil
 }
 
-func (validator *validatorImpl) deepCloneAndDecryptTx(tx *pb.InBlockTransaction) (*pb.InBlockTransaction, error) {
+func (validator *validatorImpl) deepCloneAndDecryptTx(tx *pb.Transaction) (*pb.Transaction, error) {
 	switch tx.ConfidentialityProtocolVersion {
 	case "1.2":
 		return validator.deepCloneAndDecryptTx1_2(tx)
@@ -55,7 +55,7 @@ func (validator *validatorImpl) deepCloneAndDecryptTx(tx *pb.InBlockTransaction)
 }
 
 //Returns an InBlockTransaction with the currentDefault decrypted or with the Mutable decrypted!
-func (validator *validatorImpl) deepCloneAndDecryptTx1_2(tx *pb.InBlockTransaction) (*pb.InBlockTransaction, error) {
+func (validator *validatorImpl) deepCloneAndDecryptTx1_2(tx *pb.Transaction) (*pb.Transaction, error) {
 
 	if tx.Nonce == nil || len(tx.Nonce) == 0 {
 		return nil, errors.New("Failed decrypting payload. Invalid nonce.")
@@ -79,81 +79,74 @@ func (validator *validatorImpl) deepCloneAndDecryptTx1_2(tx *pb.InBlockTransacti
 		return nil, err
 	}
 
-	switch tx.Transaction.(type) {
-	case *pb.InBlockTransaction_TransactionSet:
+	if err != nil {
+		return nil, fmt.Errorf("unable to get current default transaction for tx id: [%s], error [%s]", tx.Txid, err)
+	}
 
-		currDefault, err := validator.ledger.GetCurrentDefault(tx, false)
+	validator.Debugf("Transaction kind: [Set], current default type: [%s].", tx.Type)
+
+	msgToValidatorsRaw, err := cipher.Process(tx.ToValidators)
+	if err != nil {
+		validator.Errorf("Failed decrypting message to validators [% x]: [%s].", tx.ToValidators, err.Error())
+		return nil, err
+	}
+
+	msgToValidators := new(chainCodeValidatorMessage1_2)
+	_, err = asn1.Unmarshal(msgToValidatorsRaw, msgToValidators)
+	if err != nil {
+		validator.Errorf("Failed unmarshalling message to validators [%s].", err.Error())
+		return nil, err
+	}
+
+	validator.Debugf("Deserializing transaction key [% x].", msgToValidators.PrivateKey)
+	ccPrivateKey, err = validator.eciesSPI.DeserializePrivateKey(msgToValidators.PrivateKey)
+	if err != nil {
+		validator.Errorf("Failed deserializing transaction key [%s].", err.Error())
+		return nil, err
+	}
+
+	validator.Debug("Extract transaction key...done")
+
+	cipher, err = validator.eciesSPI.NewAsymmetricCipherFromPrivateKey(ccPrivateKey)
+	if err != nil {
+		validator.Errorf("Failed init transaction decryption engine [%s].", err.Error())
+		return nil, err
+	}
+
+	// Decrypt metadata of the InBlockTransaction
+	if len(tx.Metadata) != 0 {
+		metadata, err := cipher.Process(tx.Metadata)
 		if err != nil {
-			return nil, fmt.Errorf("unable to get current default transaction for tx id: [%s], error [%s]", tx.Txid, err)
-		}
-
-		validator.Debugf("Transaction kind: [Set], current default type: [%s].", currDefault.Type)
-
-		msgToValidatorsRaw, err := cipher.Process(currDefault.ToValidators)
-		if err != nil {
-			validator.Errorf("Failed decrypting message to validators [% x]: [%s].", currDefault.ToValidators, err.Error())
+			validator.Errorf("Failed decrypting metadata [%s].", err.Error())
 			return nil, err
 		}
+		tx.Metadata = metadata
+	}
 
-		msgToValidators := new(chainCodeValidatorMessage1_2)
-		_, err = asn1.Unmarshal(msgToValidatorsRaw, msgToValidators)
+	// Decrypt Payload
+	payload, err := cipher.Process(tx.Payload)
+	if err != nil {
+		validator.Errorf("Failed decrypting payload [%s].", err.Error())
+		return nil, err
+	}
+	tx.Payload = payload
+
+	// Decrypt ChaincodeID
+	chaincodeID, err := cipher.Process(tx.ChaincodeID)
+	if err != nil {
+		validator.Errorf("Failed decrypting chaincode [%s].", err.Error())
+		return nil, err
+	}
+	tx.ChaincodeID = chaincodeID
+
+	// Decrypt metadata
+	if len(tx.Metadata) != 0 {
+		metadata, err := cipher.Process(tx.Metadata)
 		if err != nil {
-			validator.Errorf("Failed unmarshalling message to validators [%s].", err.Error())
+			validator.Errorf("Failed decrypting metadata [%s].", err.Error())
 			return nil, err
 		}
-
-		validator.Debugf("Deserializing transaction key [% x].", msgToValidators.PrivateKey)
-		ccPrivateKey, err = validator.eciesSPI.DeserializePrivateKey(msgToValidators.PrivateKey)
-		if err != nil {
-			validator.Errorf("Failed deserializing transaction key [%s].", err.Error())
-			return nil, err
-		}
-
-		validator.Debug("Extract transaction key...done")
-
-		cipher, err = validator.eciesSPI.NewAsymmetricCipherFromPrivateKey(ccPrivateKey)
-		if err != nil {
-			validator.Errorf("Failed init transaction decryption engine [%s].", err.Error())
-			return nil, err
-		}
-
-		// Decrypt metadata of the InBlockTransaction
-		if len(currDefault.Metadata) != 0 {
-			metadata, err := cipher.Process(currDefault.Metadata)
-			if err != nil {
-				validator.Errorf("Failed decrypting metadata [%s].", err.Error())
-				return nil, err
-			}
-			currDefault.Metadata = metadata
-		}
-
-		// Decrypt Payload
-		payload, err := cipher.Process(currDefault.Payload)
-		if err != nil {
-			validator.Errorf("Failed decrypting payload [%s].", err.Error())
-			return nil, err
-		}
-		currDefault.Payload = payload
-
-		// Decrypt ChaincodeID
-		chaincodeID, err := cipher.Process(currDefault.ChaincodeID)
-		if err != nil {
-			validator.Errorf("Failed decrypting chaincode [%s].", err.Error())
-			return nil, err
-		}
-		currDefault.ChaincodeID = chaincodeID
-
-		// Decrypt metadata
-		if len(currDefault.Metadata) != 0 {
-			metadata, err := cipher.Process(currDefault.Metadata)
-			if err != nil {
-				validator.Errorf("Failed decrypting metadata [%s].", err.Error())
-				return nil, err
-			}
-			currDefault.Metadata = metadata
-		}
-	case *pb.InBlockTransaction_MutantTransaction:
-		//Mutant transactions are not encrypted
+		tx.Metadata = metadata
 	}
 
 	return clone, nil

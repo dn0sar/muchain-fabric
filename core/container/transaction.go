@@ -158,11 +158,42 @@ func EncapsulateTransactionToInBlock(tx *pb.Transaction) (*pb.InBlockTransaction
 		Timestamp:                      tx.Timestamp,
 		ConfidentialityLevel:           tx.ConfidentialityLevel,
 		ConfidentialityProtocolVersion: tx.ConfidentialityProtocolVersion,
-		Nonce:        tx.Nonce,
-		ToValidators: tx.ToValidators,
-		Cert:         tx.Cert,
-		Signature:    tx.Signature,
+		Nonce:        					tx.Nonce,
+		ToValidators: 					tx.ToValidators,
+		Cert:         					tx.Cert,
+		Signature:    					tx.Signature,
 	}
 	return encapsulatedTx, nil
 }
 
+func EncapsulateInBlockToTraditionalTx(inBlock *pb.InBlockTransaction) (*pb.Transaction, error) {
+	var marshaledTx []byte
+	var err error
+	switch tx := inBlock.Transaction.(type) {
+	case *pb.InBlockTransaction_TransactionSet:
+		marshaledTx, err = proto.Marshal(tx.TransactionSet)
+	case *pb.InBlockTransaction_MutantTransaction:
+		marshaledTx, err = proto.Marshal(tx.MutantTransaction)
+	case *pb.InBlockTransaction_SetStQueryTransaction:
+		marshaledTx, err = proto.Marshal(tx.SetStQueryTransaction)
+	default:
+		return  nil, fmt.Errorf("InBlockTransactionType not supported type: %v", inBlock.Transaction)
+	}
+	if  err != nil {
+		return nil, fmt.Errorf("Unable to marshal the given transaction %#v, err; %s", inBlock.Transaction, err)
+	}
+
+	tx := &pb.Transaction{
+		Payload: marshaledTx,
+		Metadata: inBlock.Metadata,
+		Txid: inBlock.Txid,
+		Timestamp: inBlock.Timestamp,
+		ConfidentialityLevel: inBlock.ConfidentialityLevel,
+		ConfidentialityProtocolVersion: inBlock.ConfidentialityProtocolVersion,
+		Nonce: inBlock.Nonce,
+		ToValidators: inBlock.ToValidators,
+		Cert: inBlock.Cert,
+		Signature: inBlock.Signature,
+	}
+	return tx, nil
+}

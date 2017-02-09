@@ -91,7 +91,7 @@ peer:
     # The Address this Peer will listen on
     listenAddress: 0.0.0.0:7051
     # The Address this Peer will bind to for providing services
-    address: 172.17.0.2:7051
+    address: 0.0.0.0:7051
     # Whether the Peer should programmatically determine the address to bind to.
     # This case is useful for docker containers.
     addressAutoDetect: false

@@ -5,6 +5,12 @@ vp0:
     - CORE_PEER_ID=vp0
     - CORE_VM_ENDPOINT=http://172.17.0.1:2375
     - CORE_LOGGING_LEVEL=DEBUG
+    - CORE_SECURITY_ENABLED=FALSE
+    - CORE_SECURITY_ENROLLID=test_vp0
+    - CORE_SECURITY_ENROLLSECRET=MwYpmSRjupbT
+    - CORE_PEER_PKI_ECA_PADDR=172.17.0.2:7054
+    - CORE_PEER_PKI_TCA_PADDR=172.17.0.2:7054
+    - CORE_PEER_PKI_TLSCA_PADDR=172.17.0.2:7054
   command: peer node start
 vp1:
   extends:
@@ -12,6 +18,8 @@ vp1:
   environment:
     - CORE_PEER_ID=vp1
     - CORE_PEER_DISCOVERY_ROOTNODE=vp0:7051
+    - CORE_SECURITY_ENROLLID=test_vp1
+    - CORE_SECURITY_ENROLLSECRET=5wgHK9qqYaPy
   links:
     - vp0
 vp2:
@@ -20,5 +28,7 @@ vp2:
   environment:
     - CORE_PEER_ID=vp2
     - CORE_PEER_DISCOVERY_ROOTNODE=vp0:7051
+    - CORE_SECURITY_ENROLLID=test_vp2
+    - CORE_SECURITY_ENROLLSECRET=vQelbRvja7cJ
   links:
     - vp0

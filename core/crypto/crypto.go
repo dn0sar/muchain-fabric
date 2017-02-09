@@ -86,14 +86,14 @@ type Peer interface {
 	// TransactionPreValidation verifies that the transaction is
 	// well formed with the respect to the security layer
 	// prescriptions (i.e. signature verification).
-	TransactionPreValidation(tx *obc.InBlockTransaction) (*obc.InBlockTransaction, error)
+	TransactionPreValidation(tx *obc.Transaction) (*obc.Transaction, error)
 
 	// TransactionPreExecution verifies that the transaction is
 	// well formed with the respect to the security layer
 	// prescriptions (i.e. signature verification). If this is the case,
 	// the method prepares the transaction to be executed.
 	// TransactionPreExecution returns a clone of tx.
-	TransactionPreExecution(tx *obc.InBlockTransaction) (*obc.InBlockTransaction, error)
+	TransactionPreExecution(tx *obc.Transaction) (*obc.Transaction, error)
 
 	// Sign signs msg with this validator's signing key and outputs
 	// the signature if no error occurred.

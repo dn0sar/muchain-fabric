@@ -50,7 +50,7 @@ func (peer *peerImpl) GetEnrollmentID() string {
 // TransactionPreValidation verifies that the transaction is
 // well formed with the respect to the security layer
 // prescriptions (i.e. signature verification).
-func (peer *peerImpl) TransactionPreValidation(tx *obc.InBlockTransaction) (*obc.InBlockTransaction, error) {
+func (peer *peerImpl) TransactionPreValidation(tx *obc.Transaction) (*obc.Transaction, error) {
 	if !peer.IsInitialized() {
 		return nil, utils.ErrNotInitialized
 	}
@@ -127,7 +127,7 @@ func (peer *peerImpl) TransactionPreValidation(tx *obc.InBlockTransaction) (*obc
 // prescriptions (i.e. signature verification). If this is the case,
 // the method prepares the transaction to be executed.
 // TransactionPreExecution returns a clone of tx.
-func (peer *peerImpl) TransactionPreExecution(tx *obc.InBlockTransaction) (*obc.InBlockTransaction, error) {
+func (peer *peerImpl) TransactionPreExecution(tx *obc.Transaction) (*obc.Transaction, error) {
 	return nil, utils.ErrNotImplemented
 }
 
