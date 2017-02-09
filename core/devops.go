@@ -375,51 +375,6 @@ func (d *Devops) checkQueryConsistency(txSetSpec *pb.TxSetSpec) (bool, error) {
 	return isQuery, nil
 }
 
-// Don't need this function anymore, keep it for reference atm
-//func (d *Devops) createTxSet(txSetSpec *pb.TxSetSpec) (*pb.TransactionSet, []byte, error) {
-//	txSet := &pb.TransactionSet{}
-//	txSet.DefaultInx = txSetSpec.DefaultInx
-//	var deplBytes []byte
-//	for i, txSpec := range txSetSpec.TxSpecs {
-//		switch txSpec.Action {
-//		case pb.ChaincodeAction_CHAINCODE_DEPLOY:
-//			if txSpec.GetCodeSpec() == nil {
-//				return nil, deplBytes, fmt.Errorf("Trying to add a Deploy transaction to the tx set without a valid Chaincode Specification.")
-//			}
-//			tx, deplBytesCurr, sec, err := d.createDeployTransaction(txSpec.GetCodeSpec())
-//			if sec != nil {
-//				crypto.CloseClient(sec)
-//			}
-//			if err != nil {
-//				return nil, deplBytes, err
-//			}
-//			if uint64(i) == txSet.DefaultInx {
-//				deplBytes = deplBytesCurr
-//			}
-//			txSet.Transactions = append(txSet.Transactions, tx)
-//		case pb.ChaincodeAction_CHAINCODE_INVOKE:
-//			if txSpec.GetInvocationSpec() == nil {
-//				return nil, deplBytes, fmt.Errorf("Trying to add a Invoke transaction to the tx set without a valid Invocation Specification.")
-//			}
-//			tx, sec, err := d.createExecTx(txSpec.GetInvocationSpec(), txSpec.GetInvocationSpec().ChaincodeSpec.Attributes, true)
-//			if sec != nil {
-//				crypto.CloseClient(sec)
-//			}
-//			if err != nil {
-//				return nil, deplBytes, err
-//			}
-//			txSet.Transactions = append(txSet.Transactions, tx)
-//		case pb.ChaincodeAction_CHAINCODE_QUERY:
-//			// This should not happen, since checks to exclude query transactions
-//			// should have been performed before calling this function
-//			return nil, deplBytes, fmt.Errorf("Cannot to create a tx set containing a query transaction")
-//		default:
-//			return nil, deplBytes, fmt.Errorf("Transaction type not supported to be part of a transactins set. Type: %s", txSpec.Action)
-//		}
-//	}
-//	return txSet, deplBytes, nil
-//}
-
 // Invoke performs the supplied invocation on the specified chaincode through a transaction
 func (d *Devops) Invoke(ctx context.Context, chaincodeInvocationSpec *pb.ChaincodeInvocationSpec) (*pb.Response, error) {
 	return d.invokeOrQuery(ctx, chaincodeInvocationSpec, chaincodeInvocationSpec.ChaincodeSpec.Attributes, true)

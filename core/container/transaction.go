@@ -9,8 +9,6 @@ import (
 	pb "github.com/hyperledger/fabric/protos"
 	"errors"
 	"github.com/hyperledger/fabric/core/util"
-	"github.com/hyperledger/fabric/core/crypto"
-	"github.com/hyperledger/fabric/core/comm"
 )
 
 var containerLogger = logging.MustGetLogger("container_transaction")
@@ -35,7 +33,8 @@ func NewDeployTransaction(spec *pb.ChaincodeSpec) (*pb.Transaction, error) {
 	transID := chaincodeDeploymentSpec.ChaincodeSpec.ChaincodeID.Name
 
 	var tx *pb.Transaction
-	var sec crypto.Client
+	//REVIEW: until hyperledger clients can encrypt transactions without asking peer to do it for them fabric's security for alternative versions cannot be enabled
+	/* var sec crypto.Client
 
 	if comm.SecurityEnabled() {
 		if containerLogger.IsEnabledFor(logging.DEBUG) {
@@ -59,19 +58,18 @@ func NewDeployTransaction(spec *pb.ChaincodeSpec) (*pb.Transaction, error) {
 		if nil != err {
 			return nil, err
 		}
-	} else {
+	} else { */
 		containerLogger.Debugf("Creating deployment transaction (%s)", transID)
 		tx, err = pb.NewChaincodeDeployTransaction(chaincodeDeploymentSpec, transID)
 		if err != nil {
 			return nil, fmt.Errorf("Error deploying chaincode: %s ", err)
 		}
-	}
+	//}
 	return tx, nil
 }
 
 func NewExecTransaction(spec *pb.ChaincodeInvocationSpec) (*pb.Transaction, error) {
 	var uuid string
-	var sec crypto.Client
 	var err error
 	var tx *pb.Transaction
 	var customIDgenAlg = strings.ToLower(spec.IdGenerationAlg)
@@ -89,6 +87,8 @@ func NewExecTransaction(spec *pb.ChaincodeInvocationSpec) (*pb.Transaction, erro
 		uuid = util.GenerateUUID()
 	}
 
+	//REVIEW: until hyperledger clients can encrypt transactions without asking peer to do it for them fabric's security for alternative versions cannot be enabled
+	/*var sec crypto.Client
 	if comm.SecurityEnabled() {
 		containerLogger.Debugf("Initializing secure devops using context %s", spec.ChaincodeSpec.SecureContext)
 		sec, err = crypto.InitClient(spec.ChaincodeSpec.SecureContext, nil)
@@ -108,13 +108,13 @@ func NewExecTransaction(spec *pb.ChaincodeInvocationSpec) (*pb.Transaction, erro
 		if nil != err {
 			return nil, err
 		}
-	} else {
+	} else {*/
 		containerLogger.Debugf("Creating invocation transaction (%s)", uuid)
 		tx, err = pb.NewChaincodeExecute(spec, uuid, pb.ChaincodeAction_CHAINCODE_INVOKE)
 		if nil != err {
 			return nil, err
 		}
-	}
+	//}
 	return tx, nil
 }
 
