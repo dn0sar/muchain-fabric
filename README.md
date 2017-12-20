@@ -1,3 +1,8 @@
+Look to examples/network/try\_muchain.sh for a demo of a network creation and some mutations.
+
+A subcommand named 'muchain' has been added to the peer executable to run muchain specific commands.
+See the muchain subcommand help for more info.
+
 Orignal Hyperledger Readme:
 
 ## Incubation Notice
