@@ -1,3 +1,5 @@
+IMPORTANT: This readme should be under $GOPATH/src/github.com/hyperledger/fabric for the package to compile correctly
+
 Look to examples/network/try\_muchain.sh for a demo of a network creation and some mutations.
 
 A subcommand named 'muchain' has been added to the peer executable to run muchain specific commands.
